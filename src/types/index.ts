@@ -19,6 +19,7 @@ export interface Settings {
   watermark_opacity: number;
   watermark_position: string;
   watermark_size: string;
+  watermark_image_url?: string;
   created_at: string;
   updated_at: string;
 }
