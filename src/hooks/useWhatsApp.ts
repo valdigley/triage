@@ -122,7 +122,8 @@ Deno.serve(async (req: Request) => {
                 `Obrigado por escolher nossos serviços! 📸✨\n\n` +
                 `Em caso de dúvidas, entre em contato conosco.\n\n` +
                 `_Mensagem automática do sistema_`;
-    } else {
+        )
+          } else {
       // Mensagem padrão para seleção sem fotos extras
       console.log('📝 Montando mensagem padrão de seleção...');
       
@@ -144,6 +145,7 @@ Deno.serve(async (req: Request) => {
                 `Obrigado por escolher nossos serviços! 📸✨\n\n` +
                 `Em caso de dúvidas, entre em contato conosco.\n\n` +
                 `_Mensagem automática do sistema_`;
+    }
     }
     
     console.log('✅ Mensagem preparada');
