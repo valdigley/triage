@@ -96,36 +96,28 @@ export function AppointmentsView() {
         <h1 className="text-3xl font-bold text-gray-900">Agendamentos</h1>
         
         <div className="flex items-center space-x-2 sm:space-x-4">
-          <button
-            onClick={() => {
-              const feedUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar-feed`;
-              navigator.clipboard.writeText(feedUrl);
-              alert('Link do feed copiado! Cole este link no Google Calendar para receber atualizações automáticas.');
-            }}
-            className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-sm"
-          >
-            <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Feed iCal</span>
-            <span className="sm:hidden">Feed</span>
-          </button>
-          
-          <button
-            onClick={handleExportCalendar}
-            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-sm"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Exportar .ics</span>
-            <span className="sm:hidden">Export</span>
-          </button>
-          
-          <button
-            onClick={generateGoogleCalendarUrl}
-            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-sm"
-          >
-            <ExternalLink className="h-4 w-4" />
-            <span className="hidden sm:inline">Google Calendar</span>
-            <span className="sm:hidden">Google</span>
-          </button>
+          <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Feed iCal para Google Calendar:</label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Cole este link no Google Calendar para sincronização automática</p>
+              </div>
+              <button
+                onClick={() => {
+                  const feedUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar-feed`;
+                  navigator.clipboard.writeText(feedUrl);
+                  alert('Link do feed iCal copiado! Cole no Google Calendar em "Outros calendários" → "+" → "A partir de URL"');
+                }}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 text-sm"
+              >
+                <Calendar className="h-4 w-4" />
+                <span>Copiar Link</span>
+              </button>
+            </div>
+            <div className="mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-xs font-mono text-gray-600 dark:text-gray-400 truncate">
+              {import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar-feed
+            </div>
+          </div>
           
           <select
             value={statusFilter}
