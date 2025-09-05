@@ -96,11 +96,13 @@ export function AppointmentsView() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Agendamentos</h1>
         
         <div className="flex items-center space-x-2 sm:space-x-4">
-          <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+          <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2">
             <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Feed iCal para Google Calendar:</label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Cole este link no Google Calendar para sincronização automática</p>
+              <div className="flex-1 min-w-0 mr-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Feed iCal:</label>
+                <div className="text-xs font-mono text-gray-500 dark:text-gray-400 truncate">
+                  {import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar-feed
+                </div>
               </div>
               <button
                 onClick={() => {
@@ -108,14 +110,11 @@ export function AppointmentsView() {
                   navigator.clipboard.writeText(feedUrl);
                   alert('Link do feed iCal copiado! Cole no Google Calendar em "Outros calendários" → "+" → "A partir de URL"');
                 }}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 text-sm"
+                className="bg-purple-600 text-white px-3 py-1.5 rounded-md hover:bg-purple-700 transition-colors flex items-center space-x-1 text-sm flex-shrink-0"
               >
                 <Calendar className="h-4 w-4" />
-                <span>Copiar Link</span>
+                <span className="hidden sm:inline">Copiar</span>
               </button>
-            </div>
-            <div className="mt-2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-xs font-mono text-gray-600 dark:text-gray-400 truncate">
-              {import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar-feed
             </div>
           </div>
           
