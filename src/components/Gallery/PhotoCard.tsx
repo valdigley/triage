@@ -14,12 +14,8 @@ interface WatermarkSettings {
 interface PhotoCardProps {
   photo: Photo;
   isSelected: boolean;
-  isFavorite: boolean;
-  isInPrintCart: boolean;
   canSelect: boolean;
   onToggleSelection: () => void;
-  onToggleFavorite: () => void;
-  onTogglePrintCart: () => void;
   onViewFullSize: () => void;
   hasComment?: boolean;
   watermarkSettings?: WatermarkSettings;
@@ -33,12 +29,8 @@ interface PhotoCardProps {
 export function PhotoCard({
   photo,
   isSelected,
-  isFavorite,
-  isInPrintCart,
   canSelect,
   onToggleSelection,
-  onToggleFavorite,
-  onTogglePrintCart,
   onViewFullSize,
   hasComment = false,
   watermarkSettings,
@@ -162,51 +154,32 @@ export function PhotoCard({
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300">
           <div className={`absolute top-2 right-2 flex gap-2 ${isCoverPhoto ? 'mt-8' : ''}`}>
-            {/* Print Cart Toggle */}
+            {/* View Full Size */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onTogglePrintCart();
+                onViewFullSize();
               }}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                isInPrintCart
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white bg-opacity-80 text-gray-700 hover:bg-opacity-100'
-              }`}
-              title="Adicionar ao carrinho de impressão"
+              className="w-8 h-8 rounded-full bg-white bg-opacity-80 text-gray-700 hover:bg-opacity-100 flex items-center justify-center transition-all duration-200"
+              title="Ver em tamanho completo"
             >
-              <Printer size={16} />
+              <Expand size={16} />
             </button>
+          </div>
 
-            {/* Favorite Toggle */}
+          {/* Comment Button */}
+          {canComment && onAddComment && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleFavorite();
+                onAddComment();
               }}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                isFavorite
-                  ? 'bg-red-500 text-white'
-                  : 'bg-white bg-opacity-80 text-gray-700 hover:bg-opacity-100'
-              }`}
+              className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
+              title="Adicionar comentário"
             >
-              <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+              <MessageSquare className="h-3 w-3" />
             </button>
-          </div>
-
-          <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewFullSize();
-                }}
-                className="w-8 h-8 rounded-full bg-white bg-opacity-80 hover:bg-opacity-100 flex items-center justify-center text-gray-700 transition-all duration-200"
-              >
-                <Expand size={16} />
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Selection Button - Mobile */}

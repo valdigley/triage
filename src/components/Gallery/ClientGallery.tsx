@@ -17,8 +17,6 @@ export function ClientGallery() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [printCart, setPrintCart] = useState<string[]>([]);
   const [showWatermark, setShowWatermark] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -28,9 +26,6 @@ export function ClientGallery() {
   const [commentingPhoto, setCommentingPhoto] = useState<string | null>(null);
   const [tempComment, setTempComment] = useState('');
   const [viewMode, setViewMode] = useState<'masonry' | 'grid'>('masonry');
-  const [filter, setFilter] = useState<'all' | 'favorites'>('all');
-  const [showSelection, setShowSelection] = useState(false);
-  const [showPrintCart, setShowPrintCart] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -93,22 +88,6 @@ export function ClientGallery() {
     if (gallery) {
       await updatePhotoSelection(gallery.id, newSelection);
     }
-  };
-
-  const handleFavoriteToggle = (photoId: string) => {
-    setFavorites(prev => 
-      prev.includes(photoId)
-        ? prev.filter(id => id !== photoId)
-        : [...prev, photoId]
-    );
-  };
-
-  const handlePrintCartToggle = (photoId: string) => {
-    setPrintCart(prev => 
-      prev.includes(photoId)
-        ? prev.filter(id => id !== photoId)
-        : [...prev, photoId]
-    );
   };
 
   const handleSubmitSelection = async () => {
@@ -191,21 +170,13 @@ export function ClientGallery() {
 
   const daysUntilExpiration = getDaysUntilExpiration();
   const isExpired = daysUntilExpiration !== null && daysUntilExpiration <= 0;
-  const isNearExpiration = daysUntilExpiration !== null && daysUntilExpiration <= 3;
 
   // Get cover photo
   const coverPhoto = gallery?.cover_photo_id 
     ? photos.find(p => p.id === gallery.cover_photo_id) || photos[0]
     : photos[0];
 
-  // Filter photos based on current filter
-  const filteredPhotos = filter === 'favorites' 
-    ? photos.filter(photo => favorites.includes(photo.id))
-    : photos;
-
   const selectedCount = selectedPhotos.length;
-  const favoritesCount = favorites.length;
-  const printCartCount = printCart.length;
 
   if (loading) {
     return (
@@ -298,54 +269,12 @@ export function ClientGallery() {
           <div className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {/* Filters */}
-                <button
-                  onClick={() => setFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    filter === 'all'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Todas ({photos.length})
-                </button>
-                
-                <button
-                  onClick={() => setFilter('favorites')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                    filter === 'favorites'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <Heart size={16} />
-                  Favoritas ({favoritesCount})
-                </button>
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {photos.length} fotos disponíveis
+                </div>
               </div>
 
-              {/* Selection Cart */}
               <div className="flex items-center gap-3">
-                {/* Print Cart */}
-                {printCartCount > 0 && (
-                  <button
-                    onClick={() => setShowPrintCart(true)}
-                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
-                  >
-                    <Printer size={16} />
-                    {printCartCount} para imprimir
-                  </button>
-                )}
-                
-                {selectedCount > 0 && (
-                  <button
-                    onClick={() => setShowSelection(true)}
-                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
-                  >
-                    <ShoppingCart size={16} />
-                    {selectedCount} selecionadas
-                  </button>
-                )}
-
                 {/* Watermark Toggle */}
                 {gallery.watermark_settings?.enabled && (
                   <button
@@ -387,53 +316,25 @@ export function ClientGallery() {
 
       {/* Gallery Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {filteredPhotos.length === 0 ? (
+        {photos.length === 0 ? (
           <div className="text-center py-12">
-            <Heart size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+            <Camera size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              {filter === 'favorites' ? 'Nenhuma foto favorita ainda' : 'Nenhuma foto encontrada'}
+              Nenhuma foto encontrada
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              {filter === 'favorites' 
-                ? 'Marque algumas fotos como favoritas para vê-las aqui.'
-                : 'Esta galeria ainda não possui fotos.'}
+              Esta galeria ainda não possui fotos.
             </p>
           </div>
-        ) : viewMode === 'masonry' ? (
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-            {filteredPhotos.map((photo, index) => (
-              <PhotoCard
-                key={photo.id}
-                photo={photo}
-                isSelected={selectedPhotos.includes(photo.id)}
-                isFavorite={favorites.includes(photo.id)}
-                isInPrintCart={printCart.includes(photo.id)}
-                canSelect={!gallery.selection_completed}
-                onToggleSelection={() => handlePhotoSelection(photo.id)}
-                onToggleFavorite={() => handleFavoriteToggle(photo.id)}
-                onTogglePrintCart={() => handlePrintCartToggle(photo.id)}
-                onViewFullSize={() => handlePhotoClick(photo, index)}
-                hasComment={!!photoComments[photo.id]}
-                watermarkSettings={showWatermark ? gallery.watermark_settings : { enabled: false }}
-                onAddComment={() => handleAddComment(photo.id)}
-                canComment={!gallery.selection_completed}
-                className="break-inside-avoid"
-              />
-            ))}
-          </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-            {filteredPhotos.map((photo, index) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {photos.map((photo, index) => (
               <PhotoCard
                 key={photo.id}
                 photo={photo}
                 isSelected={selectedPhotos.includes(photo.id)}
-                isFavorite={favorites.includes(photo.id)}
-                isInPrintCart={printCart.includes(photo.id)}
                 canSelect={!gallery.selection_completed}
                 onToggleSelection={() => handlePhotoSelection(photo.id)}
-                onToggleFavorite={() => handleFavoriteToggle(photo.id)}
-                onTogglePrintCart={() => handlePrintCartToggle(photo.id)}
                 onViewFullSize={() => handlePhotoClick(photo, index)}
                 hasComment={!!photoComments[photo.id]}
                 watermarkSettings={showWatermark ? gallery.watermark_settings : { enabled: false }}
@@ -447,7 +348,7 @@ export function ClientGallery() {
 
       {/* Lightbox */}
       <PhotoLightbox
-        photos={filteredPhotos}
+        photos={photos}
         currentIndex={currentPhotoIndex}
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
