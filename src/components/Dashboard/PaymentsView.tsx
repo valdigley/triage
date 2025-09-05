@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, DollarSign, TrendingUp, Calendar, Clock } from 'lucide-react';
+import { CreditCard, DollarSign, TrendingUp, Calendar, Clock, Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { Payment, Appointment } from '../../types';
 import { formatCurrency } from '../../utils/pricing';
 
 export function PaymentsView() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingPaymentRequest, setSendingPaymentRequest] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('all');
+  const { sendPaymentReminder } = useWhatsApp();
 
   useEffect(() => {
     fetchPayments();
@@ -32,6 +35,33 @@ export function PaymentsView() {
       console.error('Erro ao buscar pagamentos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendPaymentRequest = async (payment: Payment) => {
+    if (!payment.appointment?.client) {
+      alert('Dados do cliente não encontrados');
+      return;
+    }
+
+    setSendingPaymentRequest(payment.id);
+    try {
+      const success = await sendPaymentReminder(
+        payment.appointment.client.name,
+        payment.appointment.client.phone,
+        payment.amount
+      );
+
+      if (success) {
+        alert('Solicitação de pagamento enviada via WhatsApp!');
+      } else {
+        alert('Erro ao enviar solicitação. Verifique as configurações do WhatsApp.');
+      }
+    } catch (error) {
+      console.error('Erro ao enviar solicitação de pagamento:', error);
+      alert('Erro ao enviar solicitação de pagamento.');
+    } finally {
+      setSendingPaymentRequest(null);
     }
   };
 
@@ -161,6 +191,9 @@ export function PaymentsView() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   MP ID
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -185,6 +218,22 @@ export function PaymentsView() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {payment.mercadopago_id || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {payment.status === 'pending' && payment.appointment?.client && (
+                      <button
+                        onClick={() => handleSendPaymentRequest(payment)}
+                        disabled={sendingPaymentRequest === payment.id}
+                        className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                        title="Enviar solicitação de pagamento via WhatsApp"
+                      >
+                        {sendingPaymentRequest === payment.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <DollarSign className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -245,6 +294,29 @@ export function PaymentsView() {
                 <p className="text-sm font-mono text-blue-800 dark:text-blue-300 truncate">
                   {payment.mercadopago_id}
                 </p>
+              </div>
+            )}
+
+            {/* Payment Request Button */}
+            {payment.status === 'pending' && payment.appointment?.client && (
+              <div className="mb-3">
+                <button
+                  onClick={() => handleSendPaymentRequest(payment)}
+                  disabled={sendingPaymentRequest === payment.id}
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                >
+                  {sendingPaymentRequest === payment.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Enviando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <DollarSign className="h-4 w-4" />
+                      <span>Solicitar Pagamento</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
 
