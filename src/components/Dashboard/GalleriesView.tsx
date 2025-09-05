@@ -405,7 +405,7 @@ export function GalleriesView() {
                               <Check className="h-4 w-4" />
                             </button>
                           )}
-                          {gallery.status === 'completed' && (
+                          {gallery.selection_completed && (
                             <button
                               onClick={() => updateGalleryStatus(gallery.id, 'pending')}
                               className="text-orange-600 hover:text-orange-900 transition-colors"
@@ -531,6 +531,15 @@ export function GalleriesView() {
                     >
                       <Check className="h-4 w-4" />
                       <span>Finalizar</span>
+                    </button>
+                  )}
+                  {gallery.selection_completed && (
+                    <button
+                      onClick={() => updateGalleryStatus(gallery.id, 'pending')}
+                      className="flex-1 bg-orange-100 text-orange-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors flex items-center justify-center space-x-1"
+                    >
+                      <Clock className="h-4 w-4" />
+                      <span>Reativar</span>
                     </button>
                   )}
                 </div>
