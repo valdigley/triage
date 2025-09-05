@@ -35,10 +35,10 @@ export function PhotoCard({
   onAddComment,
   canComment = true
 }: PhotoCardProps) {
-  const getWatermarkClasses = () => {
-    if (!watermarkSettings?.enabled) return '';
+  const renderWatermark = () => {
+    if (!watermarkSettings?.enabled) return null;
     
-    const { position, size } = watermarkSettings;
+    const { position, size, opacity } = watermarkSettings;
     
     let positionClasses = '';
     switch (position) {
@@ -63,19 +63,40 @@ export function PhotoCard({
     let sizeClasses = '';
     switch (size) {
       case 'small':
-        sizeClasses = 'text-sm';
+        sizeClasses = 'w-16 h-16 text-sm';
         break;
       case 'large':
-        sizeClasses = 'text-xl';
+        sizeClasses = 'w-32 h-32 text-xl';
         break;
       case 'medium':
       default:
-        sizeClasses = 'text-base';
+        sizeClasses = 'w-24 h-24 text-base';
         break;
     }
     
-    return `${positionClasses} ${sizeClasses} text-white font-bold select-none`;
+    // If there's a watermark image URL, use it; otherwise use text
+    if (watermarkSettings.watermark_image_url) {
+      return (
+        <img
+          src={watermarkSettings.watermark_image_url}
+          alt="Watermark"
+          className={`absolute ${positionClasses} ${sizeClasses} object-contain pointer-events-none z-10`}
+          style={{ opacity }}
+        />
+      );
+    } else {
+      // Fallback to text watermark
+      return (
+        <div
+          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${size === 'small' ? 'text-sm' : size === 'large' ? 'text-xl' : 'text-base'}`}
+          style={{ opacity }}
+        >
+          {watermarkSettings.text}
+        </div>
+      );
+    }
   };
+
 
   return (
     <div className={`relative group cursor-pointer w-full ${className}`}>
@@ -106,14 +127,7 @@ export function PhotoCard({
         />
 
         {/* Watermark */}
-        {watermarkSettings?.enabled && (
-          <div
-            className={`absolute ${getWatermarkClasses()} pointer-events-none z-10`}
-            style={{ opacity: watermarkSettings.opacity }}
-          >
-            {watermarkSettings.text}
-          </div>
-        )}
+        {renderWatermark()}
 
         {/* Selection Overlay */}
         {isSelected && (
