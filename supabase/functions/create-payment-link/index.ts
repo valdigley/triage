@@ -71,24 +71,18 @@ Deno.serve(async (req: Request) => {
       ? 'Fotos Extras - Sessão Fotográfica'
       : 'Sessão Fotográfica';
 
-    // Create payment preference for checkout
-    const preferenceData = {
-      items: [
-        {
-          title: description,
-          quantity: 1,
-          unit_price: amount,
-          currency_id: "BRL"
-        }
-      ],
+    // Create PIX payment directly (more reliable for status updates)
+    const pixPaymentData = {
+      transaction_amount: amount,
+      date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutos
+      payment_method_id: "pix",
+      external_reference: paymentType === 'extra_photos' ? `${appointmentId}-extra-${Date.now()}` : appointmentId,
+      notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercadopago-webhook`,
+      description: description,
       payer: {
-        name: firstName,
-        surname: lastName,
+        first_name: firstName,
+        last_name: lastName,
         email: clientEmail || 'cliente@exemplo.com',
-        phone: {
-          area_code: "11",
-          number: clientPhone.replace(/\D/g, '').slice(-9) || "999999999"
-        },
         identification: {
           type: "CPF",
           number: "11111111111"
@@ -97,25 +91,12 @@ Deno.serve(async (req: Request) => {
           zip_code: "01310-100",
           street_name: "Av. Paulista",
           street_number: "1000"
+        },
+        phone: {
+          area_code: "11",
+          number: clientPhone.replace(/\D/g, '').slice(-9) || "999999999"
         }
       },
-      back_urls: {
-        success: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payment-success`,
-        failure: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payment-failure`,
-        pending: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payment-pending`
-      },
-      auto_return: "approved",
-      external_reference: paymentType === 'extra_photos' ? `${appointmentId}-extra-${Date.now()}` : appointmentId,
-      notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercadopago-webhook`,
-      expires: true,
-      expiration_date_from: new Date().toISOString(),
-      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 horas
-      payment_methods: {
-        excluded_payment_methods: [],
-        excluded_payment_types: [],
-        installments: 12
-      },
-      statement_descriptor: "ESTUDIO FOTO",
       metadata: {
         appointment_id: appointmentId,
         payment_type: paymentType,
@@ -123,20 +104,21 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    console.log('Creating payment preference:', JSON.stringify(preferenceData, null, 2));
+    console.log('Creating PIX payment:', JSON.stringify(pixPaymentData, null, 2));
 
-    const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+    const response = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${mpSettings.access_token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': `${paymentType}-${appointmentId}-${Date.now()}`
       },
-      body: JSON.stringify(preferenceData)
+      body: JSON.stringify(pixPaymentData)
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('MercadoPago Error:', errorData);
+      console.error('MercadoPago PIX Error:', errorData);
       return new Response(
         JSON.stringify({
           success: false,
@@ -152,29 +134,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const preferenceResult = await response.json();
-    console.log('Payment preference created:', JSON.stringify(preferenceResult, null, 2));
+    const pixResult = await response.json();
+    console.log('PIX payment created:', JSON.stringify(pixResult, null, 2));
 
     // Update payment with new MercadoPago ID
     await supabase
       .from('payments')
       .update({
-        mercadopago_id: preferenceResult.id,
+        mercadopago_id: pixResult.id.toString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', paymentId);
 
-    // Return the payment URL
-    const paymentUrl = mpSettings.environment === 'sandbox' 
-      ? preferenceResult.sandbox_init_point 
-      : preferenceResult.init_point;
+    // Extract QR code data
+    const qrCode = pixResult.point_of_interaction?.transaction_data?.qr_code;
+    const qrCodeBase64 = pixResult.point_of_interaction?.transaction_data?.qr_code_base64;
 
     return new Response(
       JSON.stringify({
         success: true,
-        payment_url: paymentUrl,
-        preference_id: preferenceResult.id,
-        expires_at: preferenceData.expiration_date_to
+        payment_id: pixResult.id,
+        status: pixResult.status,
+        qr_code: qrCode,
+        qr_code_base64: qrCodeBase64,
+        expires_at: pixPaymentData.date_of_expiration,
+        payment_type: 'pix'
       }),
       {
         headers: {
