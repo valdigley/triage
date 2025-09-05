@@ -1,385 +1,470 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
-interface WhatsAppInstance {
-  id: string;
-  instance_name: string;
-  status: string;
-  instance_data: {
-    evolution_api_url?: string;
-    evolution_api_key?: string;
-    saved_at?: string;
-  };
-  last_updated: string;
-}
-
-export function useWhatsApp() {
-  const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchInstances = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('whatsapp_instances')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setInstances(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar instâncias WhatsApp:', error);
-    }
-  };
-
-  const getActiveInstance = (): WhatsAppInstance | null => {
-    // Buscar instância ativa (connected ou created)
-    return instances.find(instance => 
-      instance.status === 'connected' || instance.status === 'created'
-    ) || instances[0] || null;
-  };
-
-  const checkRemoteJid = async (instance: WhatsAppInstance, phone: string): Promise<string | null> => {
-    const { evolution_api_url, evolution_api_key } = instance.instance_data;
+async function sendWhatsAppMessage(
+  instanceName: string,
+  apiUrl: string,
+  apiKey: string,
+  phone: string,
+  message: string
+): Promise<boolean> {
+  try {
+    console.log('📞 Preparando envio WhatsApp...');
+    console.log('🏷️ Instância:', instanceName);
+    console.log('🌐 API URL:', apiUrl);
     
-    if (!evolution_api_url || !evolution_api_key) {
-      return null;
-    }
-
-    // Limpar o número de telefone e garantir DDI 55
+    // Clean phone number
     let cleanPhone = phone.replace(/\D/g, '');
-    
     if (!cleanPhone.startsWith('55')) {
       cleanPhone = '55' + cleanPhone;
     }
 
-    // Criar variações do número para testar
-    const phoneVariations = [];
+    console.log('📱 Telefone limpo:', cleanPhone);
+    console.log('📝 Tamanho da mensagem:', message.length, 'caracteres');
+
+    const requestBody = {
+      number: cleanPhone,
+      text: message
+    };
+
+    const fullUrl = `${apiUrl}/message/sendText/${instanceName}`;
+    console.log('🚀 URL completa da requisição:', fullUrl);
+    const fullUrl = `${apiUrl}/message/sendText/${instanceName}`;
+    console.log('🚀 URL completa da requisição:', fullUrl);
+    console.log('🚀 Fazendo requisição para Evolution API...');
+
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'apikey': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('📡 Status da resposta:', response.status);
     
-    if (cleanPhone.length === 13) {
-      phoneVariations.push(cleanPhone); // Com 9
-      phoneVariations.push(cleanPhone.slice(0, 4) + cleanPhone.slice(5)); // Sem 9
-    } else if (cleanPhone.length === 12) {
-      phoneVariations.push(cleanPhone); // Sem 9
-      phoneVariations.push(cleanPhone.slice(0, 4) + '9' + cleanPhone.slice(4)); // Com 9
+    if (response.ok) {
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (jsonError) {
+        console.error('❌ Erro ao fazer parse do JSON da resposta:', jsonError);
+        const responseText = await response.text();
+        console.log('📄 Resposta como texto:', responseText);
+        return true; // Consider it successful if we got a 200 status
+      }
+      try {
+        responseData = await response.json();
+      } catch (jsonError) {
+        console.error('❌ Erro ao fazer parse do JSON da resposta:', jsonError);
+        const responseText = await response.text();
+        console.log('📄 Resposta como texto:', responseText);
+        return true; // Consider it successful if we got a 200 status
+      }
+      console.log('✅ Resposta da API:', responseData);
+      return true;
     } else {
-      phoneVariations.push(cleanPhone);
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('❌ Erro ao fazer parse do JSON do erro:', jsonError);
+        const errorText = await response.text();
+        console.error('📄 Erro como texto:', errorText);
+        return false;
+      }
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('❌ Erro ao fazer parse do JSON do erro:', jsonError);
+        const errorText = await response.text();
+        console.error('📄 Erro como texto:', errorText);
+        return false;
+      }
+      console.error('❌ Erro da Evolution API:', errorData);
+      return false;
     }
 
-    // Testar cada variação para ver qual existe no WhatsApp
-    for (const phoneNumber of phoneVariations) {
+  } catch (error) {
+    console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
+    console.error('❌ Detalhes do erro:', error.message);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Detalhes do erro:', error.message);
+    console.error('❌ Stack trace:', error.stack);
+    return false;
+  }
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    console.log('🚀 Edge Function: send-selection-confirmation iniciada');
+    
+    const requestBody = await req.json();
+    const { action, clientName, clientPhone, selectedCount, minimumPhotos, extraPhotos, totalAmount, paymentLink, formattedAmount, hasExtras, evolution_api_url, evolution_api_key, instance_name } = requestBody;
+    
+    // Handle connection test
+    if (action === 'test-connection') {
+      console.log('🧪 Testando conexão com Evolution API...');
+      
+      if (!evolution_api_url || !evolution_api_key || !instance_name) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Credenciais obrigatórias não fornecidas' 
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          }
+        );
+      }
+      
       try {
-        const response = await fetch(`${evolution_api_url}/chat/whatsappNumbers/${instance.instance_name}`, {
-          method: 'POST',
+        console.log('📡 Testando URL:', evolution_api_url);
+        console.log('🏷️ Instância:', instance_name);
+        
+        const testResponse = await fetch(`${evolution_api_url}/instance/fetchInstances`, {
+          method: 'GET',
           headers: {
             'apikey': evolution_api_key,
             'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            numbers: [phoneNumber]
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          // Se o número existe no WhatsApp, retornar ele
-          if (result && result.length > 0 && result[0].exists) {
-            return phoneNumber;
           }
+        });
+        
+        console.log('📊 Status da resposta:', testResponse.status);
+        
+        if (testResponse.ok) {
+          const instances = await testResponse.json();
+          console.log('✅ Instâncias encontradas:', instances);
+          
+          const targetInstance = instances.find((inst: any) => inst.instance.instanceName === instance_name);
+          
+          if (targetInstance) {
+            return new Response(
+              JSON.stringify({
+                success: true,
+                message: `Conexão OK! Instância "${instance_name}" encontrada com status: ${targetInstance.instance.status}`,
+                instance_status: targetInstance.instance.status
+              }),
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...corsHeaders,
+                },
+              }
+            );
+          } else {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                message: `Instância "${instance_name}" não encontrada. Instâncias disponíveis: ${instances.map((i: any) => i.instance.instanceName).join(', ')}`
+              }),
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...corsHeaders,
+                },
+              }
+            );
+          }
+        } else {
+          const errorText = await testResponse.text();
+          console.error('❌ Erro na resposta:', errorText);
+          
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: `Erro HTTP ${testResponse.status}: ${errorText}`
+            }),
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders,
+              },
+            }
+          );
         }
-      } catch (error) {
-        console.log(`Erro ao verificar número ${phoneNumber}:`, error);
+      } catch (testError) {
+        console.error('❌ Erro ao testar conexão:', testError);
+        
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: `Erro de conexão: ${testError instanceof Error ? testError.message : 'Erro desconhecido'}`
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          }
+        );
       }
     }
-
-    // Se nenhuma variação foi encontrada, retornar a primeira (padrão)
-    return phoneVariations[0];
-  };
-  const sendMessage = async (phone: string, message: string): Promise<boolean> => {
-    const activeInstance = getActiveInstance();
     
-    if (!activeInstance) {
-      return false;
+    console.log('📋 Dados recebidos:', {
+      clientName,
+      clientPhone,
+      selectedCount,
+      minimumPhotos,
+      extraPhotos,
+      totalAmount,
+      paymentLink
+    });
+
+    if (!clientName || !clientPhone || selectedCount === undefined || minimumPhotos === undefined) {
+      console.error('❌ Dados obrigatórios não fornecidos');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Dados obrigatórios não fornecidos' 
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
     }
 
+    // Get Supabase client
+    const { createClient } = await import('npm:@supabase/supabase-js@2');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Get settings
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('delivery_days, price_commercial_hour')
+      .single();
+
+    const deliveryDays = settings?.delivery_days || 7;
+    const pricePerPhoto = settings?.price_commercial_hour || 30;
+    
+    console.log('🔍 Buscando instâncias WhatsApp...');
+    
+    // Get active WhatsApp instance
+    const { data: instances } = await supabase
+      .from('whatsapp_instances')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    console.log('📱 Instâncias encontradas:', instances?.length || 0);
+    const activeInstance = instances?.find(instance => 
+      instance.status === 'connected' || instance.status === 'created'
+    ) || instances?.[0];
+
+    if (!activeInstance) {
+      console.error('❌ Nenhuma instância WhatsApp ativa encontrada');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Nenhuma instância WhatsApp ativa encontrada' 
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
+    console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
     const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
     
     if (!evolution_api_url || !evolution_api_key) {
-      console.error('Credenciais da Evolution API não encontradas');
-      return false;
+      console.error('❌ Credenciais WhatsApp não configuradas');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Credenciais WhatsApp não configuradas' 
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
     }
 
-    try {
-      setLoading(true);
-      
-      // Verificar qual número existe no WhatsApp
-      const validPhone = await checkRemoteJid(activeInstance, phone);
-      
-      if (!validPhone) {
-        return false;
-      }
-
-      console.log(`Enviando mensagem para: ${validPhone}`);
-      
-      const response = await fetch(`${evolution_api_url}/message/sendText/${activeInstance.instance_name}`, {
-        method: 'POST',
-        headers: {
-          'apikey': evolution_api_key,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          number: validPhone,
-          text: message
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Mensagem enviada com sucesso:', result);
-        return true;
-      } else {
-        const errorData = await response.json();
-        console.error('Erro ao enviar mensagem:', errorData);
-        return false;
-      }
-    } catch (error) {
-      console.error('Erro ao enviar mensagem WhatsApp:', error);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const sendAppointmentConfirmation = async (clientName: string, clientPhone: string, appointmentDate: string, sessionType: string): Promise<boolean> => {
-    const message = `🎉 *Agendamento Confirmado!*\n\n` +
-                   `Olá ${clientName}!\n\n` +
-                   `Seu agendamento foi confirmado com sucesso:\n\n` +
-                   `📅 *Data:* ${new Date(appointmentDate).toLocaleDateString('pt-BR')}\n` +
-                   `🕐 *Horário:* ${new Date(appointmentDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n` +
-                   `📸 *Tipo:* ${sessionType}\n\n` +
-                   `Estamos ansiosos para sua sessão fotográfica!\n\n` +
-                   `Em caso de dúvidas, entre em contato conosco.\n\n` +
-                   `_Mensagem automática do sistema_`;
-
-    return await sendMessage(clientPhone, message);
-  };
-
-  const sendGalleryLink = async (clientName: string, clientPhone: string, galleryToken: string, expirationDate: string): Promise<boolean> => {
-    const galleryUrl = `${window.location.origin}/gallery/${galleryToken}`;
+    console.log('🔧 Credenciais WhatsApp OK');
     
-    const message = `📸 *Suas Fotos Estão Prontas!*\n\n` +
-                   `Olá ${clientName}!\n\n` +
-                   `Suas fotos da sessão fotográfica estão prontas para visualização e seleção! 🎉\n\n` +
-                   `🔗 *Link da Galeria:*\n${galleryUrl}\n\n` +
-                   `⏰ *Válido até:* ${new Date(expirationDate).toLocaleDateString('pt-BR')}\n\n` +
-                   `📋 *Instruções:*\n` +
-                   `• Acesse o link acima\n` +
-                   `• Visualize todas as fotos\n` +
-                   `• Selecione suas favoritas\n` +
-                   `• Confirme sua seleção\n\n` +
-                   `💡 *Lembre-se:*\n` +
-                   `• As fotos mostradas têm marca d'água apenas para visualização\n` +
-                   `• As fotos finais serão entregues sem marca d'água e em alta qualidade\n` +
-                   `• Você pode selecionar quantas fotos desejar\n\n` +
-                   `Em caso de dúvidas, entre em contato conosco.\n\n` +
-                   `_Mensagem automática do sistema_`;
+    // Get active WhatsApp instance
+    const { data: instances } = await supabase
+      .from('whatsapp_instances')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    return await sendMessage(clientPhone, message);
-  };
+    console.log('📱 Instâncias encontradas:', instances?.length || 0);
+    const activeInstance = instances?.find(instance => 
+      instance.status === 'connected' || instance.status === 'created'
+    ) || instances?.[0];
 
-  const sendPaymentReminder = async (clientName: string, clientPhone: string, amount: number): Promise<boolean> => {
-    const message = `💳 *Lembrete de Pagamento*\n\n` +
-                   `Olá ${clientName}!\n\n` +
-                   `Identificamos que o pagamento da sua sessão fotográfica ainda está pendente.\n\n` +
-                   `💰 *Valor:* ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount)}\n\n` +
-                   `Por favor, efetue o pagamento para confirmarmos seu agendamento.\n\n` +
-                   `Em caso de dúvidas ou se já efetuou o pagamento, entre em contato conosco.\n\n` +
-                   `_Mensagem automática do sistema_`;
-
-    return await sendMessage(clientPhone, message);
-  };
-
-  const sendPaymentConfirmation = async (
-    clientName: string,
-    clientPhone: string,
-    amount: number,
-    appointmentDate: string,
-    sessionType: string,
-    studioAddress?: string,
-    studioMapsUrl?: string
-  ): Promise<boolean> => {
-    const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('pt-BR');
-    const formattedTime = new Date(appointmentDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-    let message = `✅ *Pagamento Confirmado!*\n\n` +
-                  `Olá ${clientName}!\n\n` +
-                  `Recebemos seu pagamento de ${formattedAmount} com sucesso! 🎉\n\n` +
-                  `📋 *Detalhes da sua sessão:*\n` +
-                  `📸 *Tipo:* ${sessionType}\n` +
-                  `📅 *Data:* ${formattedDate}\n` +
-                  `🕐 *Horário:* ${formattedTime}\n\n`;
-
-    if (studioAddress) {
-      message += `📍 *Local:*\n${studioAddress}\n\n`;
+    if (!activeInstance) {
+      console.error('❌ Nenhuma instância WhatsApp ativa encontrada');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Nenhuma instância WhatsApp ativa encontrada' 
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
     }
 
-    if (studioMapsUrl) {
-      message += `🗺️ *Ver no mapa:*\n${studioMapsUrl}\n\n`;
+    console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
+    const { evolution_api_url: apiUrl, evolution_api_key: apiKey } = activeInstance.instance_data;
+    
+    if (!apiUrl || !apiKey) {
+      console.error('❌ Credenciais WhatsApp não configuradas');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Credenciais WhatsApp não configuradas' 
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
     }
 
-    message += `💡 *Dicas importantes:*\n` +
-               `• Chegue 10 minutos antes do horário\n` +
-               `• Traga roupas extras se desejar\n` +
-               `• Suas fotos ficarão prontas em até 7 dias\n\n` +
-               `Estamos ansiosos para sua sessão! 📸✨\n\n` +
-               `_Mensagem automática do sistema_`;
-
-    return await sendMessage(clientPhone, message);
-  };
-
-  const sendSelectionConfirmation = async (
-    clientName: string, 
-    clientPhone: string, 
-    selectedCount: number, 
-    minimumPhotos: number,
-    pricePerPhoto: number = 30
-  ): Promise<boolean> => {
-    try {
-      const activeInstance = getActiveInstance();
-      
-      if (!activeInstance) {
-        console.log('⚠️ Nenhuma instância WhatsApp ativa');
-        return false;
-      }
-
-      const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
-      
-      if (!evolution_api_url || !evolution_api_key) {
-        console.log('⚠️ Credenciais WhatsApp não configuradas');
-        return false;
-      }
-
-    const extraPhotos = Math.max(0, selectedCount - minimumPhotos);
-    const extraCost = extraPhotos * pricePerPhoto;
+    // Criar mensagem personalizada baseada se há fotos extras ou não
+    let message = '';
     
-    let message = `✅ *Seleção Confirmada!*\n\n` +
-                  `Olá ${clientName}!\n\n` +
-                  `Recebemos sua seleção de fotos com sucesso! 🎉\n\n` +
-                  `📊 *Resumo da sua seleção:*\n` +
-                  `📸 *Fotos selecionadas:* ${selectedCount}\n` +
-                  `✅ *Fotos incluídas:* ${minimumPhotos}\n`;
-    
-    if (extraPhotos > 0) {
-      const formattedCost = new Intl.NumberFormat('pt-BR', { 
-        style: 'currency', 
-        currency: 'BRL' 
-      }).format(extraCost);
+    if (hasExtras && extraPhotos && extraPhotos > 0 && paymentLink) {
+      // Mensagem para fotos extras com pagamento
+      console.log('📝 Montando mensagem para fotos extras...');
       
-      message += `➕ *Fotos extras:* ${extraPhotos}\n` +
-                 `💰 *Valor adicional:* ${formattedCost}\n\n` +
-                 `💳 *Pagamento das fotos extras:*\n` +
-                 `O valor das fotos extras será cobrado separadamente e você receberá o link de pagamento em breve.\n\n`;
+      message = `✅ *Seleção Confirmada!*\n\n` +
+                `Olá ${clientName}!\n\n` +
+                `Recebemos sua seleção de fotos com sucesso! 🎉\n\n` +
+                `📊 *Resumo da sua seleção:*\n` +
+                `📸 *Fotos selecionadas:* ${selectedCount}\n` +
+                `✅ *Fotos incluídas:* ${minimumPhotos}\n` +
+                `➕ *Fotos extras:* ${extraPhotos}\n` +
+                `💰 *Valor adicional:* ${formattedAmount || new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalAmount || 0)}\n\n` +
+                `💳 *Pagamento das fotos extras:*\n` +
+                `Para finalizar o processo, efetue o pagamento das fotos extras através do link abaixo:\n\n` +
+                `🔗 *Link de Pagamento:*\n${paymentLink}\n\n` +
+                `⏰ *Próximos passos:*\n` +
+                `• Efetue o pagamento das fotos extras\n` +
+                `• Suas fotos serão editadas profissionalmente\n` +
+                `• Prazo de entrega: até ${deliveryDays} dias úteis\n` +
+                `• Você receberá o link para download das fotos finais\n` +
+                `• As fotos finais não terão marca d'água\n\n` +
+                `🎨 *Processo de edição:*\n` +
+                `• Correção de cores e iluminação\n` +
+                `• Ajustes de contraste e nitidez\n` +
+                `• Retoques básicos quando necessário\n\n` +
+                `Obrigado por escolher nossos serviços! 📸✨\n\n` +
+                `Em caso de dúvidas, entre em contato conosco.\n\n` +
+                `_Mensagem automática do sistema_`;
     } else {
-      message += `\n`;
+      // Mensagem padrão para seleção sem fotos extras
+      console.log('📝 Montando mensagem padrão de seleção...');
+      
+      message = `✅ *Seleção Confirmada!*\n\n` +
+                `Olá ${clientName}!\n\n` +
+                `Recebemos sua seleção de fotos com sucesso! 🎉\n\n` +
+                `📊 *Resumo da sua seleção:*\n` +
+                `📸 *Fotos selecionadas:* ${selectedCount}\n` +
+                `✅ *Fotos incluídas:* ${minimumPhotos}\n\n` +
+                `⏰ *Próximos passos:*\n` +
+                `• Suas fotos serão editadas profissionalmente\n` +
+                `• Prazo de entrega: até ${deliveryDays} dias úteis\n` +
+                `• Você receberá o link para download das fotos finais\n` +
+                `• As fotos finais não terão marca d'água\n\n` +
+                `🎨 *Processo de edição:*\n` +
+                `• Correção de cores e iluminação\n` +
+                `• Ajustes de contraste e nitidez\n` +
+                `• Retoques básicos quando necessário\n\n` +
+                `Obrigado por escolher nossos serviços! 📸✨\n\n` +
+                `Em caso de dúvidas, entre em contato conosco.\n\n` +
+                `_Mensagem automática do sistema_`;
     }
     
-    message += `⏳ *Próximos passos:*\n` +
-               `• Suas fotos serão editadas profissionalmente\n` +
-               `• Prazo de entrega: até 7 dias úteis\n` +
-               `• Você receberá o link para download das fotos finais\n` +
-               `• As fotos finais não terão marca d'água\n\n` +
-               `🎨 *Processo de edição:*\n` +
-               `• Correção de cores e iluminação\n` +
-               `• Ajustes de contraste e nitidez\n` +
-               `• Retoques básicos quando necessário\n\n` +
-               `Obrigado por escolher nossos serviços! 📸✨\n\n` +
-               `Em caso de dúvidas, entre em contato conosco.\n\n` +
-               `_Mensagem automática do sistema_`;
+    console.log('✅ Mensagem preparada');
 
-    return await sendMessage(clientPhone, message);
-    } catch (error) {
-      console.log('⚠️ Erro ao enviar confirmação de seleção:', error);
-      return false;
-    }
-  };
-
-  const testConnection = async (): Promise<{ success: boolean; message: string }> => {
-    const activeInstance = getActiveInstance();
-    
-    if (!activeInstance) {
-      return {
-        success: false,
-        message: 'Nenhuma instância WhatsApp configurada'
-      };
-    }
-
-    const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
-    
-    if (!evolution_api_url || !evolution_api_key) {
-      return {
-        success: false,
-        message: 'Credenciais da Evolution API não configuradas'
-      };
-    }
-
+    console.log('📱 Enviando mensagem WhatsApp...');
+    console.log('📞 Para:', clientPhone);
+    // Send WhatsApp message
+    let whatsappSuccess = false;
     try {
-      setLoading(true);
-      
-      const { supabase } = await import('../lib/supabase');
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-selection-confirmation`;
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'test-connection',
-          evolution_api_url,
-          evolution_api_key,
-          instance_name: activeInstance.instance_name
-        })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        return {
-          success: result.success,
-          message: result.message
-        };
-      } else {
-        const errorText = await response.text();
-        return {
-          success: false,
-          message: `Erro HTTP ${response.status}: ${errorText}`
-        };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: `Erro de conexão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      };
-    } finally {
-      setLoading(false);
+      whatsappSuccess = await sendWhatsAppMessage(
+        activeInstance.instance_name,
+        apiUrl,
+        apiKey,
+        clientPhone,
+        message
+      );
+    } catch (whatsappError) {
+      console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
+      // WhatsApp failure doesn't affect the main process
+      whatsappSuccess = false;
     }
-  };
 
-  useEffect(() => {
-    fetchInstances();
-  }, []);
+    console.log(whatsappSuccess ? '✅ Mensagem enviada com sucesso!' : '❌ Falha ao enviar mensagem (processo continua)');
+    return new Response(
+      JSON.stringify({
+        success: true, // Main process always succeeds
+        whatsapp_sent: whatsappSuccess,
+        message: whatsappSuccess ? 'Seleção confirmada e WhatsApp enviado' : 'Seleção confirmada (WhatsApp indisponível)',
+        has_extra_photos: extraPhotos && extraPhotos > 0,
+        payment_link: paymentLink
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      }
+    );
 
-  return {
-    instances,
-    loading,
-    sendMessage,
-    sendAppointmentConfirmation,
-    sendPaymentConfirmation,
-    sendGalleryLink,
-    sendPaymentReminder,
-    sendSelectionConfirmation,
-    getActiveInstance,
-    testConnection,
-    refetch: fetchInstances
-  };
-}
+  } catch (error) {
+    console.error('Error in send-selection-confirmation:', error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: `Erro interno: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      }
+    );
+  }
+});
