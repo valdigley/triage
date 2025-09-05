@@ -506,7 +506,17 @@ export function SettingsView() {
             <div>
               <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Horário Comercial</h3>
               <div className="space-y-4">
-                {Object.entries(settings.commercial_hours).map(([day, schedule]) => (
+                {[
+                  ['monday', 'Segunda'],
+                  ['tuesday', 'Terça'],
+                  ['wednesday', 'Quarta'],
+                  ['thursday', 'Quinta'],
+                  ['friday', 'Sexta'],
+                  ['saturday', 'Sábado'],
+                  ['sunday', 'Domingo']
+                ].map(([day, dayLabel]) => {
+                  const schedule = settings.commercial_hours[day as keyof CommercialHours];
+                  return (
                   <div key={day} className="flex items-center space-x-4">
                     <div className="w-24">
                       <label className="flex items-center">
@@ -522,12 +532,7 @@ export function SettingsView() {
                           className="mr-2"
                         />
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
-                          {day === 'monday' ? 'Segunda' :
-                           day === 'tuesday' ? 'Terça' :
-                           day === 'wednesday' ? 'Quarta' :
-                           day === 'thursday' ? 'Quinta' :
-                           day === 'friday' ? 'Sexta' :
-                           day === 'saturday' ? 'Sábado' : 'Domingo'}
+                          {dayLabel}
                         </span>
                       </label>
                     </div>
@@ -560,7 +565,8 @@ export function SettingsView() {
                       </>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
