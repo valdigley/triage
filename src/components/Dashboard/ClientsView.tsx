@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
-import { Search, Phone, Mail, Eye, ExternalLink } from 'lucide-react';
+import { Search, Phone, Mail, Eye, ExternalLink, UserPlus, X } from 'lucide-react';
 import { useClients } from '../../hooks/useClients';
+import { supabase } from '../../lib/supabase';
 import { formatCurrency } from '../../utils/pricing';
 import { Client, Appointment } from '../../types';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
 
 export function ClientsView() {
-  const { clients, searchClients, getClientDetails } = useClients();
+  const { clients, searchClients, getClientDetails, refetch } = useClients();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClient, setSelectedClient] = useState<{
     client: Client;
     appointments: Appointment[];
   } | null>(null);
+  const [showCreateClient, setShowCreateClient] = useState(false);
+  const [newClient, setNewClient] = useState({
+    name: '',
+    phone: '',
+    email: ''
+  });
+  const [creating, setCreating] = useState(false);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -36,10 +44,64 @@ export function ClientsView() {
     return `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
 
+  const handleCreateClient = async () => {
+    if (!newClient.name || !newClient.phone) {
+      alert('Nome e telefone são obrigatórios');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // Check if client already exists
+      const { data: existingClient } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('phone', newClient.phone)
+        .maybeSingle();
+
+      if (existingClient) {
+        alert('Já existe um cliente com este telefone');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('clients')
+        .insert([{
+          name: newClient.name,
+          phone: newClient.phone,
+          email: newClient.email || null
+        }]);
+
+      if (error) throw error;
+
+      alert('Cliente criado com sucesso!');
+      setShowCreateClient(false);
+      setNewClient({
+        name: '',
+        phone: '',
+        email: ''
+      });
+      
+      // Refresh clients list
+      await refetch();
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error);
+      alert('Erro ao criar cliente. Tente novamente.');
+    } finally {
+      setCreating(false);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Clientes</h1>
+        <button
+          onClick={() => setShowCreateClient(true)}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+        >
+          <UserPlus className="h-4 w-4" />
+          <span className="hidden sm:inline">Novo Cliente</span>
+        </button>
       </div>
 
       {/* Search Bar */}
@@ -298,6 +360,87 @@ export function ClientsView() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Client Modal */}
+      {showCreateClient && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Novo Cliente</h3>
+                <button
+                  onClick={() => setShowCreateClient(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Nome completo do cliente"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Telefone *
+                  </label>
+                  <input
+                    type="tel"
+                    value={newClient.phone}
+                    onChange={(e) => setNewClient(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    E-mail
+                  </label>
+                  <input
+                    type="email"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="cliente@email.com (opcional)"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowCreateClient(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateClient}
+                  disabled={creating}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {creating ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <UserPlus className="h-4 w-4" />
+                  )}
+                  <span>{creating ? 'Criando...' : 'Criar Cliente'}</span>
+                </button>
               </div>
             </div>
           </div>

@@ -1,19 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Upload, Eye, Share2, MessageCircle, Clock, Check, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { Camera, Upload, Eye, Share2, MessageCircle, Clock, Check, AlertTriangle, Plus, Trash2, UserPlus, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useGalleries } from '../../hooks/useGalleries';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
+import { useClients } from '../../hooks/useClients';
 import { PhotoUpload } from '../Gallery/PhotoUpload';
 import { Gallery, Photo } from '../../types';
 
 export function GalleriesView() {
-  const { galleries, loading, updateGalleryStatus } = useGalleries();
+  const { galleries, loading, updateGalleryStatus, createGallery } = useGalleries();
   const { sendGalleryLink } = useWhatsApp();
+  const { clients } = useClients();
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deletingPhotos, setDeletingPhotos] = useState<Set<string>>(new Set());
+  const [showCreateGallery, setShowCreateGallery] = useState(false);
+  const [newGallery, setNewGallery] = useState({
+    name: '',
+    client_name: '',
+    client_phone: '',
+    client_email: '',
+    password: '',
+    expiration_days: 30
+  });
+  const [creating, setCreating] = useState(false);
 
   const fetchPhotos = async (galleryId: string) => {
     try {
@@ -132,6 +144,107 @@ export function GalleriesView() {
     alert('Link copiado para a área de transferência!');
   };
 
+  const handleCreateManualGallery = async () => {
+    if (!newGallery.name || !newGallery.client_name || !newGallery.client_phone) {
+      alert('Nome da galeria, nome do cliente e telefone são obrigatórios');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      // Create or get client
+      let clientId: string;
+      
+      const { data: existingClient } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('phone', newGallery.client_phone)
+        .maybeSingle();
+
+      if (existingClient) {
+        clientId = existingClient.id;
+        // Update client info if needed
+        await supabase
+          .from('clients')
+          .update({
+            name: newGallery.client_name,
+            email: newGallery.client_email || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', clientId);
+      } else {
+        const { data: newClient, error: clientError } = await supabase
+          .from('clients')
+          .insert([{
+            name: newGallery.client_name,
+            email: newGallery.client_email || null,
+            phone: newGallery.client_phone
+          }])
+          .select()
+          .single();
+
+        if (clientError) throw clientError;
+        clientId = newClient.id;
+      }
+
+      // Create manual appointment
+      const { data: appointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .insert([{
+          client_id: clientId,
+          session_type: 'tematico',
+          session_details: { theme: 'Galeria Manual' },
+          scheduled_date: new Date().toISOString(),
+          total_amount: 0,
+          minimum_photos: 5,
+          status: 'confirmed',
+          payment_status: 'approved',
+          terms_accepted: true
+        }])
+        .select()
+        .single();
+
+      if (appointmentError) throw appointmentError;
+
+      // Create gallery
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + newGallery.expiration_days);
+
+      const { data: gallery, error: galleryError } = await supabase
+        .from('galleries_triage')
+        .insert([{
+          appointment_id: appointment.id,
+          name: newGallery.name,
+          password: newGallery.password || null,
+          link_expires_at: expirationDate.toISOString(),
+          status: 'pending'
+        }])
+        .select()
+        .single();
+
+      if (galleryError) throw galleryError;
+
+      alert('Galeria criada com sucesso!');
+      setShowCreateGallery(false);
+      setNewGallery({
+        name: '',
+        client_name: '',
+        client_phone: '',
+        client_email: '',
+        password: '',
+        expiration_days: 30
+      });
+      
+      // Refresh galleries list
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao criar galeria:', error);
+      alert('Erro ao criar galeria. Tente novamente.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const getStatusBadge = (status: Gallery['status']) => {
     const statusConfig = {
       pending: { label: 'Pendente', className: 'bg-yellow-100 text-yellow-800', icon: Clock },
@@ -168,6 +281,14 @@ export function GalleriesView() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Galerias de Fotos</h1>
         
         <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setShowCreateGallery(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nova Galeria</span>
+          </button>
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -654,6 +775,127 @@ export function GalleriesView() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Create Gallery Modal */}
+      {showCreateGallery && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Nova Galeria Manual</h3>
+                <button
+                  onClick={() => setShowCreateGallery(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome da Galeria *
+                  </label>
+                  <input
+                    type="text"
+                    value={newGallery.name}
+                    onChange={(e) => setNewGallery(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Ex: Ensaio João - Janeiro 2025"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome do Cliente *
+                  </label>
+                  <input
+                    type="text"
+                    value={newGallery.client_name}
+                    onChange={(e) => setNewGallery(prev => ({ ...prev, client_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Nome completo do cliente"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Telefone do Cliente *
+                  </label>
+                  <input
+                    type="tel"
+                    value={newGallery.client_phone}
+                    onChange={(e) => setNewGallery(prev => ({ ...prev, client_phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    E-mail do Cliente
+                  </label>
+                  <input
+                    type="email"
+                    value={newGallery.client_email}
+                    onChange={(e) => setNewGallery(prev => ({ ...prev, client_email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="cliente@email.com (opcional)"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Senha da Galeria
+                  </label>
+                  <input
+                    type="text"
+                    value={newGallery.password}
+                    onChange={(e) => setNewGallery(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Senha opcional para acesso"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Validade (dias)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={newGallery.expiration_days}
+                    onChange={(e) => setNewGallery(prev => ({ ...prev, expiration_days: parseInt(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowCreateGallery(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateManualGallery}
+                  disabled={creating}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {creating ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  <span>{creating ? 'Criando...' : 'Criar Galeria'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
