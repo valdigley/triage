@@ -262,6 +262,102 @@ export function PaymentsView() {
           <p className="text-gray-500">Nenhum pagamento encontrado</p>
         </div>
       )}
+
+      {/* Cash Payment Modal */}
+      {showCashPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Registrar Pagamento em Mãos</h3>
+                <button
+                  onClick={() => setShowCashPayment(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Agendamento *
+                  </label>
+                  <select
+                    value={cashPaymentForm.appointmentId}
+                    onChange={(e) => {
+                      const selectedAppointment = appointments.find(apt => apt.id === e.target.value);
+                      setCashPaymentForm(prev => ({
+                        ...prev,
+                        appointmentId: e.target.value,
+                        amount: selectedAppointment?.total_amount || 0
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Selecione um agendamento</option>
+                    {appointments
+                      .filter(apt => apt.payment_status !== 'approved')
+                      .map((appointment) => (
+                        <option key={appointment.id} value={appointment.id}>
+                          {appointment.client?.name} - {new Date(appointment.scheduled_date).toLocaleDateString('pt-BR')} - {formatCurrency(appointment.total_amount)}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Valor Recebido (R$) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={cashPaymentForm.amount}
+                    onChange={(e) => setCashPaymentForm(prev => ({ ...prev, amount: parseFloat(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Observações
+                  </label>
+                  <textarea
+                    value={cashPaymentForm.description}
+                    onChange={(e) => setCashPaymentForm(prev => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Observações sobre o pagamento (opcional)"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowCashPayment(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCashPayment}
+                  disabled={saving}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <HandCoins className="h-4 w-4" />
+                  )}
+                  <span>{saving ? 'Registrando...' : 'Registrar'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
