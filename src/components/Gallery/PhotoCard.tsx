@@ -35,101 +35,26 @@ export function PhotoCard({
   onAddComment,
   canComment = true
 }: PhotoCardProps) {
-  const renderWatermark = () => {
-    if (!watermarkSettings?.enabled) return null;
-    
-    const { opacity } = watermarkSettings;
-    
-    // If there's a watermark image URL, use it; otherwise use text
-    if (watermarkSettings.watermark_image_url) {
-      return (
-        <img
-          src={watermarkSettings.watermark_image_url}
-          alt="Watermark"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10 rounded-lg"
-          style={{ opacity }}
-        />
-      );
-    } else {
-      // Fallback to text watermark
-      const { position, size } = watermarkSettings;
-      
-      let positionClasses = '';
-      switch (position) {
-        case 'top-left':
-          positionClasses = 'top-2 left-2';
-          break;
-        case 'top-right':
-          positionClasses = 'top-2 right-2';
-          break;
-        case 'bottom-left':
-          positionClasses = 'bottom-2 left-2';
-          break;
-        case 'bottom-right':
-          positionClasses = 'bottom-2 right-2';
-          break;
-        case 'center':
-        default:
-          positionClasses = 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
-          break;
-      }
-      
-      let sizeClasses = '';
-      switch (size) {
-        case 'small':
-          sizeClasses = 'text-xs sm:text-sm lg:text-base';
-          break;
-        case 'large':
-          sizeClasses = 'text-lg sm:text-xl lg:text-2xl';
-          break;
-        case 'medium':
-        default:
-          sizeClasses = 'text-sm sm:text-base lg:text-lg';
-          break;
-      }
-      
-      return (
-        <div
-          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${sizeClasses} drop-shadow-lg`}
-          style={{ opacity }}
-        >
-          {watermarkSettings.text}
-        </div>
-      );
-    }
-  };
-
-
   return (
-    <div className={`relative group cursor-pointer w-full h-full ${className}`}>
+    <div className={`relative group cursor-pointer ${className}`}>
       {/* Main Photo Container */}
       <div 
-        className="relative w-full h-full overflow-hidden rounded-lg border-2 transition-all duration-200 sm:hover:shadow-lg"
+        className="aspect-square relative overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-lg"
         style={{
           borderColor: isSelected ? '#7c3aed' : '#e5e7eb'
         }}
-        onClick={() => {
-          // No mobile, sempre seleciona se possível. No desktop, chama onViewFullSize
-          if (window.innerWidth < 640) { // sm breakpoint
-            if (canSelect) onToggleSelection();
-          } else {
-            onViewFullSize();
-          }
-        }}
+        onClick={onViewFullSize}
       >
         {/* Photo */}
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-full object-cover transition-transform duration-200 touch-manipulation"
+          className="w-full h-full object-cover"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = `https://via.placeholder.com/300x200/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
+            target.src = `https://via.placeholder.com/300x300/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
           }}
         />
-
-        {/* Watermark */}
-        {renderWatermark()}
 
         {/* Selection Overlay */}
         {isSelected && (
@@ -151,25 +76,31 @@ export function PhotoCard({
             <MessageSquare className="h-3 w-3" />
           </div>
         )}
+
+        {/* Expand Button - Hover Overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+          <div className="bg-white bg-opacity-90 rounded-full p-2">
+            <Expand className="h-5 w-5 text-gray-800" />
+          </div>
+        </div>
       </div>
 
-      {/* Expand Button - Hover Overlay */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          // No mobile, seleciona. No desktop, abre lightbox
-          if (window.innerWidth < 640) {
-            if (canSelect) onToggleSelection();
-          } else {
-            onViewFullSize();
-          }
-        }}
-        className="absolute inset-0 bg-black bg-opacity-0 sm:hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 sm:group-hover:opacity-100 rounded-lg"
-      >
-        <div className="hidden sm:block bg-white bg-opacity-90 rounded-full p-2">
-          <Expand className="h-5 w-5 text-gray-800" />
-        </div>
-      </button>
+      {/* Selection Button */}
+      {canSelect && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelection();
+          }}
+          className={`absolute bottom-2 left-2 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            isSelected
+              ? 'bg-purple-600 text-white'
+              : 'bg-white bg-opacity-90 text-gray-800 hover:bg-purple-100'
+          }`}
+        >
+          {isSelected ? 'Selecionada' : 'Selecionar'}
+        </button>
+      )}
 
       {/* Comment Button */}
       {canComment && onAddComment && (
@@ -178,24 +109,11 @@ export function PhotoCard({
             e.stopPropagation();
             onAddComment();
           }}
-          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
+          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
           title="Adicionar comentário"
         >
           <MessageSquare className="h-3 w-3" />
         </button>
-      )}
-
-      {/* Selection Status */}
-      {canSelect && (
-        <div className="absolute bottom-2 left-2 opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
-          <div className={`px-2 py-1 rounded text-xs font-medium ${
-            isSelected 
-              ? 'bg-purple-600 text-white' 
-              : 'bg-white bg-opacity-90 text-gray-800'
-          }`}>
-            {isSelected ? 'Selecionada' : 'Selecionar'}
-          </div>
-        </div>
       )}
     </div>
   );
