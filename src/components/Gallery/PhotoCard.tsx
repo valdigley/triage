@@ -107,15 +107,15 @@ export function PhotoCard({
   return (
     <div className={`relative group cursor-pointer bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
       {/* Main Photo Container */}
-      <div className="relative w-full aspect-square sm:aspect-auto overflow-hidden">
+      <div className="relative w-full overflow-hidden">
         {/* Photo */}
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = `https://via.placeholder.com/400x300/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
+            target.src = `https://via.placeholder.com/400x600/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
           }}
         />
 
@@ -192,12 +192,24 @@ export function PhotoCard({
               e.stopPropagation();
               onAddComment();
             }}
-            className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
+            className="absolute top-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
             title="Adicionar comentário"
           >
             <MessageSquare className="h-3 w-3" />
           </button>
         )}
+
+        {/* Expand Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewFullSize();
+          }}
+          className="absolute top-2 left-2 bg-gray-800 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-gray-900 transition-all duration-200"
+          title="Ampliar foto"
+        >
+          <Expand className="h-3 w-3" />
+        </button>
       </div>
 
       {/* Photo Info */}
