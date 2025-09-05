@@ -651,16 +651,59 @@ export function ClientGallery() {
               
               {/* Main Image Container */}
               <div className="w-full h-full flex items-center justify-center p-4 sm:p-8 lg:p-12">
-                <img
-                  src={lightboxPhoto.url}
-                  alt={lightboxPhoto.filename}
-                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl touch-manipulation transition-transform duration-300"
-                  onError={(e) => {
-                    // Fallback para imagem de erro
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://via.placeholder.com/800x600/f0f0f0/666?text=${encodeURIComponent(lightboxPhoto.filename)}`;
-                  }}
-                />
+                <div className="relative max-w-full max-h-full">
+                  <img
+                    src={lightboxPhoto.url}
+                    alt={lightboxPhoto.filename}
+                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl touch-manipulation transition-transform duration-300"
+                    onError={(e) => {
+                      // Fallback para imagem de erro
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://via.placeholder.com/800x600/f0f0f0/666?text=${encodeURIComponent(lightboxPhoto.filename)}`;
+                    }}
+                  />
+                  
+                  {/* Watermark in Lightbox */}
+                  {settings && settings.watermark_enabled && (
+                    <>
+                      {settings.watermark_image_url ? (
+                        <img
+                          src={settings.watermark_image_url}
+                          alt="Watermark"
+                          className={`absolute ${
+                            settings.watermark_position === 'top-left' ? 'top-4 left-4' :
+                            settings.watermark_position === 'top-right' ? 'top-4 right-4' :
+                            settings.watermark_position === 'bottom-left' ? 'bottom-4 left-4' :
+                            settings.watermark_position === 'bottom-right' ? 'bottom-4 right-4' :
+                            'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2'
+                          } ${
+                            settings.watermark_size === 'small' ? 'w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24' :
+                            settings.watermark_size === 'large' ? 'w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48' :
+                            'w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36'
+                          } object-contain pointer-events-none z-20 mix-blend-normal max-w-[30%] max-h-[30%]`}
+                          style={{ opacity: settings.watermark_opacity }}
+                        />
+                      ) : (
+                        <div
+                          className={`absolute ${
+                            settings.watermark_position === 'top-left' ? 'top-4 left-4' :
+                            settings.watermark_position === 'top-right' ? 'top-4 right-4' :
+                            settings.watermark_position === 'bottom-left' ? 'bottom-4 left-4' :
+                            settings.watermark_position === 'bottom-right' ? 'bottom-4 right-4' :
+                            'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2'
+                          } text-white font-bold select-none pointer-events-none z-20 ${
+                            settings.watermark_size === 'small' ? 'text-lg sm:text-xl lg:text-2xl' :
+                            settings.watermark_size === 'large' ? 'text-3xl sm:text-4xl lg:text-5xl' :
+                            'text-xl sm:text-2xl lg:text-3xl'
+                          }`}
+                          style={{ opacity: settings.watermark_opacity }}
+                        >
+                          {settings.watermark_text}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               
               {/* Selection Button */}

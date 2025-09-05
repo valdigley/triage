@@ -60,17 +60,18 @@ export function PhotoCard({
         break;
     }
     
+    // Responsive size classes based on container size
     let sizeClasses = '';
     switch (size) {
       case 'small':
-        sizeClasses = 'w-16 h-16 text-sm';
+        sizeClasses = 'w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 text-xs sm:text-sm';
         break;
       case 'large':
-        sizeClasses = 'w-32 h-32 text-xl';
+        sizeClasses = 'w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 text-sm sm:text-lg lg:text-xl';
         break;
       case 'medium':
       default:
-        sizeClasses = 'w-24 h-24 text-base';
+        sizeClasses = 'w-12 h-12 sm:w-18 sm:h-18 lg:w-24 lg:h-24 text-xs sm:text-base';
         break;
     }
     
@@ -80,7 +81,7 @@ export function PhotoCard({
         <img
           src={watermarkSettings.watermark_image_url}
           alt="Watermark"
-          className={`absolute ${positionClasses} ${sizeClasses} object-contain pointer-events-none z-10 mix-blend-normal`}
+          className={`absolute ${positionClasses} ${sizeClasses} object-contain pointer-events-none z-10 mix-blend-normal max-w-[25%] max-h-[25%]`}
           style={{ opacity }}
         />
       );
@@ -88,7 +89,7 @@ export function PhotoCard({
       // Fallback to text watermark
       return (
         <div
-          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${size === 'small' ? 'text-sm' : size === 'large' ? 'text-xl' : 'text-base'}`}
+          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${size === 'small' ? 'text-xs sm:text-sm' : size === 'large' ? 'text-sm sm:text-lg lg:text-xl' : 'text-xs sm:text-base'}`}
           style={{ opacity }}
         >
           {watermarkSettings.text}
