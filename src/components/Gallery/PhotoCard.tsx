@@ -59,46 +59,39 @@ export function PhotoCard({
       // Fallback to text watermark
       const { position, size, text = 'Preview' } = watermarkSettings;
       
-      let positionClasses = '';
-      switch (position) {
-        case 'top-left':
-          positionClasses = 'top-2 left-2';
-          break;
-        case 'top-right':
-          positionClasses = 'top-2 right-2';
-          break;
-        case 'bottom-left':
-          positionClasses = 'bottom-2 left-2';
-          break;
-        case 'bottom-right':
-          positionClasses = 'bottom-2 right-2';
-          break;
-        case 'center':
-        default:
-          positionClasses = 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
-          break;
-      }
-      
-      let sizeClasses = '';
+      // Calculate font size based on image dimensions and size setting
+      let fontSize = '';
       switch (size) {
         case 'small':
-          sizeClasses = 'text-xs sm:text-sm';
+          fontSize = 'clamp(1rem, 8vw, 3rem)';
           break;
         case 'large':
-          sizeClasses = 'text-lg sm:text-xl';
+          fontSize = 'clamp(2rem, 15vw, 8rem)';
           break;
         case 'medium':
         default:
-          sizeClasses = 'text-sm sm:text-base';
+          fontSize = 'clamp(1.5rem, 12vw, 6rem)';
           break;
       }
       
       return (
         <div
-          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${sizeClasses} drop-shadow-lg`}
-          style={{ opacity }}
+          className="absolute inset-0 flex items-center justify-center text-white font-bold select-none pointer-events-none z-10"
+          style={{ 
+            opacity,
+            fontSize,
+            textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+            transform: 'rotate(-45deg)',
+            letterSpacing: '0.2em'
+          }}
         >
-          {text}
+          <div className="whitespace-nowrap">
+            {Array.from({ length: 20 }, (_, i) => (
+              <span key={i} className="inline-block mr-8">
+                {text}
+              </span>
+            ))}
+          </div>
         </div>
       );
     }
