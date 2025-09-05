@@ -417,7 +417,7 @@ export function ClientGallery() {
                 } : undefined;
 
                 return (
-                  <div key={photo.id} className="w-full aspect-[4/3]">
+                  <div key={photo.id} className="w-full">
                     <PhotoCard
                       photo={photo}
                       isSelected={isSelected}
