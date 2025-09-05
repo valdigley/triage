@@ -75,13 +75,13 @@ export function PaymentsView() {
         }).format(payment.amount);
         
         // Primeira mensagem - apenas a chave PIX
-        const firstMessage = `💳 *PIX para Pagamento - ${paymentTypeLabel}*\n\n` +
-                            `Olá ${payment.appointment.client.name}!\n\n` +
-                            `💰 *Valor:* ${formattedAmount}\n\n` +
-                            `📱 *Código PIX:*\n${result.qr_code || 'Código não disponível'}`;
+        const firstMessage = result.qr_code || 'Código PIX não disponível';
 
         // Segunda mensagem - informações e instruções
-        const secondMessage = `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
+        const secondMessage = `💳 *PIX para Pagamento - ${paymentTypeLabel}*\n\n` +
+                             `Olá ${payment.appointment.client.name}!\n\n` +
+                             `💰 *Valor:* ${formattedAmount}\n\n` +
+                             `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
                              `💡 *Como pagar:*\n` +
                              `• Copie o código PIX da mensagem anterior\n` +
                              `• Abra seu app bancário\n` +
