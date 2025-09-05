@@ -25,6 +25,16 @@ export function ClientGallery() {
   const [showCommentInput, setShowCommentInput] = useState<string | null>(null);
   const [tempComment, setTempComment] = useState('');
   const [showCart, setShowCart] = useState(false);
+  const [paymentData, setPaymentData] = useState<{
+    payment_id: string;
+    status: string;
+    qr_code?: string;
+    qr_code_base64?: string;
+    expires_at?: string;
+  } | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string>('pending');
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -153,6 +163,93 @@ export function ClientGallery() {
       }
     });
     setPhotoComments(comments);
+  };
+
+  const createExtraPhotosPayment = async () => {
+    if (!gallery || extraPhotos <= 0) return;
+
+    try {
+      setShowCart(false);
+      setShowPayment(true);
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-extra-photos-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          galleryId: gallery.id,
+          appointmentId: gallery.appointment_id,
+          extraPhotos,
+          totalAmount: extraCost,
+          clientName: gallery.appointment?.client?.name,
+          clientEmail: gallery.appointment?.client?.email,
+          selectedPhotos: selectedPhotos
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setPaymentData(result);
+        setPaymentStatus(result.status);
+        
+        // Start polling for payment status
+        startPaymentPolling(result.payment_id);
+      } else {
+        throw new Error(result.error || 'Erro ao criar pagamento');
+      }
+    } catch (error) {
+      console.error('Erro ao criar pagamento das fotos extras:', error);
+      alert(`Erro ao processar pagamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}. Tente novamente.`);
+      setShowPayment(false);
+      setShowCart(true);
+    }
+  };
+
+  const startPaymentPolling = (paymentId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-payment-status?payment_id=${paymentId}`, {
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setPaymentStatus(result.status);
+          
+          if (result.status === 'approved') {
+            // Payment approved - stop polling and show success
+            clearInterval(interval);
+            setPollingInterval(null);
+          } else if (result.status === 'expired' || result.status === 'cancelled') {
+            // Payment expired/cancelled - stop polling
+            clearInterval(interval);
+            setPollingInterval(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking payment status:', error);
+      }
+    }, 5000); // Check every 5 seconds
+    
+    setPollingInterval(interval);
+  };
+
+  const resetPayment = () => {
+    // Clear polling interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+    
+    setPaymentData(null);
+    setPaymentStatus('pending');
+    setShowPayment(false);
   };
 
   useEffect(() => {
@@ -726,10 +823,7 @@ export function ClientGallery() {
                 {/* Botões de Ação */}
                 <div className="space-y-3">
                   <button
-                    onClick={() => {
-                      // TODO: Implementar pagamento das fotos extras
-                      alert('🚧 Funcionalidade de pagamento em desenvolvimento!\n\nPor enquanto, entre em contato com o estúdio para efetuar o pagamento das fotos extras.');
-                    }}
+                    onClick={createExtraPhotosPayment}
                     className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 font-medium"
                   >
                     <span>💳 Pagar Fotos Extras</span>
