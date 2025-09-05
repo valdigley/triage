@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
     console.log('🚀 Edge Function: send-selection-confirmation iniciada');
     
     const requestBody = await req.json();
-    const { action, clientName, clientPhone, selectedCount, minimumPhotos, evolution_api_url, evolution_api_key, instance_name } = requestBody;
+    const { action, clientName, clientPhone, selectedCount, minimumPhotos, extraPhotos, totalAmount, paymentLink, formattedAmount, evolution_api_url, evolution_api_key, instance_name } = requestBody;
     
     // Handle connection test
     if (action === 'test-connection') {
