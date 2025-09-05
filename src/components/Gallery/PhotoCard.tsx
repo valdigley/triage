@@ -140,39 +140,49 @@ export function PhotoCard({
         )}
 
         {/* Photo Filename */}
-        <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded max-w-[calc(100%-1rem)] truncate">
+        {/* Photo Filename - Bottom left */}
+        <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
           {photo.filename}
         </div>
 
-        {/* Comment Indicator */}
-        {hasComment && (
-          <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
-            <MessageSquare className="h-3 w-3" />
-          </div>
-        )}
+        {/* Expand Button - Top right */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewFullSize();
+          }}
+          className="absolute top-2 right-2 bg-gray-800 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-gray-900 transition-all duration-200"
+          title="Ampliar foto"
+        >
+          <Expand className="h-3 w-3" />
+        </button>
 
-        {/* Comment Button - Desktop hover only */}
+        {/* Comment Button - Top left (only if comments enabled) */}
         {canComment && onAddComment && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onAddComment();
             }}
-            className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200 hidden sm:block group-hover:block"
-            title="Adicionar comentário"
+            className={`absolute top-2 left-2 rounded-full p-1.5 transition-all duration-200 ${
+              hasComment 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-blue-600 bg-opacity-80 text-white hover:bg-blue-700'
+            }`}
+            title={hasComment ? 'Editar comentário' : 'Adicionar comentário'}
           >
             <MessageSquare className="h-3 w-3" />
           </button>
         )}
 
-        {/* Selection Button - Always visible */}
+        {/* Selection Button - Bottom right, always visible */}
         {canSelect && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelection();
             }}
-            className={`absolute bottom-2 left-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg ${
+            className={`absolute bottom-2 right-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg ${
               isSelected 
                 ? 'bg-purple-600 text-white border-2 border-purple-600' 
                 : 'bg-white text-gray-800 hover:bg-gray-50 border-2 border-gray-300 hover:border-purple-400'
@@ -184,51 +194,24 @@ export function PhotoCard({
             </div>
           </button>
         )}
-
-        {/* Comment Button */}
-        {canComment && onAddComment && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddComment();
-            }}
-            className="absolute top-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
-            title="Adicionar comentário"
-          >
-            <MessageSquare className="h-3 w-3" />
-          </button>
-        )}
-
-        {/* Expand Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewFullSize();
-          }}
-          className="absolute top-2 left-2 bg-gray-800 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-gray-900 transition-all duration-200"
-          title="Ampliar foto"
-        >
-          <Expand className="h-3 w-3" />
-        </button>
       </div>
 
       {/* Photo Info */}
       <div className="p-3 bg-white dark:bg-gray-800">
-        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{photo.filename}</p>
         {photo.metadata && (
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
             {(photo.size / 1024 / 1024).toFixed(2)} MB
           </p>
         )}
         
-        {/* Mobile Comment Button */}
+        {/* Mobile Comment Button - Only show if comments enabled */}
         {canComment && onAddComment && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onAddComment();
             }}
-            className="sm:hidden mt-2 w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center space-x-2"
+            className="mt-2 w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center space-x-2"
           >
             <MessageSquare className="h-4 w-4" />
             <span>{hasComment ? 'Editar Comentário' : 'Adicionar Comentário'}</span>
