@@ -20,7 +20,7 @@ export function BookingForm() {
     clientName: '',
     clientEmail: '',
     clientPhone: '',
-    sessionType: 'aniversario',
+    sessionType: activeSessionTypes[0]?.name || 'aniversario',
     scheduledDate: '',
     sessionDetails: {},
     termsAccepted: false
@@ -203,7 +203,7 @@ export function BookingForm() {
       clientName: '',
       clientEmail: '',
       clientPhone: '',
-      sessionType: 'aniversario',
+      sessionType: activeSessionTypes[0]?.name || 'aniversario',
       scheduledDate: '',
       sessionDetails: {},
       termsAccepted: false
@@ -474,7 +474,10 @@ export function BookingForm() {
                         value={sessionType.name}
                         checked={formData.sessionType === sessionType.name}
                         onChange={(e) =>
-                          setFormData(prev => ({ ...prev, sessionType: e.target.value as SessionType }))
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            sessionType: e.target.value as SessionType 
+                          }))
                         }
                         className="sr-only"
                       />

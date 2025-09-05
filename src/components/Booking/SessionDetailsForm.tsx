@@ -12,6 +12,10 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
   const { getActiveSessionTypes } = useSessionTypes();
   const activeSessionTypes = getActiveSessionTypes();
   const selectedSessionType = activeSessionTypes.find(st => st.name === sessionType);
+  
+  console.log('SessionDetailsForm - sessionType recebido:', sessionType);
+  console.log('SessionDetailsForm - tipos ativos:', activeSessionTypes.map(st => st.name));
+  console.log('SessionDetailsForm - tipo selecionado:', selectedSessionType);
 
   const handleChange = (key: keyof SessionDetails, value: string | number) => {
     onChange({ ...details, [key]: value });
