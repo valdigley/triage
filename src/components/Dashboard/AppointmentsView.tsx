@@ -97,6 +97,19 @@ export function AppointmentsView() {
         
         <div className="flex items-center space-x-2 sm:space-x-4">
           <button
+            onClick={() => {
+              const feedUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calendar-feed`;
+              navigator.clipboard.writeText(feedUrl);
+              alert('Link do feed copiado! Cole este link no Google Calendar para receber atualizações automáticas.');
+            }}
+            className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-sm"
+          >
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline">Feed iCal</span>
+            <span className="sm:hidden">Feed</span>
+          </button>
+          
+          <button
             onClick={handleExportCalendar}
             className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-sm"
           >
