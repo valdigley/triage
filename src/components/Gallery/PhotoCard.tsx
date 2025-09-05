@@ -38,42 +38,7 @@ export function PhotoCard({
   const renderWatermark = () => {
     if (!watermarkSettings?.enabled) return null;
     
-    const { position, size, opacity } = watermarkSettings;
-    
-    let positionClasses = '';
-    switch (position) {
-      case 'top-left':
-        positionClasses = 'top-2 left-2';
-        break;
-      case 'top-right':
-        positionClasses = 'top-2 right-2';
-        break;
-      case 'bottom-left':
-        positionClasses = 'bottom-2 left-2';
-        break;
-      case 'bottom-right':
-        positionClasses = 'bottom-2 right-2';
-        break;
-      case 'center':
-      default:
-        positionClasses = 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
-        break;
-    }
-    
-    // Responsive size classes based on container size
-    let sizeClasses = '';
-    switch (size) {
-      case 'small':
-        sizeClasses = 'w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 text-xs sm:text-sm';
-        break;
-      case 'large':
-        sizeClasses = 'w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 text-sm sm:text-lg lg:text-xl';
-        break;
-      case 'medium':
-      default:
-        sizeClasses = 'w-12 h-12 sm:w-18 sm:h-18 lg:w-24 lg:h-24 text-xs sm:text-base';
-        break;
-    }
+    const { opacity } = watermarkSettings;
     
     // If there's a watermark image URL, use it; otherwise use text
     if (watermarkSettings.watermark_image_url) {
@@ -81,15 +46,51 @@ export function PhotoCard({
         <img
           src={watermarkSettings.watermark_image_url}
           alt="Watermark"
-          className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10 rounded-lg"
           style={{ opacity }}
         />
       );
     } else {
       // Fallback to text watermark
+      const { position, size } = watermarkSettings;
+      
+      let positionClasses = '';
+      switch (position) {
+        case 'top-left':
+          positionClasses = 'top-2 left-2';
+          break;
+        case 'top-right':
+          positionClasses = 'top-2 right-2';
+          break;
+        case 'bottom-left':
+          positionClasses = 'bottom-2 left-2';
+          break;
+        case 'bottom-right':
+          positionClasses = 'bottom-2 right-2';
+          break;
+        case 'center':
+        default:
+          positionClasses = 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
+          break;
+      }
+      
+      let sizeClasses = '';
+      switch (size) {
+        case 'small':
+          sizeClasses = 'text-xs sm:text-sm lg:text-base';
+          break;
+        case 'large':
+          sizeClasses = 'text-lg sm:text-xl lg:text-2xl';
+          break;
+        case 'medium':
+        default:
+          sizeClasses = 'text-sm sm:text-base lg:text-lg';
+          break;
+      }
+      
       return (
         <div
-          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${size === 'small' ? 'text-xs sm:text-sm' : size === 'large' ? 'text-sm sm:text-lg lg:text-xl' : 'text-xs sm:text-base'}`}
+          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${sizeClasses} drop-shadow-lg`}
           style={{ opacity }}
         >
           {watermarkSettings.text}
