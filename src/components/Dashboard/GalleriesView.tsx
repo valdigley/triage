@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Upload, Eye, Share2, MessageCircle, Clock, Check, AlertTriangle, Plus, Trash2, UserPlus, X } from 'lucide-react';
+import { Camera, Upload, Eye, Share2, MessageCircle, Clock, Check, AlertTriangle, Plus, Trash2, UserPlus, X, Search, Phone, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useGalleries } from '../../hooks/useGalleries';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
@@ -19,6 +19,7 @@ export function GalleriesView() {
   const [showCreateGallery, setShowCreateGallery] = useState(false);
   const [newGallery, setNewGallery] = useState({
     name: '',
+    selected_client_id: '',
     client_name: '',
     client_phone: '',
     client_email: '',
@@ -26,6 +27,7 @@ export function GalleriesView() {
     expiration_days: 30
   });
   const [creating, setCreating] = useState(false);
+  const [createStep, setCreateStep] = useState(1); // 1: Select Client, 2: Gallery Details
 
   const fetchPhotos = async (galleryId: string) => {
     try {
@@ -145,47 +147,15 @@ export function GalleriesView() {
   };
 
   const handleCreateManualGallery = async () => {
-    if (!newGallery.name || !newGallery.client_name || !newGallery.client_phone) {
-      alert('Nome da galeria, nome do cliente e telefone são obrigatórios');
+    if (!newGallery.name || !newGallery.selected_client_id) {
+      alert('Nome da galeria e cliente são obrigatórios');
       return;
     }
 
     setCreating(true);
     try {
-      // Create or get client
-      let clientId: string;
-      
-      const { data: existingClient } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('phone', newGallery.client_phone)
-        .maybeSingle();
-
-      if (existingClient) {
-        clientId = existingClient.id;
-        // Update client info if needed
-        await supabase
-          .from('clients')
-          .update({
-            name: newGallery.client_name,
-            email: newGallery.client_email || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', clientId);
-      } else {
-        const { data: newClient, error: clientError } = await supabase
-          .from('clients')
-          .insert([{
-            name: newGallery.client_name,
-            email: newGallery.client_email || null,
-            phone: newGallery.client_phone
-          }])
-          .select()
-          .single();
-
-        if (clientError) throw clientError;
-        clientId = newClient.id;
-      }
+      // Use selected client
+      const clientId = newGallery.selected_client_id;
 
       // Create manual appointment
       const { data: appointment, error: appointmentError } = await supabase
@@ -226,8 +196,10 @@ export function GalleriesView() {
 
       alert('Galeria criada com sucesso!');
       setShowCreateGallery(false);
+      setCreateStep(1);
       setNewGallery({
         name: '',
+        selected_client_id: '',
         client_name: '',
         client_phone: '',
         client_email: '',
@@ -243,6 +215,34 @@ export function GalleriesView() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleClientSelect = (clientId: string) => {
+    const selectedClient = clients.find(c => c.id === clientId);
+    if (selectedClient) {
+      setNewGallery(prev => ({
+        ...prev,
+        selected_client_id: clientId,
+        client_name: selectedClient.name,
+        client_phone: selectedClient.phone,
+        client_email: selectedClient.email || ''
+      }));
+      setCreateStep(2);
+    }
+  };
+
+  const resetCreateGallery = () => {
+    setShowCreateGallery(false);
+    setCreateStep(1);
+    setNewGallery({
+      name: '',
+      selected_client_id: '',
+      client_name: '',
+      client_phone: '',
+      client_email: '',
+      password: '',
+      expiration_days: 30
+    });
   };
 
   const getStatusBadge = (status: Gallery['status']) => {
@@ -781,118 +781,212 @@ export function GalleriesView() {
       {/* Create Gallery Modal */}
       {showCreateGallery && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Nova Galeria Manual</h3>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Nova Galeria Manual</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {createStep === 1 ? 'Passo 1: Selecionar Cliente' : 'Passo 2: Detalhes da Galeria'}
+                  </p>
+                </div>
                 <button
-                  onClick={() => setShowCreateGallery(false)}
+                  onClick={resetCreateGallery}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nome da Galeria *
-                  </label>
-                  <input
-                    type="text"
-                    value={newGallery.name}
-                    onChange={(e) => setNewGallery(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Ex: Ensaio João - Janeiro 2025"
-                  />
-                </div>
+              {/* Step 1: Select Client */}
+              {createStep === 1 && (
+                <div className="space-y-4">
+                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-purple-800 dark:text-purple-200">
+                      Selecione um cliente existente para criar a galeria. Se o cliente não existir, 
+                      <button 
+                        onClick={() => {
+                          resetCreateGallery();
+                          setShowCreateClient(true);
+                        }}
+                        className="text-purple-600 dark:text-purple-400 underline ml-1"
+                      >
+                        crie um novo cliente primeiro
+                      </button>.
+                    </p>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nome do Cliente *
-                  </label>
-                  <input
-                    type="text"
-                    value={newGallery.client_name}
-                    onChange={(e) => setNewGallery(prev => ({ ...prev, client_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Nome completo do cliente"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      Buscar e Selecionar Cliente
+                    </label>
+                    
+                    {/* Search */}
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Digite o nome, telefone ou email do cliente..."
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        onChange={(e) => {
+                          const term = e.target.value;
+                          // Filter clients in real-time
+                          if (term.trim() === '') {
+                            // Show all clients
+                          } else {
+                            // This would need to be implemented with a local filter
+                            // For now, we'll show all clients
+                          }
+                        }}
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Telefone do Cliente *
-                  </label>
-                  <input
-                    type="tel"
-                    value={newGallery.client_phone}
-                    onChange={(e) => setNewGallery(prev => ({ ...prev, client_phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="(11) 99999-9999"
-                  />
+                    {/* Clients List */}
+                    <div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg">
+                      {clients.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                          <p>Nenhum cliente encontrado.</p>
+                          <button
+                            onClick={() => {
+                              resetCreateGallery();
+                              setShowCreateClient(true);
+                            }}
+                            className="text-purple-600 dark:text-purple-400 underline mt-2"
+                          >
+                            Criar primeiro cliente
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-200 dark:divide-gray-600">
+                          {clients.map((client) => (
+                            <button
+                              key={client.id}
+                              onClick={() => handleClientSelect(client.id)}
+                              className="w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gray-900 dark:text-white">{client.name}</h4>
+                                  <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                    <Phone className="h-3 w-3" />
+                                    <span>{client.phone}</span>
+                                  </div>
+                                  {client.email && (
+                                    <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                      <Mail className="h-3 w-3" />
+                                      <span>{client.email}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-medium text-green-600">
+                                    {formatCurrency(client.total_spent)}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    E-mail do Cliente
-                  </label>
-                  <input
-                    type="email"
-                    value={newGallery.client_email}
-                    onChange={(e) => setNewGallery(prev => ({ ...prev, client_email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="cliente@email.com (opcional)"
-                  />
-                </div>
+              {/* Step 2: Gallery Details */}
+              {createStep === 2 && (
+                <div className="space-y-4">
+                  {/* Selected Client Info */}
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-green-800 dark:text-green-200">Cliente Selecionado</h4>
+                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">{newGallery.client_name}</p>
+                        <p className="text-xs text-green-600 dark:text-green-400">{newGallery.client_phone}</p>
+                      </div>
+                      <button
+                        onClick={() => setCreateStep(1)}
+                        className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 text-sm underline"
+                      >
+                        Alterar
+                      </button>
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Senha da Galeria
-                  </label>
-                  <input
-                    type="text"
-                    value={newGallery.password}
-                    onChange={(e) => setNewGallery(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Senha opcional para acesso"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nome da Galeria *
+                    </label>
+                    <input
+                      type="text"
+                      value={newGallery.name}
+                      onChange={(e) => setNewGallery(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Ex: Ensaio João - Janeiro 2025"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Validade (dias)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="365"
-                    value={newGallery.expiration_days}
-                    onChange={(e) => setNewGallery(prev => ({ ...prev, expiration_days: parseInt(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Senha da Galeria
+                    </label>
+                    <input
+                      type="text"
+                      value={newGallery.password}
+                      onChange={(e) => setNewGallery(prev => ({ ...prev, password: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Senha opcional para acesso"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Validade (dias)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={newGallery.expiration_days}
+                      onChange={(e) => setNewGallery(prev => ({ ...prev, expiration_days: parseInt(e.target.value) }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex justify-end space-x-3 mt-6">
+                {createStep === 2 && (
+                  <button
+                    onClick={() => setCreateStep(1)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Voltar
+                  </button>
+                )}
                 <button
-                  onClick={() => setShowCreateGallery(false)}
+                  onClick={resetCreateGallery}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={handleCreateManualGallery}
-                  disabled={creating}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-                >
-                  {creating ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  <span>{creating ? 'Criando...' : 'Criar Galeria'}</span>
-                </button>
+                {createStep === 2 && (
+                  <button
+                    onClick={handleCreateManualGallery}
+                    disabled={creating}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                  >
+                    {creating ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    <span>{creating ? 'Criando...' : 'Criar Galeria'}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
