@@ -414,6 +414,15 @@ export function GalleriesView() {
                               <Clock className="h-4 w-4" />
                             </button>
                           )}
+                          {gallery.status === 'completed' && (
+                            <button
+                              onClick={() => updateGalleryStatus(gallery.id, 'pending')}
+                              className="text-orange-600 hover:text-orange-900 transition-colors"
+                              title="Reativar seleção"
+                            >
+                              <Clock className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
