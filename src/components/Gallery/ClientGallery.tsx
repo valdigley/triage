@@ -542,7 +542,7 @@ export function ClientGallery() {
                       onAddComment={() => {
                         setShowCommentInput(photo.id);
                         setTempComment(photoComments[photo.id] || '');
-                      }}
+                      className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10"
                       canComment={!gallery.selection_completed}
                     />
                   </div>
