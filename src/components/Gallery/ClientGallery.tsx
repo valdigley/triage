@@ -462,6 +462,29 @@ export function ClientGallery() {
           </>
         )}
 
+        {/* Duplicate Confirm Button at Bottom */}
+        {!gallery?.selection_completed && photos.length > 0 && !isExpired && (
+          <div className="mt-8 sm:mt-12 flex justify-center">
+            <button
+              onClick={handleSubmitSelection}
+              disabled={selectedPhotos.length < minimumPhotos || submitting}
+              className="w-full sm:w-auto bg-purple-600 text-white px-8 py-4 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 text-lg font-medium shadow-lg"
+            >
+              {submitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+                  <span>Enviando...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-6 w-6" />
+                  <span>Confirmar Seleção ({selectedPhotos.length})</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Lightbox */}
         {lightboxPhoto && (
           <div className="fixed inset-0 bg-black bg-opacity-98 flex items-center justify-center z-50 p-1 sm:p-2 lg:p-2">
