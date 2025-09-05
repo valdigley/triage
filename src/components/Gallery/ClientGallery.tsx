@@ -454,23 +454,29 @@ export function ClientGallery() {
                 </p>
               )}
               <div className="flex items-center justify-center space-x-4 text-gray-300">
-                <span>{new Date(gallery.created_at).toLocaleDateString('pt-BR')}</span>
-                {daysUntilExpiration !== null && (
-                  <>
-                    <span>•</span>
-                    <div className={`flex items-center gap-1 ${isExpired ? 'text-red-300' : daysUntilExpiration <= 7 ? 'text-yellow-300' : 'text-green-300'}`}>
-                      <Clock size={16} />
-                      <span>
-                        {isExpired 
-                          ? 'Expirada' 
-                          : daysUntilExpiration === 1 
-                            ? '1 dia restante'
-                            : `${daysUntilExpiration} dias restantes`
-                        }
-                      </span>
-                    </div>
-                  </>
-                )}
+                <div className="flex items-center space-x-2">
+                  <Camera size={20} />
+                  <span>{photos.length} fotos</span>
+                </div>
+                <div className="flex items-center space-x-4 text-sm">
+                  <span>{new Date(gallery.created_at).toLocaleDateString('pt-BR')}</span>
+                  {daysUntilExpiration !== null && (
+                    <>
+                      <span>•</span>
+                      <div className={`flex items-center gap-1 ${isExpired ? 'text-red-300' : daysUntilExpiration <= 7 ? 'text-yellow-300' : 'text-green-300'}`}>
+                        <Clock size={16} />
+                        <span>
+                          {isExpired 
+                            ? 'Expirada' 
+                            : daysUntilExpiration === 1 
+                              ? '1 dia restante'
+                              : `${daysUntilExpiration} dias restantes`
+                          }
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
