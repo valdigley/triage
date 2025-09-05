@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Phone, Mail, Eye, Check, X } from 'lucide-react';
+import { Calendar, Clock, Phone, Mail, Eye, Check, X, Download, ExternalLink } from 'lucide-react';
 import { useAppointments } from '../../hooks/useAppointments';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
 import { Appointment } from '../../types';
+import { downloadICalendar } from '../../utils/calendar';
 
 export function AppointmentsView() {
   const { appointments, updateAppointmentStatus } = useAppointments();
@@ -14,6 +15,49 @@ export function AppointmentsView() {
     statusFilter === 'all' || apt.status === statusFilter
   );
 
+  const handleExportCalendar = () => {
+    const confirmedAppointments = appointments.filter(apt => 
+      apt.status === 'confirmed' || apt.status === 'completed'
+    );
+    downloadICalendar(confirmedAppointments, `agenda-estudio-${new Date().toISOString().split('T')[0]}.ics`);
+  };
+
+  const generateGoogleCalendarUrl = () => {
+    const confirmedAppointments = appointments.filter(apt => 
+      apt.status === 'confirmed' || apt.status === 'completed'
+    );
+    
+    if (confirmedAppointments.length === 0) {
+      alert('Nenhum agendamento confirmado para exportar');
+      return;
+    }
+
+    // Para Google Calendar, vamos criar um link para adicionar o primeiro evento como exemplo
+    const firstAppointment = confirmedAppointments[0];
+    const startDate = new Date(firstAppointment.scheduled_date);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+    
+    const formatGoogleDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const sessionTypeLabels: Record<string, string> = {
+      'aniversario': 'Aniversário',
+      'gestante': 'Gestante', 
+      'formatura': 'Formatura',
+      'comercial': 'Comercial',
+      'pre_wedding': 'Pré-wedding',
+      'tematico': 'Temático'
+    };
+
+    const sessionLabel = sessionTypeLabels[firstAppointment.session_type] || firstAppointment.session_type;
+    const title = `${sessionLabel} - ${firstAppointment.client?.name}`;
+    const details = `Cliente: ${firstAppointment.client?.name}\\nTelefone: ${firstAppointment.client?.phone}\\nValor: R$ ${firstAppointment.total_amount.toFixed(2)}`;
+    
+    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${formatGoogleDate(startDate)}/${formatGoogleDate(endDate)}&details=${encodeURIComponent(details)}`;
+    
+    window.open(googleUrl, '_blank');
+  };
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: 'Pendente', className: 'bg-yellow-100 text-yellow-800' },
@@ -51,11 +95,29 @@ export function AppointmentsView() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Agendamentos</h1>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <button
+            onClick={handleExportCalendar}
+            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-sm"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Exportar .ics</span>
+            <span className="sm:hidden">Export</span>
+          </button>
+          
+          <button
+            onClick={generateGoogleCalendarUrl}
+            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 sm:space-x-2 text-sm"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span className="hidden sm:inline">Google Calendar</span>
+            <span className="sm:hidden">Google</span>
+          </button>
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           >
             <option value="all">Todos os Status</option>
             <option value="pending">Pendente</option>
