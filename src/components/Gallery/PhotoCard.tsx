@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, MessageSquare, Expand, Heart, Printer, Star } from 'lucide-react';
+import { Check, MessageSquare, Expand } from 'lucide-react';
 import { Photo } from '../../types';
 
 interface WatermarkSettings {
@@ -22,8 +22,6 @@ interface PhotoCardProps {
   className?: string;
   onAddComment?: () => void;
   canComment?: boolean;
-  showCoverIndicator?: boolean;
-  isCoverPhoto?: boolean;
 }
 
 export function PhotoCard({
@@ -36,9 +34,7 @@ export function PhotoCard({
   watermarkSettings,
   className = '',
   onAddComment,
-  canComment = true,
-  showCoverIndicator = false,
-  isCoverPhoto = false
+  canComment = true
 }: PhotoCardProps) {
   const renderWatermark = () => {
     if (!watermarkSettings?.enabled) return null;
@@ -105,30 +101,22 @@ export function PhotoCard({
   };
 
   return (
-    <div className={`relative group cursor-pointer bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
+    <div className={`relative group cursor-pointer ${className}`}>
       {/* Main Photo Container */}
-      <div className="relative w-full overflow-hidden">
+      <div className="relative w-full aspect-square overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
         {/* Photo */}
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-auto transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = `https://via.placeholder.com/400x300/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
+            target.src = `https://via.placeholder.com/400x400/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
           }}
         />
 
         {/* Watermark */}
         {renderWatermark()}
-
-        {/* Cover Photo Indicator */}
-        {showCoverIndicator && isCoverPhoto && (
-          <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-            <Star size={12} />
-            Capa
-          </div>
-        )}
 
         {/* Selection Overlay */}
         {isSelected && (
@@ -152,34 +140,16 @@ export function PhotoCard({
         )}
 
         {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300">
-          <div className={`absolute top-2 right-2 flex gap-2 ${isCoverPhoto ? 'mt-8' : ''}`}>
-            {/* View Full Size */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewFullSize();
-              }}
-              className="w-8 h-8 rounded-full bg-white bg-opacity-80 text-gray-700 hover:bg-opacity-100 flex items-center justify-center transition-all duration-200"
-              title="Ver em tamanho completo"
-            >
-              <Expand size={16} />
-            </button>
-          </div>
-
-          {/* Comment Button */}
-          {canComment && onAddComment && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddComment();
-              }}
-              className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
-              title="Adicionar comentário"
-            >
-              <MessageSquare className="h-3 w-3" />
-            </button>
-          )}
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewFullSize();
+            }}
+            className="bg-white bg-opacity-90 rounded-full p-2 hover:bg-opacity-100 transition-all duration-200"
+          >
+            <Expand className="h-5 w-5 text-gray-800" />
+          </button>
         </div>
 
         {/* Selection Button - Mobile */}
@@ -211,16 +181,6 @@ export function PhotoCard({
           >
             <MessageSquare className="h-3 w-3" />
           </button>
-        )}
-      </div>
-
-      {/* Photo Info */}
-      <div className="p-3">
-        <p className="text-xs text-gray-500 truncate">{photo.filename}</p>
-        {photo.metadata && (
-          <p className="text-xs text-gray-400 mt-1">
-            {(photo.size / 1024 / 1024).toFixed(2)} MB
-          </p>
         )}
       </div>
     </div>

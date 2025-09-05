@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Info, Download, Heart } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Info, Download } from 'lucide-react';
 import { Photo } from '../../types';
 
 interface WatermarkSettings {
@@ -124,7 +124,7 @@ export function PhotoLightbox({
       
       return (
         <div
-          className={`absolute ${positionClasses} ${sizeClasses} text-white font-bold pointer-events-none z-10`}
+          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${sizeClasses} drop-shadow-2xl`}
           style={{ opacity }}
         >
           {text}
@@ -134,14 +134,18 @@ export function PhotoLightbox({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-95">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-4">
+      <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black to-transparent p-4">
         <div className="flex justify-between items-center">
-          <div className="text-white text-sm">
-            {currentIndex + 1} of {photos.length}
+          <div className="text-white">
+            <p className="text-sm opacity-80">
+              {currentIndex + 1} de {photos.length}
+            </p>
+            <p className="font-medium">{currentPhoto.filename}</p>
           </div>
-          <div className="flex items-center space-x-2">
+          
+          <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-colors"
@@ -172,20 +176,16 @@ export function PhotoLightbox({
       )}
 
       {/* Photo Container */}
-      <div className="flex items-center justify-center h-full p-4 sm:p-8 lg:p-16">
-        <div className="relative w-full h-full flex items-center justify-center">
+      <div className="flex items-center justify-center h-full p-16">
+        <div className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto">
           <img
             src={currentPhoto.url}
             alt={currentPhoto.filename}
-            className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+            className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg shadow-2xl"
           />
           
           {/* Watermark */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative max-w-[90vw] max-h-[90vh] w-auto h-auto">
-              {renderWatermark()}
-            </div>
-          </div>
+          {renderWatermark()}
         </div>
       </div>
     </div>

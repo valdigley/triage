@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, Heart, Download, Eye, EyeOff, MessageSquare, Check, X, Send, AlertTriangle, Clock, Star, Grid, List, Filter, ShoppingCart, Printer } from 'lucide-react';
+import { Camera, Heart, Download, Eye, EyeOff, MessageSquare, Check, X, Send, AlertTriangle, Clock, Star } from 'lucide-react';
 import { useGalleries } from '../../hooks/useGalleries';
 import { supabase } from '../../lib/supabase';
 import { Photo } from '../../types';
@@ -25,7 +25,6 @@ export function ClientGallery() {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentingPhoto, setCommentingPhoto] = useState<string | null>(null);
   const [tempComment, setTempComment] = useState('');
-  const [viewMode, setViewMode] = useState<'masonry' | 'grid'>('masonry');
 
   useEffect(() => {
     if (token) {
@@ -170,13 +169,7 @@ export function ClientGallery() {
 
   const daysUntilExpiration = getDaysUntilExpiration();
   const isExpired = daysUntilExpiration !== null && daysUntilExpiration <= 0;
-
-  // Get cover photo
-  const coverPhoto = gallery?.cover_photo_id 
-    ? photos.find(p => p.id === gallery.cover_photo_id) || photos[0]
-    : photos[0];
-
-  const selectedCount = selectedPhotos.length;
+  const isNearExpiration = daysUntilExpiration !== null && daysUntilExpiration <= 3;
 
   if (loading) {
     return (
@@ -220,76 +213,68 @@ export function ClientGallery() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section with Cover Photo */}
-      {coverPhoto && (
-        <div className="relative h-96 overflow-hidden">
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${coverPhoto.url})` }}
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-40" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-          
-          <div className="relative h-full flex items-end">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
-              <div className="text-white">
-                <h1 className="text-4xl md:text-5xl font-bold mb-2">{gallery.name}</h1>
-                <div className="flex items-center gap-4 text-lg opacity-90">
-                  <span>{gallery.appointment?.client?.name || 'Cliente'}</span>
-                  <span>•</span>
-                  <span>{photos.length} fotos</span>
-                  <span>•</span>
-                  <span>{new Date(gallery.created_at).toLocaleDateString('pt-BR')}</span>
-                  {daysUntilExpiration !== null && (
-                    <>
-                      <span>•</span>
-                      <div className={`flex items-center gap-1 ${isExpired ? 'text-red-300' : daysUntilExpiration <= 7 ? 'text-yellow-300' : 'text-green-300'}`}>
-                        <Clock size={16} />
-                        <span>
-                          {isExpired 
-                            ? 'Expirada' 
-                            : daysUntilExpiration === 1 
-                              ? '1 dia restante'
-                              : `${daysUntilExpiration} dias restantes`
-                          }
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Navigation Header */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {photos.length} fotos disponíveis
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {/* Watermark Toggle */}
-                {gallery.watermark_settings?.enabled && (
-                  <button
-                    onClick={() => setShowWatermark(!showWatermark)}
-                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      showWatermark
-                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {showWatermark ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    <span>{showWatermark ? 'Ocultar' : 'Mostrar'} Marca d'água</span>
-                  </button>
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                {gallery.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-400 mt-2">
+                <span>{photos.length} fotos</span>
+                <span>•</span>
+                <span>{selectedPhotos.length} selecionadas</span>
+                {daysUntilExpiration !== null && (
+                  <>
+                    <span>•</span>
+                    <div className={`flex items-center gap-1 ${
+                      isExpired ? 'text-red-600' : isNearExpiration ? 'text-yellow-600' : 'text-green-600'
+                    }`}>
+                      <Clock className="h-4 w-4" />
+                      <span>
+                        {isExpired 
+                          ? 'Expirada' 
+                          : daysUntilExpiration === 1 
+                            ? '1 dia restante'
+                            : `${daysUntilExpiration} dias restantes`
+                        }
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {gallery.watermark_settings?.enabled && (
+                <button
+                  onClick={() => setShowWatermark(!showWatermark)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    showWatermark
+                      ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {showWatermark ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <span>{showWatermark ? 'Ocultar' : 'Mostrar'} Marca d'água</span>
+                </button>
+              )}
+
+              {selectedPhotos.length > 0 && !gallery.selection_completed && (
+                <button
+                  onClick={handleSubmitSelection}
+                  disabled={submitting}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {submitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                  <span>{submitting ? 'Confirmando...' : 'Confirmar Seleção'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -314,11 +299,11 @@ export function ClientGallery() {
         </div>
       )}
 
-      {/* Gallery Content */}
+      {/* Photos Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {photos.length === 0 ? (
           <div className="text-center py-12">
-            <Camera size={48} className="mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+            <Camera className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               Nenhuma foto encontrada
             </h3>
@@ -327,7 +312,7 @@ export function ClientGallery() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
             {photos.map((photo, index) => (
               <PhotoCard
                 key={photo.id}
@@ -415,7 +400,7 @@ export function ClientGallery() {
       )}
 
       {/* Selection Summary - Fixed Bottom */}
-      {selectedCount > 0 && !gallery.selection_completed && (
+      {selectedPhotos.length > 0 && !gallery.selection_completed && (
         <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
@@ -423,16 +408,16 @@ export function ClientGallery() {
                 <div className="flex items-center space-x-2">
                   <Check className="h-5 w-5 text-green-600" />
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {selectedCount} fotos selecionadas
+                    {selectedPhotos.length} fotos selecionadas
                   </span>
                 </div>
                 
                 {gallery.appointment?.minimum_photos && (
                   <div className="text-sm text-gray-600 dark:text-gray-400">
                     Mínimo: {gallery.appointment.minimum_photos} fotos
-                    {selectedCount > gallery.appointment.minimum_photos && (
+                    {selectedPhotos.length > gallery.appointment.minimum_photos && (
                       <span className="text-purple-600 dark:text-purple-400 ml-2">
-                        (+{selectedCount - gallery.appointment.minimum_photos} extras)
+                        (+{selectedPhotos.length - gallery.appointment.minimum_photos} extras)
                       </span>
                     )}
                   </div>
