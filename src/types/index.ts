@@ -159,6 +159,7 @@ export interface Photo {
 }
 
 export type PaymentType = 'initial' | 'extra_photos';
+export type PaymentType = 'initial' | 'extra_photos' | 'cash';
 
 export interface Payment {
   id: string;

@@ -433,7 +433,7 @@ export function ClientGallery() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Hero Section */}
+      {/* Hero Section with Cover Photo */}
       {coverPhoto && (
         <div className="relative h-96 overflow-hidden">
           <div 
