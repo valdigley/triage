@@ -124,7 +124,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const webhookData = await req.json();
-    console.log('MercadoPago Webhook received:', webhookData);
+    console.log('MercadoPago Webhook received:', JSON.stringify(webhookData, null, 2));
 
     // Get MercadoPago settings
     const { createClient } = await import('npm:@supabase/supabase-js@2');
@@ -144,8 +144,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // Process payment notification
-    if (webhookData.type === 'payment') {
+    if (webhookData.type === 'payment' || webhookData.action === 'payment.updated') {
       const paymentId = webhookData.data.id;
+      
+      console.log('Processing payment webhook for ID:', paymentId);
       
       // Get payment details from MercadoPago
       const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -156,7 +158,10 @@ Deno.serve(async (req: Request) => {
 
       if (mpResponse.ok) {
         const paymentData = await mpResponse.json();
+        console.log('Payment data from MercadoPago:', JSON.stringify(paymentData, null, 2));
+        
         const appointmentId = paymentData.external_reference;
+        console.log('External reference (appointment ID):', appointmentId);
         
         // Check if this is an extra photos payment (external_reference contains "-extra-")
         if (appointmentId && appointmentId.includes('-extra-')) {
@@ -166,7 +171,7 @@ Deno.serve(async (req: Request) => {
           const originalAppointmentId = appointmentId.split('-extra-')[0];
           
           // Update payment status in database
-          await supabase
+          const { error: paymentUpdateError } = await supabase
             .from('payments')
             .update({
               status: paymentData.status,
@@ -174,16 +179,28 @@ Deno.serve(async (req: Request) => {
               updated_at: new Date().toISOString()
             })
             .eq('mercadopago_id', paymentId.toString());
+          
+          if (paymentUpdateError) {
+            console.error('Error updating extra photos payment:', paymentUpdateError);
+          } else {
+            console.log('Extra photos payment status updated to:', paymentData.status);
+          }
 
           // If payment is approved, update gallery with extra photos payment status
           if (paymentData.status === 'approved') {
-            await supabase
+            const { error: galleryUpdateError } = await supabase
               .from('galleries_triage')
               .update({
                 extra_photos_payment_status: 'approved',
                 updated_at: new Date().toISOString()
               })
               .eq('extra_photos_payment_id', paymentId.toString());
+            
+            if (galleryUpdateError) {
+              console.error('Error updating gallery for extra photos:', galleryUpdateError);
+            } else {
+              console.log('Gallery updated for approved extra photos payment');
+            }
             
             console.log('Extra photos payment approved and gallery updated');
           }
@@ -192,7 +209,7 @@ Deno.serve(async (req: Request) => {
           console.log('Processing regular appointment payment webhook');
           
           // Update payment status in database
-          await supabase
+          const { error: paymentUpdateError } = await supabase
             .from('payments')
             .update({
               status: paymentData.status,
@@ -200,25 +217,43 @@ Deno.serve(async (req: Request) => {
               updated_at: new Date().toISOString()
             })
             .eq('appointment_id', appointmentId);
+          
+          if (paymentUpdateError) {
+            console.error('Error updating payment in database:', paymentUpdateError);
+          } else {
+            console.log('Payment status updated in database to:', paymentData.status);
+          }
 
           // Update appointment payment status
-          await supabase
+          const { error: appointmentPaymentError } = await supabase
             .from('appointments')
             .update({
               payment_status: paymentData.status,
               updated_at: new Date().toISOString()
             })
             .eq('id', appointmentId);
+          
+          if (appointmentPaymentError) {
+            console.error('Error updating appointment payment status:', appointmentPaymentError);
+          } else {
+            console.log('Appointment payment status updated to:', paymentData.status);
+          }
 
           // If payment is approved, confirm appointment
           if (paymentData.status === 'approved') {
-            await supabase
+            const { error: appointmentStatusError } = await supabase
               .from('appointments')
               .update({
                 status: 'confirmed',
                 updated_at: new Date().toISOString()
               })
               .eq('id', appointmentId);
+            
+            if (appointmentStatusError) {
+              console.error('Error confirming appointment:', appointmentStatusError);
+            } else {
+              console.log('Appointment confirmed successfully');
+            }
             
             // Schedule payment confirmation notification
             try {
@@ -232,7 +267,12 @@ Deno.serve(async (req: Request) => {
             // when the appointment status changes to 'confirmed'
           }
         }
+      } else {
+        const errorText = await mpResponse.text();
+        console.error('Error fetching payment from MercadoPago:', mpResponse.status, errorText);
       }
+    } else {
+      console.log('Webhook type not handled:', webhookData.type);
     }
 
     return new Response('OK', { 

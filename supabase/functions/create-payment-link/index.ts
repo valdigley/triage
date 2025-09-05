@@ -114,7 +114,8 @@ Deno.serve(async (req: Request) => {
         excluded_payment_methods: [],
         excluded_payment_types: [],
         installments: 12
-      }
+      },
+      statement_descriptor: "ESTUDIO FOTO"
     };
 
     console.log('Creating payment preference:', JSON.stringify(preferenceData, null, 2));
