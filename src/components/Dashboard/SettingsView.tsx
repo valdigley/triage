@@ -584,10 +584,10 @@ export function SettingsView() {
                         <img
                           src={settings.watermark_image_url}
                           alt="Marca d'água atual"
-                          className="h-16 w-16 object-contain border border-gray-300 rounded bg-gray-100"
+                          className="h-16 w-16 object-contain border border-gray-300 rounded bg-white"
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center text-white text-xs font-medium rounded">
-                          Preview
+                        <div className="absolute inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center text-gray-700 text-xs font-medium rounded pointer-events-none">
+                          <span className="bg-white bg-opacity-80 px-1 rounded">PNG</span>
                         </div>
                       </div>
                     )}

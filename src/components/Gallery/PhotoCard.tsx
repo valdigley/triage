@@ -80,7 +80,7 @@ export function PhotoCard({
         <img
           src={watermarkSettings.watermark_image_url}
           alt="Watermark"
-          className={`absolute ${positionClasses} ${sizeClasses} object-contain pointer-events-none z-10`}
+          className={`absolute ${positionClasses} ${sizeClasses} object-contain pointer-events-none z-10 mix-blend-normal`}
           style={{ opacity }}
         />
       );
