@@ -101,6 +101,7 @@ export function PhotoCard({
           {text}
         </div>
       );
+    }
     <div className={`relative group cursor-pointer bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
   };
 
@@ -225,4 +226,6 @@ export function PhotoCard({
       </div>
     </div>
   );
+}
+  }
 }
