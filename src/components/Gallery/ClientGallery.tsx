@@ -504,7 +504,7 @@ export function ClientGallery() {
                   </div>
                 </div>
               </div>
-              <div className="relative w-full h-full flex items-center justify-center">
+            </div>
 
             {/* Photos Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
@@ -670,7 +670,7 @@ export function ClientGallery() {
                         <img
                           src={settings.watermark_image_url}
                           alt="Watermark"
-                          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+                          className={`absolute ${
                             settings.watermark_position === 'top-left' ? 'top-4 left-4' :
                             settings.watermark_position === 'top-right' ? 'top-4 right-4' :
                             settings.watermark_position === 'bottom-left' ? 'bottom-4 left-4' :
