@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
         pending: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payment-pending`
       },
       auto_return: "approved",
-      external_reference: paymentType === 'extra_photos' ? `${appointmentId}-extra-${Date.now()}` : appointmentId,
+      external_reference: paymentType === 'extra_photos' ? `${appointmentId}-extra-${paymentId}` : appointmentId,
       notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercadopago-webhook`,
       expires: true,
       expiration_date_from: new Date().toISOString(),

@@ -6,6 +6,8 @@ const corsHeaders = {
 
 async function schedulePaymentConfirmationNotification(supabase: any, appointmentId: string): Promise<boolean> {
   try {
+    console.log('📧 Agendando notificação de confirmação de pagamento para appointment:', appointmentId);
+    
     // Get appointment details
     const { data: appointment, error: appointmentError } = await supabase
       .from('appointments')
@@ -17,18 +19,18 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
       .single();
 
     if (appointmentError || !appointment) {
-      console.error('Appointment not found for payment confirmation');
+      console.error('❌ Appointment não encontrado:', appointmentError);
       return false;
     }
 
     // Get settings
     const { data: settings } = await supabase
       .from('settings')
-      .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
+      .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour, studio_name, studio_phone')
       .single();
 
     if (!settings) {
-      console.error('Settings not found');
+      console.error('❌ Settings não encontradas');
       return false;
     }
 
@@ -42,7 +44,7 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
     const appointmentDate = new Date(appointment.scheduled_date);
     const clientName = appointment.client?.name || 'Cliente';
     const clientPhone = appointment.client?.phone || '';
-
+    
     // Format currency
     const formatCurrency = (amount: number): string => {
       return new Intl.NumberFormat('pt-BR', {
@@ -50,7 +52,7 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
         currency: 'BRL'
       }).format(amount);
     };
-
+    
     // Variables for template processing
     const variables = {
       client_name: clientName,
@@ -84,7 +86,7 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
       .single();
 
     if (templateError || !template) {
-      console.error('Payment confirmation template not found or inactive');
+      console.error('❌ Template payment_confirmation não encontrado:', templateError);
       return false;
     }
 
@@ -95,7 +97,7 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
     });
 
     // Schedule immediate notification
-    await supabase
+    const { error: queueError } = await supabase
       .from('notification_queue')
       .insert({
         appointment_id: appointmentId,
@@ -106,10 +108,15 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
         scheduled_for: new Date().toISOString()
       });
 
-    console.log('Payment confirmation notification scheduled successfully');
+    if (queueError) {
+      console.error('❌ Erro ao agendar notificação:', queueError);
+      return false;
+    }
+
+    console.log('✅ Notificação de confirmação de pagamento agendada');
     return true;
   } catch (error) {
-    console.error('Error in schedulePaymentConfirmationNotification:', error);
+    console.error('❌ Erro em schedulePaymentConfirmationNotification:', error);
     return false;
   }
 }
@@ -124,165 +131,212 @@ Deno.serve(async (req: Request) => {
 
   try {
     const webhookData = await req.json();
-    console.log('MercadoPago Webhook received:', JSON.stringify(webhookData, null, 2));
+    console.log('🔔 MercadoPago Webhook recebido:', JSON.stringify(webhookData, null, 2));
 
-    // Get MercadoPago settings
+    // Get Supabase client
     const { createClient } = await import('npm:@supabase/supabase-js@2');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: mpSettings } = await supabase
+    // Get MercadoPago settings
+    const { data: mpSettings, error: mpError } = await supabase
       .from('mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .single();
 
-    if (!mpSettings || !mpSettings.access_token) {
-      return new Response('MercadoPago settings not found', { status: 400 });
+    if (mpError || !mpSettings || !mpSettings.access_token) {
+      console.error('❌ Configurações MercadoPago não encontradas:', mpError);
+      return new Response('MercadoPago settings not found', { 
+        status: 400,
+        headers: corsHeaders 
+      });
     }
+
+    console.log('✅ Configurações MercadoPago carregadas');
 
     // Process payment notification
     if (webhookData.type === 'payment' || webhookData.action === 'payment.updated') {
-      const paymentId = webhookData.data.id;
+      const paymentId = webhookData.data?.id;
       
-      console.log('Processing payment webhook for ID:', paymentId);
+      if (!paymentId) {
+        console.error('❌ Payment ID não encontrado no webhook');
+        return new Response('Payment ID not found', { 
+          status: 400,
+          headers: corsHeaders 
+        });
+      }
+      
+      console.log('💳 Processando webhook de pagamento para ID:', paymentId);
       
       // Get payment details from MercadoPago
+      console.log('🔍 Buscando detalhes do pagamento no MercadoPago...');
       const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
         headers: {
-          'Authorization': `Bearer ${mpSettings.access_token}`
+          'Authorization': `Bearer ${mpSettings.access_token}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      if (mpResponse.ok) {
-        const paymentData = await mpResponse.json();
-        console.log('Payment data from MercadoPago:', JSON.stringify(paymentData, null, 2));
-        
-        const appointmentId = paymentData.external_reference;
-        console.log('External reference (appointment ID):', appointmentId);
-        
-        // Check if this is an extra photos payment (external_reference contains "-extra-")
-        if (appointmentId && appointmentId.includes('-extra-')) {
-          console.log('Processing extra photos payment webhook');
-          
-          // Extract the original appointment ID (before "-extra-")
-          const originalAppointmentId = appointmentId.split('-extra-')[0];
-          
-          // Update payment status in database
-          const { error: paymentUpdateError } = await supabase
-            .from('payments')
-            .update({
-              status: paymentData.status,
-              webhook_data: paymentData,
-              updated_at: new Date().toISOString()
-            })
-            .eq('mercadopago_id', paymentId.toString());
-          
-          if (paymentUpdateError) {
-            console.error('Error updating extra photos payment:', paymentUpdateError);
-          } else {
-            console.log('Extra photos payment status updated to:', paymentData.status);
-          }
+      if (!mpResponse.ok) {
+        const errorText = await mpResponse.text();
+        console.error('❌ Erro ao buscar pagamento do MercadoPago:', mpResponse.status, errorText);
+        return new Response(`MercadoPago API error: ${mpResponse.status}`, { 
+          status: mpResponse.status,
+          headers: corsHeaders 
+        });
+      }
 
-          // If payment is approved, update gallery with extra photos payment status
-          if (paymentData.status === 'approved') {
-            const { error: galleryUpdateError } = await supabase
-              .from('galleries_triage')
-              .update({
-                extra_photos_payment_status: 'approved',
-                updated_at: new Date().toISOString()
-              })
-              .eq('extra_photos_payment_id', paymentId.toString());
-            
-            if (galleryUpdateError) {
-              console.error('Error updating gallery for extra photos:', galleryUpdateError);
-            } else {
-              console.log('Gallery updated for approved extra photos payment');
-            }
-            
-            console.log('Extra photos payment approved and gallery updated');
-          }
+      const paymentData = await mpResponse.json();
+      console.log('💰 Dados do pagamento obtidos:', {
+        id: paymentData.id,
+        status: paymentData.status,
+        external_reference: paymentData.external_reference,
+        payment_method_id: paymentData.payment_method_id,
+        transaction_amount: paymentData.transaction_amount
+      });
+      
+      const appointmentId = paymentData.external_reference;
+      console.log('🔗 External reference (appointment ID):', appointmentId);
+      
+      if (!appointmentId) {
+        console.error('❌ External reference não encontrado no pagamento');
+        return new Response('External reference not found', { 
+          status: 400,
+          headers: corsHeaders 
+        });
+      }
+      
+      // Check if this is an extra photos payment
+      if (appointmentId.includes('-extra-')) {
+        console.log('📸 Processando pagamento de fotos extras');
+        
+        const originalAppointmentId = appointmentId.split('-extra-')[0];
+        console.log('🆔 Appointment ID original:', originalAppointmentId);
+        
+        // Update payment status in database
+        const { error: paymentUpdateError } = await supabase
+          .from('payments')
+          .update({
+            status: paymentData.status,
+            webhook_data: paymentData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('mercadopago_id', paymentId.toString());
+        
+        if (paymentUpdateError) {
+          console.error('❌ Erro ao atualizar pagamento de fotos extras:', paymentUpdateError);
         } else {
-          // Regular appointment payment
-          console.log('Processing regular appointment payment webhook');
-          
-          // Update payment status in database
-          const { error: paymentUpdateError } = await supabase
-            .from('payments')
+          console.log('✅ Status do pagamento de fotos extras atualizado para:', paymentData.status);
+        }
+
+        // If payment is approved, update gallery
+        if (paymentData.status === 'approved') {
+          const { error: galleryUpdateError } = await supabase
+            .from('galleries_triage')
             .update({
-              status: paymentData.status,
-              webhook_data: paymentData,
               updated_at: new Date().toISOString()
             })
-            .eq('appointment_id', appointmentId);
+            .eq('appointment_id', originalAppointmentId);
           
-          if (paymentUpdateError) {
-            console.error('Error updating payment in database:', paymentUpdateError);
+          if (galleryUpdateError) {
+            console.error('❌ Erro ao atualizar galeria para fotos extras:', galleryUpdateError);
           } else {
-            console.log('Payment status updated in database to:', paymentData.status);
-          }
-
-          // Update appointment payment status
-          const { error: appointmentPaymentError } = await supabase
-            .from('appointments')
-            .update({
-              payment_status: paymentData.status,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', appointmentId);
-          
-          if (appointmentPaymentError) {
-            console.error('Error updating appointment payment status:', appointmentPaymentError);
-          } else {
-            console.log('Appointment payment status updated to:', paymentData.status);
-          }
-
-          // If payment is approved, confirm appointment
-          if (paymentData.status === 'approved') {
-            const { error: appointmentStatusError } = await supabase
-              .from('appointments')
-              .update({
-                status: 'confirmed',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', appointmentId);
-            
-            if (appointmentStatusError) {
-              console.error('Error confirming appointment:', appointmentStatusError);
-            } else {
-              console.log('Appointment confirmed successfully');
-            }
-            
-            // Schedule payment confirmation notification
-            try {
-              await schedulePaymentConfirmationNotification(supabase, appointmentId);
-              console.log('Payment confirmation notification scheduled');
-            } catch (error) {
-              console.error('Error sending payment confirmation:', error);
-            }
-            
-            // Note: The database trigger will automatically create a gallery
-            // when the appointment status changes to 'confirmed'
+            console.log('✅ Galeria atualizada para pagamento aprovado de fotos extras');
           }
         }
       } else {
-        const errorText = await mpResponse.text();
-        console.error('Error fetching payment from MercadoPago:', mpResponse.status, errorText);
+        // Regular appointment payment
+        console.log('📅 Processando pagamento de agendamento regular');
+        
+        // Update payment status in database using both appointment_id and mercadopago_id
+        console.log('💾 Atualizando status do pagamento no banco...');
+        const { data: updatedPayments, error: paymentUpdateError } = await supabase
+          .from('payments')
+          .update({
+            status: paymentData.status,
+            webhook_data: paymentData,
+            updated_at: new Date().toISOString()
+          })
+          .or(`appointment_id.eq.${appointmentId},mercadopago_id.eq.${paymentId}`)
+          .select();
+        
+        if (paymentUpdateError) {
+          console.error('❌ Erro ao atualizar pagamento no banco:', paymentUpdateError);
+        } else {
+          console.log('✅ Pagamentos atualizados:', updatedPayments?.length || 0);
+          console.log('📊 Status atualizado para:', paymentData.status);
+        }
+
+        // Update appointment payment status
+        console.log('📋 Atualizando status do pagamento no appointment...');
+        const { data: updatedAppointment, error: appointmentPaymentError } = await supabase
+          .from('appointments')
+          .update({
+            payment_status: paymentData.status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', appointmentId)
+          .select()
+          .single();
+        
+        if (appointmentPaymentError) {
+          console.error('❌ Erro ao atualizar status de pagamento do appointment:', appointmentPaymentError);
+        } else {
+          console.log('✅ Status de pagamento do appointment atualizado para:', paymentData.status);
+        }
+
+        // If payment is approved, confirm appointment
+        if (paymentData.status === 'approved') {
+          console.log('✅ Pagamento aprovado - confirmando appointment...');
+          
+          const { data: confirmedAppointment, error: appointmentStatusError } = await supabase
+            .from('appointments')
+            .update({
+              status: 'confirmed',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', appointmentId)
+            .select()
+            .single();
+          
+          if (appointmentStatusError) {
+            console.error('❌ Erro ao confirmar appointment:', appointmentStatusError);
+          } else {
+            console.log('✅ Appointment confirmado com sucesso');
+          }
+          
+          // Schedule payment confirmation notification
+          try {
+            console.log('📧 Agendando notificação de confirmação...');
+            await schedulePaymentConfirmationNotification(supabase, appointmentId);
+            console.log('✅ Notificação de confirmação agendada');
+          } catch (notificationError) {
+            console.error('❌ Erro ao agendar notificação:', notificationError);
+          }
+          
+          // Note: The database trigger will automatically create a gallery
+          // when the appointment status changes to 'confirmed'
+          console.log('🎨 Galeria será criada automaticamente pelo trigger do banco');
+        } else {
+          console.log(`ℹ️ Pagamento com status: ${paymentData.status} - não confirmando appointment ainda`);
+        }
       }
     } else {
-      console.log('Webhook type not handled:', webhookData.type);
+      console.log('ℹ️ Tipo de webhook não processado:', webhookData.type || webhookData.action);
     }
 
+    console.log('✅ Webhook processado com sucesso');
     return new Response('OK', { 
       status: 200,
       headers: corsHeaders 
     });
 
   } catch (error) {
-    console.error('Webhook error:', error);
-    return new Response('Error processing webhook', { 
+    console.error('❌ Erro crítico no webhook:', error);
+    return new Response(`Webhook error: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
       status: 500,
       headers: corsHeaders 
     });

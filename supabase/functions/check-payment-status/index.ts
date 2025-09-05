@@ -32,6 +32,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log('🔍 Verificando status do pagamento:', paymentId);
+
     // Get Supabase client
     const { createClient } = await import('npm:@supabase/supabase-js@2');
     const supabase = createClient(
@@ -47,6 +49,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
+      console.error('❌ Configurações MercadoPago não encontradas');
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -63,6 +66,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Check payment status with MercadoPago
+    console.log('📡 Consultando MercadoPago API...');
     const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       method: 'GET',
       headers: {
@@ -73,6 +77,7 @@ Deno.serve(async (req: Request) => {
 
     if (!mpResponse.ok) {
       const errorData = await mpResponse.json();
+      console.error('❌ Erro da API MercadoPago:', errorData);
       return new Response(
         JSON.stringify({
           success: false,
@@ -89,83 +94,124 @@ Deno.serve(async (req: Request) => {
     }
 
     const paymentData = await mpResponse.json();
+    console.log('💰 Status atual no MercadoPago:', paymentData.status);
+    console.log('🔗 External reference:', paymentData.external_reference);
     
     // Update payment status in database if changed
     if (paymentData.external_reference) {
+      const appointmentId = paymentData.external_reference;
+      
       // Check if this is an extra photos payment
-      if (paymentData.external_reference.includes('-extra-')) {
+      if (appointmentId.includes('-extra-')) {
+        console.log('📸 Atualizando pagamento de fotos extras...');
+        
         // Update payment status for extra photos
-        await supabase
+        const { error: paymentUpdateError } = await supabase
           .from('payments')
           .update({
             status: paymentData.status,
+            webhook_data: paymentData,
             updated_at: new Date().toISOString()
           })
           .eq('mercadopago_id', paymentId.toString());
+          
+        if (paymentUpdateError) {
+          console.error('❌ Erro ao atualizar pagamento de fotos extras:', paymentUpdateError);
+        } else {
+          console.log('✅ Pagamento de fotos extras atualizado');
+        }
 
         // If payment is approved, update gallery
         if (paymentData.status === 'approved') {
-          await supabase
+          const originalAppointmentId = appointmentId.split('-extra-')[0];
+          
+          const { error: galleryUpdateError } = await supabase
             .from('galleries_triage')
             .update({
-              extra_photos_payment_status: 'approved',
               updated_at: new Date().toISOString()
             })
-            .eq('extra_photos_payment_id', paymentId.toString());
+            .eq('appointment_id', originalAppointmentId);
+          
+          if (galleryUpdateError) {
+            console.error('❌ Erro ao atualizar galeria:', galleryUpdateError);
+          } else {
+            console.log('✅ Galeria atualizada para fotos extras aprovadas');
+          }
         }
       } else {
-        // Regular appointment payment
-        await supabase
+        console.log('📅 Atualizando pagamento de agendamento regular...');
+        
+        // Update payment status in database
+        const { error: paymentUpdateError } = await supabase
           .from('payments')
           .update({
             status: paymentData.status,
+            webhook_data: paymentData,
             updated_at: new Date().toISOString()
           })
-          .eq('appointment_id', paymentData.external_reference);
+          .or(`appointment_id.eq.${appointmentId},mercadopago_id.eq.${paymentId}`);
+          
+        if (paymentUpdateError) {
+          console.error('❌ Erro ao atualizar pagamento:', paymentUpdateError);
+        } else {
+          console.log('✅ Pagamento atualizado no banco');
+        }
 
-        // Update appointment status if payment approved
+        // Update appointment payment status
+        const { error: appointmentPaymentError } = await supabase
+          .from('appointments')
+          .update({
+            payment_status: paymentData.status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', appointmentId);
+        
+        if (appointmentPaymentError) {
+          console.error('❌ Erro ao atualizar status de pagamento do appointment:', appointmentPaymentError);
+        } else {
+          console.log('✅ Status de pagamento do appointment atualizado');
+        }
+
+        // If payment is approved, confirm appointment
         if (paymentData.status === 'approved') {
-          await supabase
+          console.log('✅ Pagamento aprovado - confirmando appointment...');
+          
+          const { error: appointmentStatusError } = await supabase
             .from('appointments')
             .update({
               status: 'confirmed',
-              payment_status: 'approved',
               updated_at: new Date().toISOString()
             })
-            .eq('id', paymentData.external_reference);
+            .eq('id', appointmentId);
+          
+          if (appointmentStatusError) {
+            console.error('❌ Erro ao confirmar appointment:', appointmentStatusError);
+          } else {
+            console.log('✅ Appointment confirmado automaticamente');
+          }
+          
+          // Schedule payment confirmation notification
+          try {
+            await schedulePaymentConfirmationNotification(supabase, appointmentId);
+          } catch (error) {
+            console.error('❌ Erro ao agendar notificação de confirmação:', error);
+          }
         }
       }
+    } else {
+      console.log('ℹ️ Tipo de webhook não processado:', webhookData.type || webhookData.action);
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        payment_id: paymentData.id,
-        status: paymentData.status,
-        status_detail: paymentData.status_detail
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
+    return new Response('OK', { 
+      status: 200,
+      headers: corsHeaders 
+    });
 
   } catch (error) {
-    console.error('Error checking payment status:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: `Erro interno: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
+    console.error('❌ Erro crítico no webhook:', error);
+    return new Response(`Webhook processing error: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+      status: 500,
+      headers: corsHeaders 
+    });
   }
 });
