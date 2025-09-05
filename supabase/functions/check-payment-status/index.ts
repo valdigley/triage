@@ -92,24 +92,48 @@ Deno.serve(async (req: Request) => {
     
     // Update payment status in database if changed
     if (paymentData.external_reference) {
-      await supabase
-        .from('payments')
-        .update({
-          status: paymentData.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('appointment_id', paymentData.external_reference);
-
-      // Update appointment status if payment approved
-      if (paymentData.status === 'approved') {
+      // Check if this is an extra photos payment
+      if (paymentData.external_reference.includes('-extra-')) {
+        // Update payment status for extra photos
         await supabase
-          .from('appointments')
+          .from('payments')
           .update({
-            status: 'confirmed',
-            payment_status: 'approved',
+            status: paymentData.status,
             updated_at: new Date().toISOString()
           })
-          .eq('id', paymentData.external_reference);
+          .eq('mercadopago_id', paymentId.toString());
+
+        // If payment is approved, update gallery
+        if (paymentData.status === 'approved') {
+          await supabase
+            .from('galleries_triage')
+            .update({
+              extra_photos_payment_status: 'approved',
+              updated_at: new Date().toISOString()
+            })
+            .eq('extra_photos_payment_id', paymentId.toString());
+        }
+      } else {
+        // Regular appointment payment
+        await supabase
+          .from('payments')
+          .update({
+            status: paymentData.status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('appointment_id', paymentData.external_reference);
+
+        // Update appointment status if payment approved
+        if (paymentData.status === 'approved') {
+          await supabase
+            .from('appointments')
+            .update({
+              status: 'confirmed',
+              payment_status: 'approved',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentData.external_reference);
+        }
       }
     }
 
