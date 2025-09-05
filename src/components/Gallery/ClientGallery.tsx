@@ -504,7 +504,7 @@ export function ClientGallery() {
                   </div>
                 </div>
               </div>
-            </div>
+              <div className="relative w-full h-full flex items-center justify-center">
 
             {/* Photos Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
@@ -651,11 +651,11 @@ export function ClientGallery() {
               
               {/* Main Image Container */}
               <div className="w-full h-full flex items-center justify-center p-4 sm:p-8 lg:p-12">
-                <div className="relative max-w-full max-h-full">
+                <div className="relative max-w-[90vw] max-h-[90vh] w-auto h-auto">
                   <img
                     src={lightboxPhoto.url}
                     alt={lightboxPhoto.filename}
-                    className="max-w-full max-h-full object-contain rounded-xl shadow-2xl touch-manipulation transition-transform duration-300"
+                    className="w-full h-full object-contain"
                     onError={(e) => {
                       // Fallback para imagem de erro
                       const target = e.target as HTMLImageElement;
@@ -670,7 +670,7 @@ export function ClientGallery() {
                         <img
                           src={settings.watermark_image_url}
                           alt="Watermark"
-                          className={`absolute ${
+                          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
                             settings.watermark_position === 'top-left' ? 'top-4 left-4' :
                             settings.watermark_position === 'top-right' ? 'top-4 right-4' :
                             settings.watermark_position === 'bottom-left' ? 'bottom-4 left-4' :
