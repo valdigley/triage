@@ -341,24 +341,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
     const { evolution_api_url: apiUrl, evolution_api_key: apiKey } = activeInstance.instance_data;
-    
-    if (!apiUrl || !apiKey) {
-      console.error('❌ Credenciais WhatsApp não configuradas');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Credenciais WhatsApp não configuradas' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
     // Criar mensagem personalizada baseada se há fotos extras ou não
     let message = '';
     
