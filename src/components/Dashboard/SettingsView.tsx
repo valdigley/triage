@@ -12,7 +12,7 @@ export function SettingsView() {
   const { settings, updateSettings } = useSettings();
   const { sessionTypes, createSessionType, updateSessionType, deleteSessionType, toggleSessionTypeStatus } = useSessionTypes();
   const { settings: mpSettings, updateSettings: updateMPSettings, testConnection } = useMercadoPago();
-  const { testConnection: testWhatsAppConnection } = useWhatsApp();
+  const { instances, testConnection: testWhatsAppConnection, refetch: refetchWhatsApp } = useWhatsApp();
   const { templates, updateTemplate } = useNotifications();
   
   const [activeTab, setActiveTab] = useState('general');
@@ -40,6 +40,21 @@ export function SettingsView() {
     instance_name: ''
   });
 
+  // Get active WhatsApp instance data
+  const activeWhatsAppInstance = instances.find(instance => 
+    instance.status === 'connected' || instance.status === 'created'
+  ) || instances[0];
+
+  // Update form when active instance changes
+  useEffect(() => {
+    if (activeWhatsAppInstance) {
+      setWhatsappSettings({
+        evolution_api_url: activeWhatsAppInstance.instance_data.evolution_api_url || '',
+        evolution_api_key: activeWhatsAppInstance.instance_data.evolution_api_key || '',
+        instance_name: activeWhatsAppInstance.instance_name || ''
+      });
+    }
+  }, [activeWhatsAppInstance]);
   const handleSave = async () => {
     if (!settings) return;
     
@@ -241,11 +256,9 @@ export function SettingsView() {
       if (error) throw error;
 
       alert('Configurações do WhatsApp salvas com sucesso!');
-      setWhatsappSettings({
-        evolution_api_url: '',
-        evolution_api_key: '',
-        instance_name: ''
-      });
+      
+      // Refresh instances to get updated data
+      await refetchWhatsApp();
     } catch (error) {
       console.error('Erro ao salvar WhatsApp:', error);
       alert('Erro ao salvar configurações do WhatsApp');
@@ -821,6 +834,20 @@ export function SettingsView() {
               <p className="text-sm text-blue-700 dark:text-blue-300">
                 Configure sua instância da Evolution API para envio automático de mensagens WhatsApp.
               </p>
+              {activeWhatsAppInstance && (
+                <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-800/30 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <strong>Instância ativa:</strong> {activeWhatsAppInstance.instance_name} 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                      activeWhatsAppInstance.status === 'connected' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {activeWhatsAppInstance.status}
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
