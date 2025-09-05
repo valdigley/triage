@@ -180,17 +180,11 @@ Deno.serve(async (req: Request) => {
       clientName,
       clientPhone,
       selectedCount,
-      minimumPhotos
+      minimumPhotos,
+      extraPhotos,
+      totalAmount,
+      paymentLink
     });
-
-    // Get settings for pricing
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('price_commercial_hour')
-      .single();
-
-    const pricePerPhoto = settings?.price_commercial_hour || 30;
-    console.log('💰 Preço por foto extra:', pricePerPhoto);
 
     if (!clientName || !clientPhone || selectedCount === undefined || minimumPhotos === undefined) {
       console.error('❌ Dados obrigatórios não fornecidos');
@@ -216,43 +210,15 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('📝 Buscando template de notificação...');
-    
-    // Get notification template
-    const { data: template, error: templateError } = await supabase
-      .from('notification_templates')
-      .select('message_template')
-      .eq('type', 'selection_received')
-      .eq('is_active', true)
-      .single();
-
-    if (templateError || !template) {
-      console.error('❌ Template selection_received não encontrado ou inativo');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Template de notificação não encontrado' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    console.log('✅ Template encontrado');
-
-    // Get settings for delivery_days
+    // Get settings
     const { data: settings } = await supabase
       .from('settings')
-      .select('delivery_days')
+      .select('delivery_days, price_commercial_hour')
       .single();
 
     const deliveryDays = settings?.delivery_days || 7;
-
+    const pricePerPhoto = settings?.price_commercial_hour || 30;
+    
     console.log('🔍 Buscando instâncias WhatsApp...');
     
     // Get active WhatsApp instance
@@ -304,42 +270,101 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('🔧 Credenciais WhatsApp OK');
-    console.log('📝 Montando mensagem...');
     
-    // Process template with variables
-    const extraPhotos = Math.max(0, selectedCount - minimumPhotos);
-    const extraCost = extraPhotos * pricePerPhoto;
-    const formattedExtraCost = new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
-    }).format(extraCost);
+    // Criar mensagem personalizada baseada se há fotos extras ou não
+    let message = '';
     
-    const formattedPricePerPhoto = new Intl.NumberFormat('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
-    }).format(pricePerPhoto);
-    
-    // Variables for template processing
-    const variables = {
-      client_name: clientName,
-      selected_count: selectedCount.toString(),
-      minimum_photos: minimumPhotos.toString(),
-      extra_photos: extraPhotos.toString(),
-      extra_cost: formattedExtraCost,
-      price_per_photo: formattedPricePerPhoto,
-      delivery_days: (deliveryDays || 7).toString(),
-      studio_name: 'Estúdio', // Fallback since settings not available in this context
-      studio_phone: '' // Fallback since settings not available in this context
-    };
+    if (extraPhotos && extraPhotos > 0 && paymentLink) {
+      // Mensagem para fotos extras com pagamento
+      console.log('📝 Montando mensagem para fotos extras...');
+      
+      message = `✅ *Seleção Confirmada!*\n\n` +
+                `Olá ${clientName}!\n\n` +
+                `Recebemos sua seleção de fotos com sucesso! 🎉\n\n` +
+                `📊 *Resumo da sua seleção:*\n` +
+                `📸 *Fotos selecionadas:* ${selectedCount}\n` +
+                `✅ *Fotos incluídas:* ${minimumPhotos}\n` +
+                `➕ *Fotos extras:* ${extraPhotos}\n` +
+                `💰 *Valor adicional:* ${formattedAmount || new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalAmount || 0)}\n\n` +
+                `💳 *Pagamento das fotos extras:*\n` +
+                `Para finalizar o processo, efetue o pagamento das fotos extras através do link abaixo:\n\n` +
+                `🔗 *Link de Pagamento:*\n${paymentLink}\n\n` +
+                `⏰ *Próximos passos:*\n` +
+                `• Efetue o pagamento das fotos extras\n` +
+                `• Suas fotos serão editadas profissionalmente\n` +
+                `• Prazo de entrega: até ${deliveryDays} dias úteis\n` +
+                `• Você receberá o link para download das fotos finais\n` +
+                `• As fotos finais não terão marca d'água\n\n` +
+                `🎨 *Processo de edição:*\n` +
+                `• Correção de cores e iluminação\n` +
+                `• Ajustes de contraste e nitidez\n` +
+                `• Retoques básicos quando necessário\n\n` +
+                `Obrigado por escolher nossos serviços! 📸✨\n\n` +
+                `Em caso de dúvidas, entre em contato conosco.\n\n` +
+                `_Mensagem automática do sistema_`;
+    } else {
+      // Mensagem padrão para seleção sem fotos extras
+      console.log('📝 Montando mensagem padrão de seleção...');
+      
+      // Get notification template
+      const { data: template, error: templateError } = await supabase
+        .from('notification_templates')
+        .select('message_template')
+        .eq('type', 'selection_received')
+        .eq('is_active', true)
+        .single();
 
-    // Process template by replacing variables
-    let message = template.message_template;
-    Object.entries(variables).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      message = message.replace(regex, value);
-    });
-
-    console.log('✅ Template processado com variáveis');
+      if (templateError || !template) {
+        console.error('❌ Template selection_received não encontrado ou inativo');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Template de notificação não encontrado' 
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              ...corsHeaders,
+            },
+          }
+        );
+      }
+      
+      // Process template by replacing variables
+      const extraPhotosCount = Math.max(0, selectedCount - minimumPhotos);
+      const extraCost = extraPhotosCount * pricePerPhoto;
+      const formattedExtraCost = new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(extraCost);
+      
+      const formattedPricePerPhoto = new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+      }).format(pricePerPhoto);
+      
+      // Variables for template processing
+      const variables = {
+        client_name: clientName,
+        selected_count: selectedCount.toString(),
+        minimum_photos: minimumPhotos.toString(),
+        extra_photos: extraPhotosCount.toString(),
+        extra_cost: formattedExtraCost,
+        price_per_photo: formattedPricePerPhoto,
+        delivery_days: (deliveryDays || 7).toString(),
+        studio_name: 'Estúdio', // Fallback since settings not available in this context
+        studio_phone: '' // Fallback since settings not available in this context
+      };
+      
+      message = template.message_template;
+      Object.entries(variables).forEach(([key, value]) => {
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        message = message.replace(regex, value);
+      });
+    }
+    
+    console.log('✅ Mensagem preparada');
 
     console.log('📱 Enviando mensagem WhatsApp...');
     console.log('📞 Para:', clientPhone);
@@ -364,7 +389,9 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true, // Main process always succeeds
         whatsapp_sent: whatsappSuccess,
-        message: whatsappSuccess ? 'Seleção confirmada e WhatsApp enviado' : 'Seleção confirmada (WhatsApp indisponível)'
+        message: whatsappSuccess ? 'Seleção confirmada e WhatsApp enviado' : 'Seleção confirmada (WhatsApp indisponível)',
+        has_extra_photos: extraPhotos && extraPhotos > 0,
+        payment_link: paymentLink
       }),
       {
         headers: {
