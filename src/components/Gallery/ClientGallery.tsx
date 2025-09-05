@@ -823,7 +823,10 @@ export function ClientGallery() {
                 {/* Botões de Ação */}
                 <div className="space-y-3">
                   <button
-                    onClick={createExtraPhotosPayment}
+                    onClick={() => {
+                      // TODO: Implementar pagamento das fotos extras
+                      alert('🚧 Funcionalidade de pagamento em desenvolvimento!\n\nPor enquanto, entre em contato com o estúdio para efetuar o pagamento das fotos extras.');
+                    }}
                     className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 font-medium"
                   >
                     <span>💳 Pagar Fotos Extras</span>
@@ -841,6 +844,145 @@ export function ClientGallery() {
                 <div className="text-xs text-gray-500 dark:text-gray-400 text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   💡 <strong>Importante:</strong> Você receberá as {minimumPhotos} fotos incluídas independentemente do pagamento das extras. As fotos extras serão entregues após a confirmação do pagamento.
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Modal */}
+        {showPayment && paymentData && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full mx-3 sm:mx-0 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+              <div className="text-center space-y-4 sm:space-y-6">
+                {paymentStatus === 'approved' ? (
+                  <div className="space-y-4">
+                    <div className="text-4xl sm:text-6xl">✅</div>
+                    <h2 className="text-xl sm:text-2xl font-semibold text-green-600">
+                      Pagamento Aprovado!
+                    </h2>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                      Suas {extraPhotos} fotos extras foram pagas com sucesso!
+                    </p>
+                    <button
+                      onClick={resetPayment}
+                      className="w-full bg-green-600 text-white py-3 px-4 sm:px-6 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                ) : paymentStatus === 'expired' ? (
+                  <div className="space-y-4">
+                    <div className="text-4xl sm:text-6xl">⏰</div>
+                    <h2 className="text-xl sm:text-2xl font-semibold text-orange-600">
+                      PIX Expirado
+                    </h2>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                      O tempo para pagamento expirou. Gere um novo PIX.
+                    </p>
+                    <button
+                      onClick={() => {
+                        resetPayment();
+                        setShowCart(true);
+                      }}
+                      className="w-full bg-orange-600 text-white py-3 px-4 sm:px-6 rounded-lg hover:bg-orange-700 transition-colors text-sm sm:text-base"
+                    >
+                      Gerar Novo PIX
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4 sm:space-y-6">
+                    <div className="mb-4 sm:mb-6">
+                      <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-white mb-2">
+                        Pagar Fotos Extras
+                      </h2>
+                      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                        Escaneie o QR Code PIX para pagar as fotos extras
+                      </p>
+                    </div>
+
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                      <div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400 mb-2">
+                        {formatCurrency(extraCost)}
+                      </div>
+                      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                        {extraPhotos} fotos extras × {formatCurrency(pricePerPhoto)}
+                      </p>
+                    </div>
+
+                    {/* QR Code */}
+                    {paymentData.qr_code_base64 ? (
+                      <div className="mb-4 sm:mb-6">
+                        <div className="flex justify-center mb-4">
+                          <img 
+                            src={`data:image/png;base64,${paymentData.qr_code_base64}`}
+                            alt="QR Code para pagamento PIX"
+                            className="w-48 h-48 sm:w-64 sm:h-64 border border-gray-300 rounded-lg shadow-md"
+                          />
+                        </div>
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          Ou copie e cole o código PIX:
+                        </p>
+                        <div className="bg-gray-100 dark:bg-gray-600 p-2 sm:p-3 rounded-lg text-xs sm:text-sm font-mono break-all border">
+                          {paymentData.qr_code}
+                        </div>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(paymentData.qr_code || '')}
+                          className="mt-2 text-xs sm:text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Copiar código PIX
+                        </button>
+                      </div>
+                    ) : paymentData.qr_code ? (
+                      <div className="mb-4 sm:mb-6">
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4">
+                          Copie e cole o código PIX abaixo:
+                        </p>
+                        <div className="bg-gray-100 dark:bg-gray-600 p-2 sm:p-3 rounded-lg text-xs sm:text-sm font-mono break-all border">
+                          {paymentData.qr_code}
+                        </div>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(paymentData.qr_code || '')}
+                          className="mt-2 text-xs sm:text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Copiar código PIX
+                        </button>
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-4">
+                      <div className={`flex items-center justify-center space-x-2 ${
+                        paymentStatus === 'pending' ? 'text-orange-600' : 'text-blue-600'
+                      }`}>
+                        <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="text-xs sm:text-sm">
+                          {paymentStatus === 'pending' 
+                            ? 'Aguardando confirmação do pagamento...' 
+                            : `Status: ${paymentStatus}`
+                          }
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={resetPayment}
+                        className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 sm:px-6 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm sm:text-base"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+
+                    <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <p className="text-xs sm:text-sm text-green-800 dark:text-green-200">
+                        <strong>✅ Importante:</strong> Após a confirmação do pagamento PIX, 
+                        você receberá todas as {selectedPhotos.length} fotos selecionadas editadas.
+                      </p>
+                      {paymentData.expires_at && (
+                        <p className="text-xs sm:text-sm text-orange-600 dark:text-orange-400 mt-1">
+                          <strong>⏰ Expira em:</strong> {new Date(paymentData.expires_at).toLocaleString('pt-BR')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
