@@ -776,7 +776,7 @@ export function ClientGallery() {
                   className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                 >
                   <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                className="max-w-full max-h-full object-contain"
+                </button>
               </div>
               
               <div className="mb-3 sm:mb-4">
@@ -864,6 +864,7 @@ export function ClientGallery() {
                     <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
                     <span>Para receber as {extraPhotos} fotos extras, é necessário efetuar o pagamento adicional</span>
                   </div>
+                </div>
                 {/* Botões de Ação */}
                 <div className="space-y-3">
                   <button
@@ -881,7 +882,6 @@ export function ClientGallery() {
                   >
                     Fechar
                   </button>
-                </div>
                 </div>
                 {/* Nota */}
                 <div className="text-xs text-gray-500 dark:text-gray-400 text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
