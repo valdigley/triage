@@ -226,7 +226,7 @@ export function ClientGallery() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${coverPhoto.url})` }}
           />
-          <div className="absolute inset-0 bg-black bg-opacity-40" />
+          <div className="absolute inset-0 bg-black bg-opacity-90" />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
           
           <div className="relative h-full flex items-end">
