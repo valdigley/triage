@@ -68,30 +68,45 @@ export function PaymentsView() {
       
       if (result.success) {
         // Send payment link via WhatsApp
-        const message = `💳 *Link de Pagamento - ${payment.payment_type === 'initial' ? 'Sessão Fotográfica' : 'Fotos Extras'}*\n\n` +
+        const paymentTypeLabel = payment.payment_type === 'initial' ? 'Sessão Fotográfica' : 'Fotos Extras';
+        const formattedAmount = new Intl.NumberFormat('pt-BR', { 
+          style: 'currency', 
+          currency: 'BRL' 
+        }).format(payment.amount);
+        
+        const message = `💳 *Link de Pagamento - ${paymentTypeLabel}*\n\n` +
                        `Olá ${payment.appointment.client.name}!\n\n` +
-                       `Segue o link para pagamento:\n\n` +
-                       `💰 *Valor:* ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.amount)}\n\n` +
+                       `Segue o link para efetuar o pagamento:\n\n` +
+                       `💰 *Valor:* ${formattedAmount}\n\n` +
                        `🔗 *Link de Pagamento:*\n${result.payment_url}\n\n` +
                        `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
                        `💡 *Como pagar:*\n` +
                        `• Clique no link acima\n` +
-                       `• Escolha PIX ou cartão\n` +
-                       `• Complete o pagamento\n` +
+                       `• Escolha PIX ou cartão de crédito\n` +
+                       `• Complete o pagamento com segurança\n` +
                        `• Receba confirmação automática\n\n` +
+                       `✅ *Após o pagamento:*\n` +
+                       `• Você receberá confirmação via WhatsApp\n` +
+                       `• ${payment.payment_type === 'initial' ? 'Seu agendamento será confirmado automaticamente' : 'Suas fotos extras serão processadas'}\n\n` +
                        `Em caso de dúvidas, entre em contato conosco.\n\n` +
                        `_Mensagem automática do sistema_`;
 
         const whatsappSuccess = await sendMessage(payment.appointment.client.phone, message);
         
         if (whatsappSuccess) {
-          alert('Link de pagamento gerado e enviado via WhatsApp com sucesso!');
+          alert('✅ Link de pagamento gerado e enviado via WhatsApp com sucesso!');
         } else {
-          alert(`Link de pagamento gerado! Envie manualmente para o cliente:\n\n${result.payment_url}`);
+          // Show link for manual sending if WhatsApp fails
+          const shouldCopy = confirm(`Link de pagamento gerado, mas falha no WhatsApp.\n\nDeseja copiar o link para enviar manualmente?\n\n${result.payment_url}`);
+          if (shouldCopy) {
+            navigator.clipboard.writeText(result.payment_url);
+            alert('Link copiado para a área de transferência!');
+          }
         }
       } else {
         throw new Error(result.error || 'Erro ao gerar link de pagamento');
       }
+
     } catch (error) {
       console.error('Erro ao gerar link de pagamento:', error);
       alert(`Erro ao gerar link de pagamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
