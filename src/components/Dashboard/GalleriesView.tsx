@@ -9,7 +9,7 @@ import { PhotoUpload } from '../Gallery/PhotoUpload';
 import { Gallery, Photo } from '../../types';
 
 export function GalleriesView() {
-  const { galleries, loading, updateGalleryStatus, createGallery } = useGalleries();
+  const { galleries, loading, updateGalleryStatus, createGallery, deleteGallery } = useGalleries();
   const { sendGalleryLink } = useWhatsApp();
   const { clients } = useClients();
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
@@ -17,6 +17,7 @@ export function GalleriesView() {
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deletingPhotos, setDeletingPhotos] = useState<Set<string>>(new Set());
+  const [deletingGallery, setDeletingGallery] = useState<string | null>(null);
   const [showCreateGallery, setShowCreateGallery] = useState(false);
   const [newGallery, setNewGallery] = useState({
     name: '',
@@ -108,6 +109,38 @@ export function GalleriesView() {
         newSet.delete(photo.id);
         return newSet;
       });
+    }
+  };
+
+  const handleDeleteGallery = async (gallery: Gallery) => {
+    const confirmMessage = `Tem certeza que deseja excluir a galeria "${gallery.name}"?\n\n` +
+                          `Esta ação irá:\n` +
+                          `• Excluir todas as ${gallery.photos_uploaded} fotos da galeria\n` +
+                          `• Remover todos os arquivos do storage\n` +
+                          `• Excluir permanentemente a galeria\n\n` +
+                          `Esta ação NÃO PODE ser desfeita!`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setDeletingGallery(gallery.id);
+    try {
+      const success = await deleteGallery(gallery.id);
+      if (success) {
+        alert('Galeria excluída com sucesso!');
+        // If we were viewing this gallery, go back to list
+        if (selectedGallery?.id === gallery.id) {
+          setSelectedGallery(null);
+        }
+      } else {
+        alert('Erro ao excluir galeria. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir galeria:', error);
+      alert('Erro ao excluir galeria. Tente novamente.');
+    } finally {
+      setDeletingGallery(null);
     }
   };
 
@@ -414,6 +447,18 @@ export function GalleriesView() {
                               <Clock className="h-4 w-4" />
                             </button>
                           )}
+                          <button
+                            onClick={() => handleDeleteGallery(gallery)}
+                            disabled={deletingGallery === gallery.id}
+                            className="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50"
+                            title="Excluir galeria"
+                          >
+                            {deletingGallery === gallery.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -534,6 +579,27 @@ export function GalleriesView() {
                     </button>
                   )}
                 </div>
+
+                {/* Delete Button */}
+                <div className="mt-3">
+                  <button
+                    onClick={() => handleDeleteGallery(gallery)}
+                    disabled={deletingGallery === gallery.id}
+                    className="w-full bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-1"
+                  >
+                    {deletingGallery === gallery.id ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Excluindo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        <span>Excluir Galeria</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -557,7 +623,26 @@ export function GalleriesView() {
             >
               ← Voltar para Galerias
             </button>
-            {getStatusBadge(selectedGallery.status)}
+            <div className="flex items-center space-x-3">
+              {getStatusBadge(selectedGallery.status)}
+              <button
+                onClick={() => handleDeleteGallery(selectedGallery)}
+                disabled={deletingGallery === selectedGallery.id}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {deletingGallery === selectedGallery.id ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Excluindo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Excluir Galeria</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Gallery Info */}

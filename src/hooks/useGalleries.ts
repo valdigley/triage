@@ -723,6 +723,62 @@ export function useGalleries() {
       return false;
     }
   };
+
+  const deleteGallery = async (galleryId: string) => {
+    try {
+      // Get all photos from the gallery first
+      const { data: photos, error: photosError } = await supabase
+        .from('photos_triage')
+        .select('*')
+        .eq('gallery_id', galleryId);
+
+      if (photosError) throw photosError;
+
+      // Delete all photos from storage
+      if (photos && photos.length > 0) {
+        const storagePaths: string[] = [];
+        const thumbnailPaths: string[] = [];
+
+        photos.forEach(photo => {
+          if (photo.metadata?.storage_path) {
+            storagePaths.push(photo.metadata.storage_path);
+          }
+          if (photo.metadata?.thumbnail_path) {
+            thumbnailPaths.push(photo.metadata.thumbnail_path);
+          }
+        });
+
+        // Delete original photos from storage
+        if (storagePaths.length > 0) {
+          await supabase.storage
+            .from('photos')
+            .remove(storagePaths);
+        }
+
+        // Delete thumbnails from storage
+        if (thumbnailPaths.length > 0) {
+          await supabase.storage
+            .from('photos')
+            .remove(thumbnailPaths);
+        }
+      }
+
+      // Delete gallery from database (this will cascade delete photos_triage due to foreign key)
+      const { error: galleryError } = await supabase
+        .from('galleries_triage')
+        .delete()
+        .eq('id', galleryId);
+
+      if (galleryError) throw galleryError;
+
+      await fetchGalleries();
+      return true;
+    } catch (err) {
+      console.error('Erro ao deletar galeria:', err);
+      setError(err instanceof Error ? err.message : 'Falha ao deletar galeria');
+      return false;
+    }
+  };
   
   return {
     galleries,
@@ -737,6 +793,7 @@ export function useGalleries() {
     reprocessPendingNotifications,
     generateSelectionCode,
     deletePhoto,
+    deleteGallery,
     refetch: fetchGalleries
   };
 }
