@@ -325,43 +325,40 @@ export function useWhatsApp() {
     try {
       setLoading(true);
       
-      // Test direct connection to Evolution API
-      const testResponse = await fetch(`${evolution_api_url}/instance/fetchInstances`, {
-        method: 'GET',
+      const { supabase } = await import('../lib/supabase');
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-selection-confirmation`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
         headers: {
-          'apikey': evolution_api_key,
-          'Content-Type': 'application/json'
-        }
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'test-connection',
+          evolution_api_url,
+          evolution_api_key,
+          instance_name: activeInstance.instance_name
+        })
       });
       
-      if (testResponse.ok) {
-        const instances = await testResponse.json();
-        const targetInstance = instances.find((inst: any) => 
-          inst.instance?.instanceName === activeInstance.instance_name
-        );
-        
-        if (targetInstance) {
-          return {
-            success: true,
-            message: `✅ Conexão OK! Instância "${activeInstance.instance_name}" encontrada com status: ${targetInstance.instance?.status || 'ativo'}`
-          };
-        } else {
-          return {
-            success: false,
-            message: `Instância "${activeInstance.instance_name}" não encontrada. Verifique o nome da instância.`
-          };
-        }
+      if (response.ok) {
+        const result = await response.json();
+        return {
+          success: result.success,
+          message: result.message
+        };
       } else {
-        const errorText = await testResponse.text();
+        const errorText = await response.text();
         return {
           success: false,
-          message: `Erro de conexão: ${testResponse.status} - ${errorText}`
+          message: `Erro HTTP ${response.status}: ${errorText}`
         };
       }
     } catch (error) {
       return {
         success: false,
-        message: `Erro de rede: ${error instanceof Error ? error.message : 'Verifique URL e credenciais'}`
+        message: `Erro de conexão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
       };
     } finally {
       setLoading(false);

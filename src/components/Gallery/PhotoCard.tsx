@@ -1,6 +1,14 @@
 import React from 'react';
-import { Check, MessageSquare, Expand, Heart, Printer, Star } from 'lucide-react';
+import { Check, MessageSquare, Expand } from 'lucide-react';
 import { Photo } from '../../types';
+
+interface WatermarkSettings {
+  enabled: boolean;
+  text: string;
+  opacity: number;
+  position: string;
+  size: string;
+}
 
 interface PhotoCardProps {
   photo: Photo;
@@ -9,11 +17,10 @@ interface PhotoCardProps {
   onToggleSelection: () => void;
   onViewFullSize: () => void;
   hasComment?: boolean;
+  watermarkSettings?: WatermarkSettings;
   className?: string;
   onAddComment?: () => void;
   canComment?: boolean;
-  showCoverIndicator?: boolean;
-  isCoverPhoto?: boolean;
 }
 
 export function PhotoCard({
@@ -23,89 +30,171 @@ export function PhotoCard({
   onToggleSelection,
   onViewFullSize,
   hasComment = false,
+  watermarkSettings,
   className = '',
   onAddComment,
-  canComment = true,
-  showCoverIndicator = false,
-  isCoverPhoto = false
+  canComment = true
 }: PhotoCardProps) {
+  const renderWatermark = () => {
+    if (!watermarkSettings?.enabled) return null;
+    
+    const { position, size, opacity } = watermarkSettings;
+    
+    let positionClasses = '';
+    switch (position) {
+      case 'top-left':
+        positionClasses = 'top-2 left-2';
+        break;
+      case 'top-right':
+        positionClasses = 'top-2 right-2';
+        break;
+      case 'bottom-left':
+        positionClasses = 'bottom-2 left-2';
+        break;
+      case 'bottom-right':
+        positionClasses = 'bottom-2 right-2';
+        break;
+      case 'center':
+      default:
+        positionClasses = 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
+        break;
+    }
+    
+    let sizeClasses = '';
+    switch (size) {
+      case 'small':
+        sizeClasses = 'w-16 h-16 text-sm';
+        break;
+      case 'large':
+        sizeClasses = 'w-32 h-32 text-xl';
+        break;
+      case 'medium':
+      default:
+        sizeClasses = 'w-24 h-24 text-base';
+        break;
+    }
+    
+    // If there's a watermark image URL, use it; otherwise use text
+    if (watermarkSettings.watermark_image_url) {
+      return (
+        <img
+          src={watermarkSettings.watermark_image_url}
+          alt="Watermark"
+          className={`absolute ${positionClasses} ${sizeClasses} object-contain pointer-events-none z-10 mix-blend-normal`}
+          style={{ opacity }}
+        />
+      );
+    } else {
+      // Fallback to text watermark
+      return (
+        <div
+          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${size === 'small' ? 'text-sm' : size === 'large' ? 'text-xl' : 'text-base'}`}
+          style={{ opacity }}
+        >
+          {watermarkSettings.text}
+        </div>
+      );
+    }
+  };
+
+
   return (
-    <div className={`relative group cursor-pointer bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
+    <div className={`relative group cursor-pointer w-full ${className}`}>
       {/* Main Photo Container */}
-      <div className="relative w-full overflow-hidden">
+      <div 
+        className="relative w-full overflow-hidden rounded-lg border-2 transition-all duration-200 sm:hover:shadow-lg"
+        style={{
+          borderColor: isSelected ? '#7c3aed' : '#e5e7eb'
+        }}
+        onClick={() => {
+          // No mobile, sempre seleciona se possível. No desktop, chama onViewFullSize
+          if (window.innerWidth < 640) { // sm breakpoint
+            if (canSelect) onToggleSelection();
+          } else {
+            onViewFullSize();
+          }
+        }}
+      >
         {/* Photo */}
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-auto object-contain transition-transform duration-200 sm:group-hover:scale-105 touch-manipulation"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = `https://via.placeholder.com/400x600/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
+            target.src = `https://via.placeholder.com/300x200/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
           }}
         />
 
-        {/* Cover Photo Indicator */}
-        {showCoverIndicator && isCoverPhoto && (
-          <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-            <Star size={12} />
-            Capa
+        {/* Watermark */}
+        {renderWatermark()}
+
+        {/* Selection Overlay */}
+        {isSelected && (
+          <div className="absolute inset-0 bg-purple-600 bg-opacity-20 flex items-center justify-center">
+            <div className="bg-purple-600 rounded-full p-2">
+              <Check className="h-6 w-6 text-white" />
+            </div>
           </div>
         )}
 
-        {/* Photo Filename */}
-        {/* Expand Button - Top right */}
+        {/* Photo Number */}
+        <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+          {photo.filename}
+        </div>
+
+        {/* Comment Indicator */}
+        {hasComment && (
+          <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
+            <MessageSquare className="h-3 w-3" />
+          </div>
+        )}
+      </div>
+
+      {/* Expand Button - Hover Overlay */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          // No mobile, seleciona. No desktop, abre lightbox
+          if (window.innerWidth < 640) {
+            if (canSelect) onToggleSelection();
+          } else {
+            onViewFullSize();
+          }
+        }}
+        className="absolute inset-0 bg-black bg-opacity-0 sm:hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 sm:group-hover:opacity-100 rounded-lg"
+      >
+        <div className="hidden sm:block bg-white bg-opacity-90 rounded-full p-2">
+          <Expand className="h-5 w-5 text-gray-800" />
+        </div>
+      </button>
+
+      {/* Comment Button */}
+      {canComment && onAddComment && (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onViewFullSize();
+            onAddComment();
           }}
-          className="absolute top-2 right-2 bg-gray-800 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-gray-900 transition-all duration-200"
-          title="Ampliar foto"
+          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
+          title="Adicionar comentário"
         >
-          <Expand className="h-3 w-3" />
+          <MessageSquare className="h-3 w-3" />
         </button>
+      )}
 
-        {/* Selection Button - Bottom right, always visible */}
-        {canSelect && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelection();
-            }}
-            className={`absolute bottom-2 right-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg ${
-              isSelected 
-                ? 'bg-purple-600 text-white border-2 border-purple-600' 
-                : 'bg-white text-gray-800 hover:bg-gray-50 border-2 border-gray-300 hover:border-purple-400'
-            }`}
-          >
-            <div className="flex items-center space-x-1">
-              {isSelected && <Check className="h-3 w-3" />}
-              <span>{isSelected ? 'Selecionada' : 'Selecionar'}</span>
-            </div>
-          </button>
-        )}
-      </div>
-
-      {/* Photo Info */}
-      <div className="p-3 bg-white dark:bg-gray-800">
-        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-          {photo.filename}
-        </p>
-        
-        {/* Mobile Comment Button - Only show if comments enabled */}
-        {canComment && onAddComment && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddComment();
-            }}
-            className="mt-2 w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center space-x-2"
-          >
-            <MessageSquare className="h-4 w-4" />
-            <span>{hasComment ? 'Editar Comentário' : 'Adicionar Comentário'}</span>
-          </button>
-        )}
-      </div>
+      {/* Selection Status */}
+      {canSelect && (
+        <div className="absolute bottom-2 left-2 opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
+          <div className={`px-2 py-1 rounded text-xs font-medium ${
+            isSelected 
+              ? 'bg-purple-600 text-white' 
+              : 'bg-white bg-opacity-90 text-gray-800'
+          }`}>
+            {isSelected ? 'Selecionada' : 'Selecionar'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,25 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, DollarSign, TrendingUp, Calendar, Clock, HandCoins, X, Plus } from 'lucide-react';
+import { CreditCard, DollarSign, TrendingUp, Calendar, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { Payment, Appointment, Client } from '../../types';
+import { Payment, Appointment } from '../../types';
 import { formatCurrency } from '../../utils/pricing';
 
 export function PaymentsView() {
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [dateFilter, setDateFilter] = useState('all');
-  const [showCashPayment, setShowCashPayment] = useState(false);
-  const [cashPaymentForm, setCashPaymentForm] = useState({
-    appointmentId: '',
-    amount: 0,
-    description: ''
-  });
 
   useEffect(() => {
     fetchPayments();
-    fetchAppointments();
   }, []);
 
   const fetchPayments = async () => {
@@ -44,76 +35,6 @@ export function PaymentsView() {
     }
   };
 
-  const fetchAppointments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select(`
-          *,
-          client:clients(*)
-        `)
-        .order('scheduled_date', { ascending: false });
-
-      if (error) throw error;
-      setAppointments(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar agendamentos:', error);
-    }
-  };
-
-  const handleCashPayment = async () => {
-    if (!cashPaymentForm.appointmentId || cashPaymentForm.amount <= 0) {
-      alert('Por favor, selecione um agendamento e informe o valor recebido.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      // Criar registro de pagamento
-      const { error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-          appointment_id: cashPaymentForm.appointmentId,
-          amount: cashPaymentForm.amount,
-          status: 'approved',
-          payment_type: 'cash',
-          webhook_data: {
-            description: cashPaymentForm.description,
-            payment_method: 'cash',
-            recorded_at: new Date().toISOString()
-          }
-        });
-
-      if (paymentError) throw paymentError;
-
-      // Atualizar status do agendamento
-      const { error: appointmentError } = await supabase
-        .from('appointments')
-        .update({
-          payment_status: 'approved',
-          status: 'confirmed'
-        })
-        .eq('id', cashPaymentForm.appointmentId);
-
-      if (appointmentError) throw appointmentError;
-
-      // Resetar formulário e fechar modal
-      setCashPaymentForm({ appointmentId: '', amount: 0, description: '' });
-      setShowCashPayment(false);
-      
-      // Recarregar dados
-      fetchPayments();
-      fetchAppointments();
-      
-      alert('Pagamento em mãos registrado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao registrar pagamento:', error);
-      alert('Erro ao registrar pagamento. Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: 'Pendente', className: 'bg-yellow-100 text-yellow-800' },
@@ -133,8 +54,7 @@ export function PaymentsView() {
   const getPaymentTypeBadge = (type: string) => {
     const typeConfig = {
       initial: { label: 'Inicial', className: 'bg-blue-100 text-blue-800' },
-      extra_photos: { label: 'Fotos Extras', className: 'bg-purple-100 text-purple-800' },
-      cash: { label: 'Em Mãos', className: 'bg-green-100 text-green-800' }
+      extra_photos: { label: 'Fotos Extras', className: 'bg-purple-100 text-purple-800' }
     };
 
     const config = typeConfig[type as keyof typeof typeConfig];
@@ -175,13 +95,6 @@ export function PaymentsView() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Pagamentos</h1>
-        <button
-          onClick={() => setShowCashPayment(true)}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-        >
-          <HandCoins className="h-4 w-4" />
-          <span className="hidden sm:inline">Recebimento em Mãos</span>
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -347,102 +260,6 @@ export function PaymentsView() {
         <div className="text-center py-12">
           <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-500">Nenhum pagamento encontrado</p>
-        </div>
-      )}
-
-      {/* Cash Payment Modal */}
-      {showCashPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Registrar Pagamento em Mãos</h3>
-                <button
-                  onClick={() => setShowCashPayment(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Agendamento *
-                  </label>
-                  <select
-                    value={cashPaymentForm.appointmentId}
-                    onChange={(e) => {
-                      const selectedAppointment = appointments.find(apt => apt.id === e.target.value);
-                      setCashPaymentForm(prev => ({
-                        ...prev,
-                        appointmentId: e.target.value,
-                        amount: selectedAppointment?.total_amount || 0
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="">Selecione um agendamento</option>
-                    {appointments
-                      .filter(apt => apt.payment_status !== 'approved')
-                      .map((appointment) => (
-                        <option key={appointment.id} value={appointment.id}>
-                          {appointment.client?.name} - {new Date(appointment.scheduled_date).toLocaleDateString('pt-BR')} - {formatCurrency(appointment.total_amount)}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Valor Recebido (R$) *
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={cashPaymentForm.amount}
-                    onChange={(e) => setCashPaymentForm(prev => ({ ...prev, amount: parseFloat(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Observações
-                  </label>
-                  <textarea
-                    value={cashPaymentForm.description}
-                    onChange={(e) => setCashPaymentForm(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Observações sobre o pagamento (opcional)"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => setShowCashPayment(false)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCashPayment}
-                  disabled={saving}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-                >
-                  {saving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <HandCoins className="h-4 w-4" />
-                  )}
-                  <span>{saving ? 'Registrando...' : 'Registrar'}</span>
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
