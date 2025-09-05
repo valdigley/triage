@@ -140,11 +140,6 @@ export function PhotoCard({
         )}
 
         {/* Photo Filename */}
-        {/* Photo Filename - Bottom left */}
-        <div className="absolute bottom-2 left-2 text-white text-xs font-medium drop-shadow-lg">
-          {photo.filename}
-        </div>
-
         {/* Expand Button - Top right */}
         <button
           onClick={(e) => {
@@ -180,11 +175,9 @@ export function PhotoCard({
 
       {/* Photo Info */}
       <div className="p-3 bg-white dark:bg-gray-800">
-        {photo.metadata && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            {(photo.size / 1024 / 1024).toFixed(2)} MB
-          </p>
-        )}
+        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+          {photo.filename}
+        </p>
         
         {/* Mobile Comment Button - Only show if comments enabled */}
         {canComment && onAddComment && (
