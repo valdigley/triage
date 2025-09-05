@@ -217,7 +217,21 @@ export function ClientGallery() {
           }
         });
         
-        const result = await response.json();
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Payment status check failed:', response.status, errorText);
+          return;
+        }
+        
+        const responseText = await response.text();
+        let result;
+        
+        try {
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse response as JSON:', responseText);
+          return;
+        }
         
         if (result.success) {
           setPaymentStatus(result.status);
