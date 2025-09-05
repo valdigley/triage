@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, Eye, EyeOff, MessageSquare, Check, X, Send, AlertTriangle, Clock, Expand } from 'lucide-react';
+import { Camera, Heart, Download, Eye, EyeOff, MessageSquare, Check, X, Send, AlertTriangle, Clock, Star, Grid, List, Filter, ShoppingCart, Printer } from 'lucide-react';
 import { useGalleries } from '../../hooks/useGalleries';
 import { supabase } from '../../lib/supabase';
 import { Photo } from '../../types';
@@ -327,7 +327,7 @@ export function ClientGallery() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
             {photos.map((photo, index) => (
               <PhotoCard
                 key={photo.id}

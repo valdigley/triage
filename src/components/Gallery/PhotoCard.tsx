@@ -112,10 +112,10 @@ export function PhotoCard({
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-auto transition-transform duration-300 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = `https://via.placeholder.com/400x600/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
+            target.src = `https://via.placeholder.com/400x300/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
           }}
         />
 
@@ -140,82 +140,87 @@ export function PhotoCard({
         )}
 
         {/* Photo Filename */}
-        {/* Photo Filename - Bottom left */}
-        <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+        <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded max-w-[calc(100%-1rem)] truncate">
           {photo.filename}
         </div>
 
-        {/* Expand Button - Top right */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewFullSize();
-          }}
-          className="absolute top-2 right-2 bg-gray-800 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-gray-900 transition-all duration-200"
-          title="Ampliar foto"
-        >
-          <Expand className="h-3 w-3" />
-        </button>
-
-        {/* Comment Button - Top left (only if comments enabled) */}
-        {canComment && onAddComment && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddComment();
-            }}
-            className={`absolute top-2 left-2 rounded-full p-1.5 transition-all duration-200 ${
-              hasComment 
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                : 'bg-blue-600 bg-opacity-80 text-white hover:bg-blue-700'
-            }`}
-            title={hasComment ? 'Editar comentário' : 'Adicionar comentário'}
-          >
+        {/* Comment Indicator */}
+        {hasComment && (
+          <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
             <MessageSquare className="h-3 w-3" />
-          </button>
+          </div>
         )}
 
-        {/* Selection Button - Bottom right, always visible */}
+        {/* Hover Overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300">
+          <div className={`absolute top-2 right-2 flex gap-2 ${isCoverPhoto ? 'mt-8' : ''}`}>
+            {/* View Full Size */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewFullSize();
+              }}
+              className="w-8 h-8 rounded-full bg-white bg-opacity-80 text-gray-700 hover:bg-opacity-100 flex items-center justify-center transition-all duration-200"
+              title="Ver em tamanho completo"
+            >
+              <Expand size={16} />
+            </button>
+          </div>
+
+          {/* Comment Button */}
+          {canComment && onAddComment && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddComment();
+              }}
+              className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
+              title="Adicionar comentário"
+            >
+              <MessageSquare className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+
+        {/* Selection Button - Mobile */}
         {canSelect && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelection();
             }}
-            className={`absolute bottom-2 right-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg ${
+            className={`absolute bottom-2 left-2 px-2 py-1 rounded text-xs font-medium transition-all duration-200 ${
               isSelected 
-                ? 'bg-purple-600 text-white border-2 border-purple-600' 
-                : 'bg-white text-gray-800 hover:bg-gray-50 border-2 border-gray-300 hover:border-purple-400'
+                ? 'bg-purple-600 text-white' 
+                : 'bg-white bg-opacity-90 text-gray-800 hover:bg-opacity-100'
             }`}
           >
-            <div className="flex items-center space-x-1">
-              {isSelected && <Check className="h-3 w-3" />}
-              <span>{isSelected ? 'Selecionada' : 'Selecionar'}</span>
-            </div>
+            {isSelected ? 'Selecionada' : 'Selecionar'}
           </button>
         )}
-      </div>
 
-      {/* Photo Info */}
-      <div className="p-3 bg-white dark:bg-gray-800">
-        {photo.metadata && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            {(photo.size / 1024 / 1024).toFixed(2)} MB
-          </p>
-        )}
-        
-        {/* Mobile Comment Button - Only show if comments enabled */}
+        {/* Comment Button */}
         {canComment && onAddComment && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onAddComment();
             }}
-            className="mt-2 w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center space-x-2"
+            className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
+            title="Adicionar comentário"
           >
-            <MessageSquare className="h-4 w-4" />
-            <span>{hasComment ? 'Editar Comentário' : 'Adicionar Comentário'}</span>
+            <MessageSquare className="h-3 w-3" />
           </button>
+        )}
+      </div>
+
+      {/* Photo Info */}
+      <div className="p-3">
+        <p className="text-xs text-gray-500 truncate">{photo.filename}</p>
+        {photo.metadata && (
+          <p className="text-xs text-gray-400 mt-1">
+            {(photo.size / 1024 / 1024).toFixed(2)} MB
+          </p>
         )}
       </div>
     </div>
