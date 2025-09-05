@@ -883,6 +883,25 @@ export function GalleriesView() {
                   <X className="h-6 w-6" />
                 </button>
               </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tipo de Sessão
+                  </label>
+                  <select
+                    value={newGallery.sessionType || ''}
+                    onChange={(e) => setNewGallery(prev => ({ ...prev, sessionType: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="">Selecione o tipo de sessão</option>
+                    <option value="aniversario">🎂 Aniversário</option>
+                    <option value="gestante">🤱 Gestante</option>
+                    <option value="formatura">🎓 Formatura</option>
+                    <option value="comercial">💼 Comercial</option>
+                    <option value="pre_wedding">💑 Pré-wedding</option>
+                    <option value="tematico">🎨 Temático</option>
+                  </select>
+                </div>
+
 
               {/* Step 1: Select Client */}
               {createStep === 1 && (
