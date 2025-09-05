@@ -389,6 +389,10 @@ export function ClientGallery() {
                       <span className="w-6 h-6 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</span>
                       <span className="leading-relaxed">Toque em "Confirmar" quando terminar sua seleção</span>
                     </div>
+                    <div className="flex items-start space-x-3">
+                      <span className="w-6 h-6 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">5</span>
+                      <span className="leading-relaxed">Use o ícone 💬 para adicionar comentários com instruções de ajustes específicos</span>
+                    </div>
                   </div>
                 </div>
               </div>
