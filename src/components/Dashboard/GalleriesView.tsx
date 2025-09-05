@@ -396,15 +396,6 @@ export function GalleriesView() {
                               )}
                             </button>
                           )}
-                          {gallery.status === 'started' && (
-                            <button
-                              onClick={() => updateGalleryStatus(gallery.id, 'completed')}
-                              className="text-green-600 hover:text-green-900 transition-colors"
-                              title="Marcar como finalizado"
-                            >
-                              <Check className="h-4 w-4" />
-                            </button>
-                          )}
                           {gallery.selection_completed && (
                             <button
                               onClick={() => updateGalleryStatus(gallery.id, 'pending')}
@@ -414,13 +405,13 @@ export function GalleriesView() {
                               <Clock className="h-4 w-4" />
                             </button>
                           )}
-                          {gallery.status === 'completed' && (
+                          {gallery.status === 'started' && !gallery.selection_completed && (
                             <button
-                              onClick={() => updateGalleryStatus(gallery.id, 'pending')}
-                              className="text-orange-600 hover:text-orange-900 transition-colors"
-                              title="Reativar seleção"
+                              onClick={() => updateGalleryStatus(gallery.id, 'completed')}
+                              className="text-green-600 hover:text-green-900 transition-colors"
+                              title="Marcar como finalizado"
                             >
-                              <Clock className="h-4 w-4" />
+                              <Check className="h-4 w-4" />
                             </button>
                           )}
                         </div>
@@ -524,22 +515,13 @@ export function GalleriesView() {
 
                 {/* Status Actions */}
                 <div className="mt-3 flex gap-2">
-                  {gallery.status === 'started' && (
+                  {gallery.status === 'started' && !gallery.selection_completed && (
                     <button
                       onClick={() => updateGalleryStatus(gallery.id, 'completed')}
                       className="flex-1 bg-green-100 text-green-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors flex items-center justify-center space-x-1"
                     >
                       <Check className="h-4 w-4" />
                       <span>Finalizar</span>
-                    </button>
-                  )}
-                  {gallery.selection_completed && (
-                    <button
-                      onClick={() => updateGalleryStatus(gallery.id, 'pending')}
-                      className="flex-1 bg-orange-100 text-orange-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors flex items-center justify-center space-x-1"
-                    >
-                      <Clock className="h-4 w-4" />
-                      <span>Reativar</span>
                     </button>
                   )}
                 </div>
