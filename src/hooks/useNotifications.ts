@@ -83,7 +83,7 @@ export function useNotifications() {
       }
 
       // Buscar template com retry
-      const template = templates.find(t => t.type === templateType && t.is_active);
+      let template = templates.find(t => t.type === templateType && t.is_active);
       if (!template) {
         // Tentar buscar diretamente do banco se não estiver no cache
         const { data: dbTemplate, error } = await supabase
