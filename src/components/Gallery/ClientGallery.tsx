@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, Eye, EyeOff, MessageSquare, Check, X, Send, AlertTriangle, Clock, Expand } from 'lucide-react';
+import { Camera, MessageSquare, Check, X, Send, AlertTriangle, Clock, Expand } from 'lucide-react';
 import { useGalleries } from '../../hooks/useGalleries';
 import { supabase } from '../../lib/supabase';
 import { Photo } from '../../types';
@@ -17,7 +17,6 @@ export function ClientGallery() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
-  const [showWatermark, setShowWatermark] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -275,20 +274,6 @@ export function ClientGallery() {
               </div>
 
               <div className="flex items-center gap-3">
-                {/* Watermark Toggle */}
-                {gallery.watermark_settings?.enabled && (
-                  <button
-                    onClick={() => setShowWatermark(!showWatermark)}
-                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      showWatermark
-                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {showWatermark ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    <span>{showWatermark ? 'Ocultar' : 'Mostrar'} Marca d'água</span>
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -337,14 +322,14 @@ export function ClientGallery() {
                 onToggleSelection={() => handlePhotoSelection(photo.id)}
                 onViewFullSize={() => handlePhotoClick(photo, index)}
                 hasComment={!!photoComments[photo.id]}
-                watermarkSettings={showWatermark ? {
+                watermarkSettings={{
                   enabled: gallery.watermark_settings?.enabled || false,
                   text: gallery.watermark_settings?.text || 'Preview',
                   opacity: gallery.watermark_settings?.opacity || 0.4,
                   position: gallery.watermark_settings?.position || 'center',
                   size: gallery.watermark_settings?.size || 'medium',
                   watermark_image_url: gallery.watermark_settings?.watermark_image_url
-                } : { enabled: false }}
+                }}
                 onAddComment={() => handleAddComment(photo.id)}
                 canComment={!gallery.selection_completed}
               />
@@ -360,7 +345,7 @@ export function ClientGallery() {
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
         onNavigate={setCurrentPhotoIndex}
-        watermarkSettings={showWatermark ? gallery.watermark_settings : { enabled: false }}
+        watermarkSettings={gallery.watermark_settings}
       />
 
       {/* Comment Modal */}
