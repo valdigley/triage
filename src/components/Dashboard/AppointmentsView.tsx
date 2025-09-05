@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Phone, Mail, Eye, Check, X, Download, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, Phone, Mail, Eye, Check, X, Download, ExternalLink, Trash2 } from 'lucide-react';
 import { useAppointments } from '../../hooks/useAppointments';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
@@ -7,7 +7,7 @@ import { Appointment } from '../../types';
 import { downloadICalendar } from '../../utils/calendar';
 
 export function AppointmentsView() {
-  const { appointments, updateAppointmentStatus } = useAppointments();
+  const { appointments, updateAppointmentStatus, deleteAppointment } = useAppointments();
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -227,6 +227,17 @@ export function AppointmentsView() {
                           </button>
                         </>
                       )}
+                      <button
+                        onClick={() => {
+                          if (confirm(`Tem certeza que deseja remover permanentemente o agendamento de ${appointment.client?.name}?`)) {
+                            deleteAppointment(appointment.id);
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-900 transition-colors"
+                        title="Remover agendamento"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -331,6 +342,19 @@ export function AppointmentsView() {
                   </button>
                 </>
               )}
+              
+              <button
+                onClick={() => {
+                  if (confirm(`Tem certeza que deseja remover permanentemente o agendamento de ${appointment.client?.name}?`)) {
+                    deleteAppointment(appointment.id);
+                  }
+                }}
+                className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center space-x-1"
+                title="Remover agendamento"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Remover</span>
+              </button>
             </div>
           </div>
         ))}
@@ -426,6 +450,18 @@ export function AppointmentsView() {
                     Confirmar
                   </button>
                 )}
+                <button
+                  onClick={() => {
+                    if (confirm(`Tem certeza que deseja remover permanentemente o agendamento de ${selectedAppointment.client?.name}?`)) {
+                      deleteAppointment(selectedAppointment.id);
+                      setSelectedAppointment(null);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base flex items-center space-x-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Remover</span>
+                </button>
               </div>
             </div>
           </div>

@@ -198,6 +198,22 @@ export function useAppointments() {
     }
   };
 
+  const deleteAppointment = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await fetchAppointments();
+      return true;
+    } catch (error) {
+      console.error('Erro ao remover agendamento:', error);
+      return false;
+    }
+  };
   return {
     appointments,
     loading,
@@ -205,6 +221,7 @@ export function useAppointments() {
     createAppointment,
     checkAvailability,
     updateAppointmentStatus,
+    deleteAppointment,
     refetch: fetchAppointments
   };
 }
