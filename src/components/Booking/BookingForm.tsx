@@ -228,7 +228,7 @@ export function BookingForm() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
       {/* MercadoPago Device ID Script */}
       <script 
         src="https://www.mercadopago.com/v2/security.js" 
@@ -241,14 +241,14 @@ export function BookingForm() {
           {/* Header */}
           <div className={`text-white p-8 ${
             currentStep === 4 
-              ? 'bg-gradient-to-r from-green-600 to-blue-600' 
-              : 'bg-gradient-to-r from-purple-600 to-pink-600'
+              ? 'bg-gradient-to-r from-green-700 to-green-800' 
+              : 'bg-gradient-to-r from-gray-800 to-gray-900'
           }`}>
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-2 sm:space-y-0">
               <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
                 {currentStep === 4 ? 'Pagamento PIX' : settings.studio_name}
               </h1>
-              <p className={`text-sm sm:text-base ${currentStep === 4 ? 'text-green-100' : 'text-purple-100'}`}>
+              <p className={`text-sm sm:text-base ${currentStep === 4 ? 'text-green-100' : 'text-gray-300'}`}>
                 {currentStep === 4 ? 'Finalize seu agendamento' : 'Agende sua sessão fotográfica'}
               </p>
             </div>
@@ -263,7 +263,7 @@ export function BookingForm() {
                   <div
                     className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium ${
                       step <= currentStep
-                        ? 'bg-purple-600 text-white'
+                        ? 'border-gray-600 bg-gray-50 dark:bg-gray-700'
                         : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
                     }`}
                   >
@@ -272,7 +272,7 @@ export function BookingForm() {
                   {step < 3 && (
                     <div
                       className={`w-8 sm:w-16 h-1 mx-2 sm:mx-4 ${
-                        step < currentStep ? 'bg-purple-600' : 'bg-gray-300'
+                        step < currentStep ? 'bg-gray-700' : 'bg-gray-300'
                       }`}
                     />
                   )}
@@ -492,13 +492,13 @@ export function BookingForm() {
                       value={formData.scheduledDate}
                       onChange={(e) => handleDateChange(e.target.value)}
                       min={new Date().toISOString().slice(0, 16)}
-                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
+                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                       required
                     />
                   </div>
                   {isCheckingAvailability && (
                     <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
                       Verificando disponibilidade...
                     </p>
                   )}
@@ -539,7 +539,7 @@ export function BookingForm() {
                       onChange={(e) =>
                         setFormData(prev => ({ ...prev, clientName: e.target.value }))
                       }
-                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
+                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                       placeholder="Digite seu nome completo"
                       required
                     />
@@ -558,7 +558,7 @@ export function BookingForm() {
                       onChange={(e) =>
                         setFormData(prev => ({ ...prev, clientPhone: e.target.value }))
                       }
-                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
+                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                       placeholder="(11) 99999-9999"
                       required
                     />
@@ -577,7 +577,7 @@ export function BookingForm() {
                       onChange={(e) =>
                         setFormData(prev => ({ ...prev, clientEmail: e.target.value }))
                       }
-                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
+                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                       placeholder="seuemail@exemplo.com"
                     />
                   </div>
@@ -673,7 +673,7 @@ export function BookingForm() {
                   <button
                     onClick={() => setCurrentStep(prev => prev + 1)}
                     disabled={!isStepValid() || isCheckingAvailability}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
                   >
                     {isCheckingAvailability ? 'Verificando...' : 'Continuar'}
                   </button>
@@ -681,7 +681,7 @@ export function BookingForm() {
                   <button
                     onClick={handleSubmit}
                     disabled={!isStepValid() || isSubmitting || !mpSettings}
-                    className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
                   >
                     {isSubmitting ? (
                       <>

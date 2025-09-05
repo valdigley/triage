@@ -71,15 +71,15 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-8 text-center">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white p-8 text-center">
           <div className="mb-4 flex justify-center">
             <LoginLogo />
           </div>
           <h1 className="text-2xl font-bold">Triagem</h1>
-          <p className="text-purple-100 mt-1">By Valdigley Santos</p>
-          <p className="text-purple-100 mt-2 text-sm">Acesso Administrativo</p>
+          <p className="text-gray-300 mt-1">By Valdigley Santos</p>
+          <p className="text-gray-300 mt-2 text-sm">Acesso Administrativo</p>
         </div>
 
         <form onSubmit={handleLogin} className="p-8 space-y-6">
@@ -112,7 +112,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-3 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="••••••••"
                 required
               />
@@ -129,7 +129,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+            className="w-full bg-gray-800 text-white py-3 rounded-lg hover:bg-gray-900 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
           >
             {loading ? (
               <>

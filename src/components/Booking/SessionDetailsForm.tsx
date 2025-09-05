@@ -30,7 +30,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="date"
                 value={details.birthday_date || ''}
                 onChange={(e) => handleChange('birthday_date', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
           </div>
@@ -47,7 +47,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="date"
                 value={details.due_date || ''}
                 onChange={(e) => handleChange('due_date', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
             <div>
@@ -58,7 +58,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="text"
                 value={details.baby_name || ''}
                 onChange={(e) => handleChange('baby_name', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Nome do bebê"
               />
             </div>
@@ -76,7 +76,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="text"
                 value={details.course || ''}
                 onChange={(e) => handleChange('course', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Ex: Administração"
               />
             </div>
@@ -88,7 +88,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="text"
                 value={details.sash_color || ''}
                 onChange={(e) => handleChange('sash_color', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Ex: Azul, Verde, Vermelha"
               />
             </div>
@@ -106,7 +106,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="text"
                 value={details.product_service || ''}
                 onChange={(e) => handleChange('product_service', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Descreva o produto ou serviço"
               />
             </div>
@@ -117,7 +117,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
               <select
                 value={details.purpose || ''}
                 onChange={(e) => handleChange('purpose', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">Selecione a finalidade</option>
                 <option value="website">Website</option>
@@ -141,7 +141,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="date"
                 value={details.wedding_date || ''}
                 onChange={(e) => handleChange('wedding_date', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
             </div>
             <div>
@@ -151,7 +151,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
               <select
                 value={details.desired_style || ''}
                 onChange={(e) => handleChange('desired_style', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 <option value="">Selecione o estilo</option>
                 <option value="classico">Clássico</option>
@@ -176,7 +176,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="text"
                 value={details.theme || ''}
                 onChange={(e) => handleChange('theme', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Ex: Vintage, Halloween, Natal"
               />
             </div>
@@ -188,7 +188,7 @@ export function SessionDetailsForm({ sessionType, details, onChange }: SessionDe
                 type="text"
                 value={details.occasion || ''}
                 onChange={(e) => handleChange('occasion', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 placeholder="Ex: Festa de família, presente especial"
               />
             </div>
