@@ -101,18 +101,18 @@ export function PhotoCard({
           {text}
         </div>
       );
-    }
+    <div className={`relative group cursor-pointer bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
   };
 
   return (
     <div className={`relative group cursor-pointer bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
       {/* Main Photo Container */}
-      <div className="relative w-full overflow-hidden">
+      <div className="relative w-full aspect-square sm:aspect-auto overflow-hidden">
         {/* Photo */}
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-auto transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = `https://via.placeholder.com/400x300/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
@@ -151,51 +151,37 @@ export function PhotoCard({
           </div>
         )}
 
-        {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300">
-          <div className={`absolute top-2 right-2 flex gap-2 ${isCoverPhoto ? 'mt-8' : ''}`}>
-            {/* View Full Size */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewFullSize();
-              }}
-              className="w-8 h-8 rounded-full bg-white bg-opacity-80 text-gray-700 hover:bg-opacity-100 flex items-center justify-center transition-all duration-200"
-              title="Ver em tamanho completo"
-            >
-              <Expand size={16} />
-            </button>
-          </div>
+        {/* Comment Button - Desktop hover only */}
+        {canComment && onAddComment && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddComment();
+            }}
+            className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200 hidden sm:block group-hover:block"
+            title="Adicionar comentário"
+          >
+            <MessageSquare className="h-3 w-3" />
+          </button>
+        )}
 
-          {/* Comment Button */}
-          {canComment && onAddComment && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddComment();
-              }}
-              className="absolute bottom-2 right-2 bg-blue-600 bg-opacity-80 text-white rounded-full p-1.5 hover:bg-blue-700 transition-all duration-200"
-              title="Adicionar comentário"
-            >
-              <MessageSquare className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-
-        {/* Selection Button - Mobile */}
+        {/* Selection Button - Always visible */}
         {canSelect && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelection();
             }}
-            className={`absolute bottom-2 left-2 px-2 py-1 rounded text-xs font-medium transition-all duration-200 ${
+            className={`absolute bottom-2 left-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg ${
               isSelected 
-                ? 'bg-purple-600 text-white' 
-                : 'bg-white bg-opacity-90 text-gray-800 hover:bg-opacity-100'
+                ? 'bg-purple-600 text-white border-2 border-purple-600' 
+                : 'bg-white text-gray-800 hover:bg-gray-50 border-2 border-gray-300 hover:border-purple-400'
             }`}
           >
-            {isSelected ? 'Selecionada' : 'Selecionar'}
+            <div className="flex items-center space-x-1">
+              {isSelected && <Check className="h-3 w-3" />}
+              <span>{isSelected ? 'Selecionada' : 'Selecionar'}</span>
+            </div>
           </button>
         )}
 
@@ -215,12 +201,26 @@ export function PhotoCard({
       </div>
 
       {/* Photo Info */}
-      <div className="p-3">
-        <p className="text-xs text-gray-500 truncate">{photo.filename}</p>
+      <div className="p-3 bg-white dark:bg-gray-800">
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{photo.filename}</p>
         {photo.metadata && (
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
             {(photo.size / 1024 / 1024).toFixed(2)} MB
           </p>
+        )}
+        
+        {/* Mobile Comment Button */}
+        {canComment && onAddComment && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddComment();
+            }}
+            className="sm:hidden mt-2 w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center space-x-2"
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>{hasComment ? 'Editar Comentário' : 'Adicionar Comentário'}</span>
+          </button>
         )}
       </div>
     </div>
