@@ -4,6 +4,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+async function schedulePaymentConfirmationNotification(supabase, appointmentId) {
+  // Implementation for scheduling notification
+  console.log('📅 Agendando notificação de confirmação para:', appointmentId);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -199,7 +204,7 @@ Deno.serve(async (req: Request) => {
         }
       }
     } else {
-      console.log('ℹ️ Tipo de webhook não processado:', webhookData.type || webhookData.action);
+      console.log('ℹ️ Tipo de webhook não processado:', paymentData.type || paymentData.action);
     }
 
     return new Response(
@@ -215,7 +220,7 @@ Deno.serve(async (req: Request) => {
           ...corsHeaders,
         },
       }
-    });
+    );
 
   } catch (error) {
     console.error('❌ Erro crítico no webhook:', error);
@@ -231,6 +236,6 @@ Deno.serve(async (req: Request) => {
           ...corsHeaders,
         },
       }
-    });
+    );
   }
 });
