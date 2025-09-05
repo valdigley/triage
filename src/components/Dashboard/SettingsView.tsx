@@ -1,470 +1,373 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+import React, { useState } from 'react';
+import { Save, TestTube, MessageSquare, DollarSign, Clock, MapPin, Building, Phone, Image, Eye, EyeOff } from 'lucide-react';
+import { useSettings } from '../../hooks/useSettings';
+import { useMercadoPago } from '../../hooks/useMercadoPago';
+import { useSessionTypes } from '../../hooks/useSessionTypes';
+import { useNotifications } from '../../hooks/useNotifications';
 
-async function sendWhatsAppMessage(
-  instanceName: string,
-  apiUrl: string,
-  apiKey: string,
-  phone: string,
-  message: string
-): Promise<boolean> {
-  try {
-    console.log('📞 Preparando envio WhatsApp...');
-    console.log('🏷️ Instância:', instanceName);
-    console.log('🌐 API URL:', apiUrl);
-    
-    // Clean phone number
-    let cleanPhone = phone.replace(/\D/g, '');
-    if (!cleanPhone.startsWith('55')) {
-      cleanPhone = '55' + cleanPhone;
-    }
+export function SettingsView() {
+  const { settings, updateSettings } = useSettings();
+  const { settings: mpSettings, updateSettings: updateMpSettings, testConnection } = useMercadoPago();
+  const { sessionTypes, createSessionType, updateSessionType, deleteSessionType } = useSessionTypes();
+  const { templates, updateTemplate } = useNotifications();
+  
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [activeTab, setActiveTab] = useState('general');
+  const [showAccessToken, setShowAccessToken] = useState(false);
 
-    console.log('📱 Telefone limpo:', cleanPhone);
-    console.log('📝 Tamanho da mensagem:', message.length, 'caracteres');
-
-    const requestBody = {
-      number: cleanPhone,
-      text: message
-    };
-
-    const fullUrl = `${apiUrl}/message/sendText/${instanceName}`;
-    console.log('🚀 URL completa da requisição:', fullUrl);
-    const fullUrl = `${apiUrl}/message/sendText/${instanceName}`;
-    console.log('🚀 URL completa da requisição:', fullUrl);
-    console.log('🚀 Fazendo requisição para Evolution API...');
-
-    const response = await fetch(fullUrl, {
-      method: 'POST',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    console.log('📡 Status da resposta:', response.status);
-    
-    if (response.ok) {
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (jsonError) {
-        console.error('❌ Erro ao fazer parse do JSON da resposta:', jsonError);
-        const responseText = await response.text();
-        console.log('📄 Resposta como texto:', responseText);
-        return true; // Consider it successful if we got a 200 status
-      }
-      try {
-        responseData = await response.json();
-      } catch (jsonError) {
-        console.error('❌ Erro ao fazer parse do JSON da resposta:', jsonError);
-        const responseText = await response.text();
-        console.log('📄 Resposta como texto:', responseText);
-        return true; // Consider it successful if we got a 200 status
-      }
-      console.log('✅ Resposta da API:', responseData);
-      return true;
-    } else {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch (jsonError) {
-        console.error('❌ Erro ao fazer parse do JSON do erro:', jsonError);
-        const errorText = await response.text();
-        console.error('📄 Erro como texto:', errorText);
-        return false;
-      }
-      try {
-        errorData = await response.json();
-      } catch (jsonError) {
-        console.error('❌ Erro ao fazer parse do JSON do erro:', jsonError);
-        const errorText = await response.text();
-        console.error('📄 Erro como texto:', errorText);
-        return false;
-      }
-      console.error('❌ Erro da Evolution API:', errorData);
-      return false;
-    }
-
-  } catch (error) {
-    console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
-    console.error('❌ Detalhes do erro:', error.message);
-    console.error('❌ Stack trace:', error.stack);
-    console.error('❌ Detalhes do erro:', error.message);
-    console.error('❌ Stack trace:', error.stack);
-    return false;
-  }
-}
-
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
-  }
-
-  try {
-    console.log('🚀 Edge Function: send-selection-confirmation iniciada');
-    
-    const requestBody = await req.json();
-    const { action, clientName, clientPhone, selectedCount, minimumPhotos, extraPhotos, totalAmount, paymentLink, formattedAmount, hasExtras, evolution_api_url, evolution_api_key, instance_name } = requestBody;
-    
-    // Handle connection test
-    if (action === 'test-connection') {
-      console.log('🧪 Testando conexão com Evolution API...');
-      
-      if (!evolution_api_url || !evolution_api_key || !instance_name) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Credenciais obrigatórias não fornecidas' 
-          }),
-          {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders,
-            },
-          }
-        );
-      }
-      
-      try {
-        console.log('📡 Testando URL:', evolution_api_url);
-        console.log('🏷️ Instância:', instance_name);
-        
-        const testResponse = await fetch(`${evolution_api_url}/instance/fetchInstances`, {
-          method: 'GET',
-          headers: {
-            'apikey': evolution_api_key,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log('📊 Status da resposta:', testResponse.status);
-        
-        if (testResponse.ok) {
-          const instances = await testResponse.json();
-          console.log('✅ Instâncias encontradas:', instances);
-          
-          const targetInstance = instances.find((inst: any) => inst.instance.instanceName === instance_name);
-          
-          if (targetInstance) {
-            return new Response(
-              JSON.stringify({
-                success: true,
-                message: `Conexão OK! Instância "${instance_name}" encontrada com status: ${targetInstance.instance.status}`,
-                instance_status: targetInstance.instance.status
-              }),
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...corsHeaders,
-                },
-              }
-            );
-          } else {
-            return new Response(
-              JSON.stringify({
-                success: false,
-                message: `Instância "${instance_name}" não encontrada. Instâncias disponíveis: ${instances.map((i: any) => i.instance.instanceName).join(', ')}`
-              }),
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...corsHeaders,
-                },
-              }
-            );
-          }
-        } else {
-          const errorText = await testResponse.text();
-          console.error('❌ Erro na resposta:', errorText);
-          
-          return new Response(
-            JSON.stringify({
-              success: false,
-              message: `Erro HTTP ${testResponse.status}: ${errorText}`
-            }),
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                ...corsHeaders,
-              },
-            }
-          );
-        }
-      } catch (testError) {
-        console.error('❌ Erro ao testar conexão:', testError);
-        
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: `Erro de conexão: ${testError instanceof Error ? testError.message : 'Erro desconhecido'}`
-          }),
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders,
-            },
-          }
-        );
-      }
-    }
-    
-    console.log('📋 Dados recebidos:', {
-      clientName,
-      clientPhone,
-      selectedCount,
-      minimumPhotos,
-      extraPhotos,
-      totalAmount,
-      paymentLink
-    });
-
-    if (!clientName || !clientPhone || selectedCount === undefined || minimumPhotos === undefined) {
-      console.error('❌ Dados obrigatórios não fornecidos');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Dados obrigatórios não fornecidos' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    // Get Supabase client
-    const { createClient } = await import('npm:@supabase/supabase-js@2');
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Get settings
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('delivery_days, price_commercial_hour')
-      .single();
-
-    const deliveryDays = settings?.delivery_days || 7;
-    const pricePerPhoto = settings?.price_commercial_hour || 30;
-    
-    console.log('🔍 Buscando instâncias WhatsApp...');
-    
-    // Get active WhatsApp instance
-    const { data: instances } = await supabase
-      .from('whatsapp_instances')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    console.log('📱 Instâncias encontradas:', instances?.length || 0);
-    const activeInstance = instances?.find(instance => 
-      instance.status === 'connected' || instance.status === 'created'
-    ) || instances?.[0];
-
-    if (!activeInstance) {
-      console.error('❌ Nenhuma instância WhatsApp ativa encontrada');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Nenhuma instância WhatsApp ativa encontrada' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
-    const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
-    
-    if (!evolution_api_url || !evolution_api_key) {
-      console.error('❌ Credenciais WhatsApp não configuradas');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Credenciais WhatsApp não configuradas' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    console.log('🔧 Credenciais WhatsApp OK');
-    
-    // Get active WhatsApp instance
-    const { data: instances } = await supabase
-      .from('whatsapp_instances')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    console.log('📱 Instâncias encontradas:', instances?.length || 0);
-    const activeInstance = instances?.find(instance => 
-      instance.status === 'connected' || instance.status === 'created'
-    ) || instances?.[0];
-
-    if (!activeInstance) {
-      console.error('❌ Nenhuma instância WhatsApp ativa encontrada');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Nenhuma instância WhatsApp ativa encontrada' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
-    const { evolution_api_url: apiUrl, evolution_api_key: apiKey } = activeInstance.instance_data;
-    
-    if (!apiUrl || !apiKey) {
-      console.error('❌ Credenciais WhatsApp não configuradas');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Credenciais WhatsApp não configuradas' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    // Criar mensagem personalizada baseada se há fotos extras ou não
-    let message = '';
-    
-    if (hasExtras && extraPhotos && extraPhotos > 0 && paymentLink) {
-      // Mensagem para fotos extras com pagamento
-      console.log('📝 Montando mensagem para fotos extras...');
-      
-      message = `✅ *Seleção Confirmada!*\n\n` +
-                `Olá ${clientName}!\n\n` +
-                `Recebemos sua seleção de fotos com sucesso! 🎉\n\n` +
-                `📊 *Resumo da sua seleção:*\n` +
-                `📸 *Fotos selecionadas:* ${selectedCount}\n` +
-                `✅ *Fotos incluídas:* ${minimumPhotos}\n` +
-                `➕ *Fotos extras:* ${extraPhotos}\n` +
-                `💰 *Valor adicional:* ${formattedAmount || new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalAmount || 0)}\n\n` +
-                `💳 *Pagamento das fotos extras:*\n` +
-                `Para finalizar o processo, efetue o pagamento das fotos extras através do link abaixo:\n\n` +
-                `🔗 *Link de Pagamento:*\n${paymentLink}\n\n` +
-                `⏰ *Próximos passos:*\n` +
-                `• Efetue o pagamento das fotos extras\n` +
-                `• Suas fotos serão editadas profissionalmente\n` +
-                `• Prazo de entrega: até ${deliveryDays} dias úteis\n` +
-                `• Você receberá o link para download das fotos finais\n` +
-                `• As fotos finais não terão marca d'água\n\n` +
-                `🎨 *Processo de edição:*\n` +
-                `• Correção de cores e iluminação\n` +
-                `• Ajustes de contraste e nitidez\n` +
-                `• Retoques básicos quando necessário\n\n` +
-                `Obrigado por escolher nossos serviços! 📸✨\n\n` +
-                `Em caso de dúvidas, entre em contato conosco.\n\n` +
-                `_Mensagem automática do sistema_`;
-    } else {
-      // Mensagem padrão para seleção sem fotos extras
-      console.log('📝 Montando mensagem padrão de seleção...');
-      
-      message = `✅ *Seleção Confirmada!*\n\n` +
-                `Olá ${clientName}!\n\n` +
-                `Recebemos sua seleção de fotos com sucesso! 🎉\n\n` +
-                `📊 *Resumo da sua seleção:*\n` +
-                `📸 *Fotos selecionadas:* ${selectedCount}\n` +
-                `✅ *Fotos incluídas:* ${minimumPhotos}\n\n` +
-                `⏰ *Próximos passos:*\n` +
-                `• Suas fotos serão editadas profissionalmente\n` +
-                `• Prazo de entrega: até ${deliveryDays} dias úteis\n` +
-                `• Você receberá o link para download das fotos finais\n` +
-                `• As fotos finais não terão marca d'água\n\n` +
-                `🎨 *Processo de edição:*\n` +
-                `• Correção de cores e iluminação\n` +
-                `• Ajustes de contraste e nitidez\n` +
-                `• Retoques básicos quando necessário\n\n` +
-                `Obrigado por escolher nossos serviços! 📸✨\n\n` +
-                `Em caso de dúvidas, entre em contato conosco.\n\n` +
-                `_Mensagem automática do sistema_`;
-    }
-    
-    console.log('✅ Mensagem preparada');
-
-    console.log('📱 Enviando mensagem WhatsApp...');
-    console.log('📞 Para:', clientPhone);
-    // Send WhatsApp message
-    let whatsappSuccess = false;
+  const handleSaveSettings = async (updates: any) => {
+    setSaving(true);
     try {
-      whatsappSuccess = await sendWhatsAppMessage(
-        activeInstance.instance_name,
-        apiUrl,
-        apiKey,
-        clientPhone,
-        message
-      );
-    } catch (whatsappError) {
-      console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
-      // WhatsApp failure doesn't affect the main process
-      whatsappSuccess = false;
+      const success = await updateSettings(updates);
+      if (success) {
+        alert('Configurações salvas com sucesso!');
+      } else {
+        alert('Erro ao salvar configurações');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      alert('Erro ao salvar configurações');
+    } finally {
+      setSaving(false);
     }
+  };
 
-    console.log(whatsappSuccess ? '✅ Mensagem enviada com sucesso!' : '❌ Falha ao enviar mensagem (processo continua)');
-    return new Response(
-      JSON.stringify({
-        success: true, // Main process always succeeds
-        whatsapp_sent: whatsappSuccess,
-        message: whatsappSuccess ? 'Seleção confirmada e WhatsApp enviado' : 'Seleção confirmada (WhatsApp indisponível)',
-        has_extra_photos: extraPhotos && extraPhotos > 0,
-        payment_link: paymentLink
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
-
-  } catch (error) {
-    console.error('Error in send-selection-confirmation:', error);
-    return new Response(
-      JSON.stringify({
+  const handleTestMercadoPago = async () => {
+    setTesting(true);
+    setTestResult(null);
+    
+    try {
+      const result = await testConnection();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
         success: false,
-        error: `Erro interno: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
-      }
-    );
-  }
-});
+        message: 'Erro ao testar conexão'
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const tabs = [
+    { id: 'general', label: 'Geral', icon: Building },
+    { id: 'pricing', label: 'Preços', icon: DollarSign },
+    { id: 'mercadopago', label: 'MercadoPago', icon: DollarSign },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
+    { id: 'notifications', label: 'Notificações', icon: MessageSquare },
+    { id: 'sessions', label: 'Tipos de Sessão', icon: Image }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Configurações</h1>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                  activeTab === tab.id
+                    ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        {activeTab === 'general' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Configurações Gerais</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Nome do Estúdio
+                </label>
+                <input
+                  type="text"
+                  value={settings?.studio_name || ''}
+                  onChange={(e) => handleSaveSettings({ studio_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Nome do seu estúdio"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Telefone do Estúdio
+                </label>
+                <input
+                  type="tel"
+                  value={settings?.studio_phone || ''}
+                  onChange={(e) => handleSaveSettings({ studio_phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Endereço do Estúdio
+                </label>
+                <input
+                  type="text"
+                  value={settings?.studio_address || ''}
+                  onChange={(e) => handleSaveSettings({ studio_address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Endereço completo do estúdio"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  URL do Google Maps
+                </label>
+                <input
+                  type="url"
+                  value={settings?.studio_maps_url || ''}
+                  onChange={(e) => handleSaveSettings({ studio_maps_url: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="https://maps.google.com/..."
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'pricing' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Configurações de Preços</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Preço Horário Comercial (R$)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={settings?.price_commercial_hour || 0}
+                  onChange={(e) => handleSaveSettings({ price_commercial_hour: parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Preço Fora do Horário (R$)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={settings?.price_after_hours || 0}
+                  onChange={(e) => handleSaveSettings({ price_after_hours: parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Fotos Mínimas por Sessão
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={settings?.minimum_photos || 5}
+                  onChange={(e) => handleSaveSettings({ minimum_photos: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Prazo de Entrega (dias)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={settings?.delivery_days || 7}
+                  onChange={(e) => handleSaveSettings({ delivery_days: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'mercadopago' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Configurações MercadoPago</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Access Token
+                </label>
+                <div className="relative">
+                  <input
+                    type={showAccessToken ? 'text' : 'password'}
+                    value={mpSettings?.access_token || ''}
+                    onChange={(e) => updateMpSettings({ access_token: e.target.value })}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Seu Access Token do MercadoPago"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAccessToken(!showAccessToken)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  >
+                    {showAccessToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Ambiente
+                </label>
+                <select
+                  value={mpSettings?.environment || 'sandbox'}
+                  onChange={(e) => updateMpSettings({ environment: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="sandbox">Sandbox (Testes)</option>
+                  <option value="production">Produção</option>
+                </select>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleTestMercadoPago}
+                  disabled={testing || !mpSettings?.access_token}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {testing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <TestTube className="h-4 w-4" />
+                  )}
+                  <span>{testing ? 'Testando...' : 'Testar Conexão'}</span>
+                </button>
+              </div>
+
+              {testResult && (
+                <div className={`p-4 rounded-lg ${
+                  testResult.success 
+                    ? 'bg-green-50 border border-green-200 text-green-800' 
+                    : 'bg-red-50 border border-red-200 text-red-800'
+                }`}>
+                  <p className="text-sm">{testResult.message}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'whatsapp' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Configurações WhatsApp</h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Configure sua instância WhatsApp para envio automático de notificações.
+            </p>
+            
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                Esta funcionalidade requer configuração manual no banco de dados.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'notifications' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Templates de Notificação</h2>
+            
+            <div className="space-y-4">
+              {templates?.map((template) => (
+                <div key={template.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-medium text-gray-800 dark:text-white">{template.name}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      template.is_active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {template.is_active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                  
+                  <textarea
+                    value={template.message_template}
+                    onChange={(e) => updateTemplate(template.id, { message_template: e.target.value })}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  />
+                  
+                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Variáveis disponíveis: {'{'}client_name{'}'}, {'{'}amount{'}'}, {'{'}session_type{'}'}, {'{'}appointment_date{'}'}, {'{'}appointment_time{'}'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'sessions' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Tipos de Sessão</h2>
+            
+            <div className="space-y-4">
+              {sessionTypes?.map((sessionType) => (
+                <div key={sessionType.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">{sessionType.icon}</span>
+                      <div>
+                        <h3 className="font-medium text-gray-800 dark:text-white">{sessionType.label}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{sessionType.description}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        sessionType.is_active 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {sessionType.is_active ? 'Ativo' : 'Inativo'}
+                      </span>
+                      
+                      <button
+                        onClick={() => updateSessionType(sessionType.id, { is_active: !sessionType.is_active })}
+                        className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                      >
+                        {sessionType.is_active ? 'Desativar' : 'Ativar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

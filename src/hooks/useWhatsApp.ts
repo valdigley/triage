@@ -32,8 +32,6 @@ async function sendWhatsAppMessage(
 
     const fullUrl = `${apiUrl}/message/sendText/${instanceName}`;
     console.log('🚀 URL completa da requisição:', fullUrl);
-    const fullUrl = `${apiUrl}/message/sendText/${instanceName}`;
-    console.log('🚀 URL completa da requisição:', fullUrl);
     console.log('🚀 Fazendo requisição para Evolution API...');
 
     const response = await fetch(fullUrl, {
@@ -57,26 +55,10 @@ async function sendWhatsAppMessage(
         console.log('📄 Resposta como texto:', responseText);
         return true; // Consider it successful if we got a 200 status
       }
-      try {
-        responseData = await response.json();
-      } catch (jsonError) {
-        console.error('❌ Erro ao fazer parse do JSON da resposta:', jsonError);
-        const responseText = await response.text();
-        console.log('📄 Resposta como texto:', responseText);
-        return true; // Consider it successful if we got a 200 status
-      }
       console.log('✅ Resposta da API:', responseData);
       return true;
     } else {
       let errorData;
-      try {
-        errorData = await response.json();
-      } catch (jsonError) {
-        console.error('❌ Erro ao fazer parse do JSON do erro:', jsonError);
-        const errorText = await response.text();
-        console.error('📄 Erro como texto:', errorText);
-        return false;
-      }
       try {
         errorData = await response.json();
       } catch (jsonError) {
@@ -91,8 +73,6 @@ async function sendWhatsAppMessage(
 
   } catch (error) {
     console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
-    console.error('❌ Detalhes do erro:', error.message);
-    console.error('❌ Stack trace:', error.stack);
     console.error('❌ Detalhes do erro:', error.message);
     console.error('❌ Stack trace:', error.stack);
     return false;
@@ -290,56 +270,6 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
-    const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
-    
-    if (!evolution_api_url || !evolution_api_key) {
-      console.error('❌ Credenciais WhatsApp não configuradas');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Credenciais WhatsApp não configuradas' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    console.log('🔧 Credenciais WhatsApp OK');
-    
-    // Get active WhatsApp instance
-    const { data: instances } = await supabase
-      .from('whatsapp_instances')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    console.log('📱 Instâncias encontradas:', instances?.length || 0);
-    const activeInstance = instances?.find(instance => 
-      instance.status === 'connected' || instance.status === 'created'
-    ) || instances?.[0];
-
-    if (!activeInstance) {
-      console.error('❌ Nenhuma instância WhatsApp ativa encontrada');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Nenhuma instância WhatsApp ativa encontrada' 
-        }),
-        {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
     const { evolution_api_url: apiUrl, evolution_api_key: apiKey } = activeInstance.instance_data;
     
     if (!apiUrl || !apiKey) {
@@ -358,6 +288,8 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    console.log('🔧 Credenciais WhatsApp OK');
 
     // Criar mensagem personalizada baseada se há fotos extras ou não
     let message = '';
