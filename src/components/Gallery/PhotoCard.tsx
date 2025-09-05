@@ -162,7 +162,7 @@ export function PhotoCard({
             e.stopPropagation();
             onAddComment();
           }}
-          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
+          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
           title="Adicionar comentário"
         >
           <MessageSquare className="h-3 w-3" />
