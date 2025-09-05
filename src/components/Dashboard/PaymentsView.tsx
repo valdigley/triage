@@ -264,7 +264,7 @@ export function PaymentsView() {
                     {getStatusBadge(payment.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(payment.created_at).toLocaleDateString('pt-BR')}
+                    {new Date(payment.created_at).toLocaleString('pt-BR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {payment.mercadopago_id || 'N/A'}
@@ -319,11 +319,7 @@ export function PaymentsView() {
               <div>
                 <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Data</label>
                 <p className="text-sm font-bold text-gray-900 dark:text-white">
-                  {new Date(payment.created_at).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: '2-digit'
-                  })}
+                  {new Date(payment.created_at).toLocaleDateString('pt-BR')}
                 </p>
               </div>
               <div>
@@ -331,7 +327,8 @@ export function PaymentsView() {
                 <p className="text-sm font-bold text-gray-900 dark:text-white">
                   {new Date(payment.created_at).toLocaleTimeString('pt-BR', {
                     hour: '2-digit',
-                    minute: '2-digit'
+                    minute: '2-digit',
+                    second: '2-digit'
                   })}
                 </p>
               </div>
