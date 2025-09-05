@@ -990,7 +990,7 @@ export function ClientGallery() {
                           Copiar código PIX
                         </button>
                       </div>
-                    ) : null}
+                  <div className="relative w-full h-full max-w-6xl max-h-full flex items-center justify-center">
 
                     <div className="space-y-4">
                       <div className={`flex items-center justify-center space-x-2 ${
@@ -998,11 +998,11 @@ export function ClientGallery() {
                       }`}>
                         <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                         <span className="text-xs sm:text-sm">
-                          {paymentStatus === 'pending' 
+                    <div className="relative w-full h-full max-w-full max-h-full flex items-center justify-center">
                             ? 'Aguardando confirmação do pagamento...' 
                             : `Status: ${paymentStatus}`
                           }
-                        </span>
+                        className="max-w-full max-h-full object-contain"
                       </div>
                       
                       <button
