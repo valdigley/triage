@@ -165,7 +165,7 @@ export function GalleriesView() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Galerias de Fotos</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Galerias de Fotos</h1>
         
         <div className="flex items-center space-x-4">
           <select

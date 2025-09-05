@@ -39,7 +39,7 @@ export function ClientsView() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Clientes</h1>
       </div>
 
       {/* Search Bar */}

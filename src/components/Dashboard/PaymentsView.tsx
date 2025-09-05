@@ -94,7 +94,7 @@ export function PaymentsView() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Pagamentos</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Pagamentos</h1>
       </div>
 
       {/* Stats Cards */}

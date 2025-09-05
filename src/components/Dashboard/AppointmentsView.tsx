@@ -93,7 +93,7 @@ export function AppointmentsView() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Agendamentos</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Agendamentos</h1>
         
         <div className="flex items-center space-x-2 sm:space-x-4">
           <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
