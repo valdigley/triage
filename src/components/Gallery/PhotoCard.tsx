@@ -52,15 +52,6 @@ export function PhotoCard({
           </div>
         )}
 
-        {/* Selection Overlay */}
-        {isSelected && (
-          <div className="absolute inset-0 bg-purple-600 bg-opacity-30 flex items-center justify-center">
-            <div className="bg-purple-600 rounded-full p-2">
-              <Check className="h-5 w-5 text-white" />
-            </div>
-          </div>
-        )}
-
         {/* Photo Filename */}
         {/* Expand Button - Top right */}
         <button
