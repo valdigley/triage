@@ -776,7 +776,7 @@ export function ClientGallery() {
                   className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                 >
                   <X className="h-4 w-4 sm:h-5 sm:w-5" />
-                </button>
+                className="max-w-full max-h-full object-contain"
               </div>
               
               <div className="mb-3 sm:mb-4">
