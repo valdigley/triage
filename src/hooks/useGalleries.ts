@@ -250,6 +250,27 @@ export function useGalleries() {
 
       console.log('📋 Dados da galeria obtidos:', galleryData.name);
       
+      // Verificar se o pagamento inicial foi aprovado
+      if (galleryData.appointment?.payment_status !== 'approved') {
+        console.log('⚠️ Pagamento inicial não aprovado, não enviando notificação');
+        
+        // Salvar seleção sem notificação
+        const { error } = await supabase
+          .from('galleries_triage')
+          .update({
+            photos_selected: photoIds,
+            selection_completed: true,
+            selection_submitted_at: new Date().toISOString(),
+            status: 'completed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', galleryId);
+
+        if (error) throw error;
+        await fetchGalleries();
+        return true;
+      }
+
       const { error } = await supabase
         .from('galleries_triage')
         .update({
