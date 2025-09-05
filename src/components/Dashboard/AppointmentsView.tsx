@@ -1,15 +1,29 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Phone, Mail, Eye, Check, X, Download, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, Phone, Mail, Eye, Check, X, Download, ExternalLink, Edit, Save } from 'lucide-react';
 import { useAppointments } from '../../hooks/useAppointments';
+import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
-import { Appointment } from '../../types';
+import { Appointment, SessionType } from '../../types';
 import { downloadICalendar } from '../../utils/calendar';
 
 export function AppointmentsView() {
   const { appointments, updateAppointmentStatus } = useAppointments();
+  const { getActiveSessionTypes } = useSessionTypes();
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [editForm, setEditForm] = useState({
+    clientName: '',
+    clientPhone: '',
+    clientEmail: '',
+    sessionType: 'aniversario' as SessionType,
+    scheduledDate: '',
+    totalAmount: 0
+  });
+  const [saving, setSaving] = useState(false);
+
+  const activeSessionTypes = getActiveSessionTypes();
 
   const filteredAppointments = appointments.filter(apt => 
     statusFilter === 'all' || apt.status === statusFilter

@@ -50,9 +50,10 @@ export function BookingForm() {
       // Check if date is in the future
       const appointmentDate = new Date(date);
       const now = new Date();
+      const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       
-      if (appointmentDate <= now) {
-        alert('Por favor, selecione uma data e horário futuros.');
+      if (appointmentDate <= twentyFourHoursFromNow) {
+        alert('Por favor, selecione uma data e horário com pelo menos 24 horas de antecedência.');
         setFormData(prev => ({ ...prev, scheduledDate: '' }));
         return;
       }
@@ -501,7 +502,7 @@ export function BookingForm() {
                       type="datetime-local"
                       value={formData.scheduledDate}
                       onChange={(e) => handleDateChange(e.target.value)}
-                      min={new Date().toISOString().slice(0, 16)}
+                      min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
                       className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                       required
                     />
