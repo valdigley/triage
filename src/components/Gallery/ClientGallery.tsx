@@ -117,13 +117,8 @@ export function ClientGallery() {
           // 2. Enviar confirmação via WhatsApp
           console.log('📱 Enviando confirmação da seleção via WhatsApp...');
           try {
-            const whatsappResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-selection-confirmation`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
+            const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-selection-confirmation', {
+              body: {
                 clientName: gallery.appointment?.client?.name,
                 clientPhone: gallery.appointment?.client?.phone,
                 selectedCount: selectedPhotos.length,
@@ -131,14 +126,14 @@ export function ClientGallery() {
                 extraPhotos: 0,
                 totalAmount: 0,
                 hasExtras: false
-              })
+              }
             });
             
-            if (whatsappResponse.ok) {
+            if (!whatsappError) {
               console.log('✅ Mensagem WhatsApp enviada com sucesso');
               alert('✅ Seleção confirmada!\n\n📱 Mensagem de confirmação enviada via WhatsApp\n\n🎨 Suas fotos serão editadas e entregues em breve!');
             } else {
-              console.warn('⚠️ Falha ao enviar WhatsApp');
+              console.warn('⚠️ Falha ao enviar WhatsApp:', whatsappError);
               alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
             }
           } catch (whatsappError) {
@@ -230,13 +225,8 @@ export function ClientGallery() {
       // 3. Enviar mensagem de confirmação da seleção via WhatsApp
       console.log('📱 Enviando confirmação da seleção via WhatsApp...');
       try {
-        const whatsappResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-selection-confirmation`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-selection-confirmation', {
+          body: {
             clientName: gallery.appointment?.client?.name,
             clientPhone: gallery.appointment?.client?.phone,
             selectedCount: selectedPhotos.length,
@@ -245,13 +235,13 @@ export function ClientGallery() {
             totalAmount,
             paymentLink: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${paymentData.payment_id}`,
             formattedAmount
-          })
+          }
         });
         
-        if (whatsappResponse.ok) {
+        if (!whatsappError) {
           console.log('✅ Mensagem WhatsApp enviada com sucesso');
         } else {
-          console.warn('⚠️ Falha ao enviar WhatsApp (não crítico)');
+          console.warn('⚠️ Falha ao enviar WhatsApp (não crítico):', whatsappError);
         }
       } catch (whatsappError) {
         console.warn('⚠️ Erro no WhatsApp (não crítico):', whatsappError);

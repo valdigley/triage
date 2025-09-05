@@ -315,13 +315,8 @@ export function useGalleries() {
           // Enviar mensagem diretamente via Edge Function
           console.log('📱 Enviando confirmação via Edge Function...');
           
-          const confirmationResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-selection-confirmation`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+          const { data: confirmationData, error: confirmationError } = await supabase.functions.invoke('send-selection-confirmation', {
+            body: {
               clientName: galleryData.appointment.client.name,
               clientPhone: galleryData.appointment.client.phone,
               selectedCount: photoIds.length,
@@ -329,13 +324,13 @@ export function useGalleries() {
               extraPhotos: 0,
               totalAmount: 0,
               hasExtras: false
-            })
+            }
           });
           
-          if (confirmationResponse.ok) {
+          if (!confirmationError) {
             console.log('✅ Confirmação enviada via Edge Function');
           } else {
-            console.warn('⚠️ Falha ao enviar confirmação via Edge Function');
+            console.warn('⚠️ Falha ao enviar confirmação via Edge Function:', confirmationError);
           }
 
         } else {
