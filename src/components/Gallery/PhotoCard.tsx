@@ -157,6 +157,24 @@ export function PhotoCard({
           <Expand className="h-3 w-3" />
         </button>
 
+        {/* Comment Button - Top left (only if comments enabled) */}
+        {canComment && onAddComment && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddComment();
+            }}
+            className={`absolute top-2 left-2 rounded-full p-1.5 transition-all duration-200 ${
+              hasComment 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-blue-600 bg-opacity-80 text-white hover:bg-blue-700'
+            }`}
+            title={hasComment ? 'Editar comentário' : 'Adicionar comentário'}
+          >
+            <MessageSquare className="h-3 w-3" />
+          </button>
+        )}
+
         {/* Selection Button - Bottom right, always visible */}
         {canSelect && (
           <button

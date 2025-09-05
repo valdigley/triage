@@ -374,6 +374,14 @@ export function ClientGallery() {
               </div>
 
               <div className="mb-4">
+                <img
+                  src={photos.find(p => p.id === commentingPhoto)?.thumbnail}
+                  alt="Foto"
+                  className="w-full h-32 object-cover rounded-lg"
+                />
+              </div>
+
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Instruções para edição desta foto:
                 </label>
