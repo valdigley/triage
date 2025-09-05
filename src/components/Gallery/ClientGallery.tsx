@@ -517,7 +517,8 @@ export function ClientGallery() {
                   text: settings.watermark_text || 'Preview',
                   opacity: settings.watermark_opacity || 0.7,
                   position: settings.watermark_position || 'center',
-                  size: settings.watermark_size || 'medium'
+                  size: settings.watermark_size || 'medium',
+                  watermark_image_url: settings.watermark_image_url
                 } : undefined;
 
                 return (
