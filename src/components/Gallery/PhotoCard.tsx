@@ -2,15 +2,6 @@ import React from 'react';
 import { Check, MessageSquare, Expand, Heart, Printer, Star } from 'lucide-react';
 import { Photo } from '../../types';
 
-interface WatermarkSettings {
-  enabled: boolean;
-  text: string;
-  opacity: number;
-  position: string;
-  size: string;
-  watermark_image_url?: string;
-}
-
 interface PhotoCardProps {
   photo: Photo;
   isSelected: boolean;
@@ -18,7 +9,6 @@ interface PhotoCardProps {
   onToggleSelection: () => void;
   onViewFullSize: () => void;
   hasComment?: boolean;
-  watermarkSettings?: WatermarkSettings;
   className?: string;
   onAddComment?: () => void;
   canComment?: boolean;
@@ -33,70 +23,12 @@ export function PhotoCard({
   onToggleSelection,
   onViewFullSize,
   hasComment = false,
-  watermarkSettings,
   className = '',
   onAddComment,
   canComment = true,
   showCoverIndicator = false,
   isCoverPhoto = false
 }: PhotoCardProps) {
-  const renderWatermark = () => {
-    if (!watermarkSettings?.enabled) return null;
-    
-    const { opacity } = watermarkSettings;
-    
-    // If there's a watermark image URL, use it; otherwise use text
-    if (watermarkSettings.watermark_image_url) {
-      return (
-        <img
-          src={watermarkSettings.watermark_image_url}
-          alt="Watermark"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
-          style={{ opacity }}
-        />
-      );
-    } else {
-      // Fallback to text watermark
-      const { position, size, text = 'Preview' } = watermarkSettings;
-      
-      // Calculate font size based on image dimensions and size setting
-      let fontSize = '';
-      switch (size) {
-        case 'small':
-          fontSize = 'clamp(1rem, 8vw, 3rem)';
-          break;
-        case 'large':
-          fontSize = 'clamp(2rem, 15vw, 8rem)';
-          break;
-        case 'medium':
-        default:
-          fontSize = 'clamp(1.5rem, 12vw, 6rem)';
-          break;
-      }
-      
-      return (
-        <div
-          className="absolute inset-0 flex items-center justify-center text-white font-bold select-none pointer-events-none z-10"
-          style={{ 
-            opacity,
-            fontSize,
-            textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
-            transform: 'rotate(-45deg)',
-            letterSpacing: '0.2em'
-          }}
-        >
-          <div className="whitespace-nowrap">
-            {Array.from({ length: 20 }, (_, i) => (
-              <span key={i} className="inline-block mr-8">
-                {text}
-              </span>
-            ))}
-          </div>
-        </div>
-      );
-    }
-  };
-
   return (
     <div className={`relative group cursor-pointer bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
       {/* Main Photo Container */}
@@ -111,9 +43,6 @@ export function PhotoCard({
             target.src = `https://via.placeholder.com/400x600/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
           }}
         />
-
-        {/* Watermark */}
-        {renderWatermark()}
 
         {/* Cover Photo Indicator */}
         {showCoverIndicator && isCoverPhoto && (

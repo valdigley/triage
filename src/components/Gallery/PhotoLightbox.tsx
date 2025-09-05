@@ -2,22 +2,12 @@ import React, { useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Info, Download, Heart } from 'lucide-react';
 import { Photo } from '../../types';
 
-interface WatermarkSettings {
-  enabled: boolean;
-  text: string;
-  opacity: number;
-  position: string;
-  size: string;
-  watermark_image_url?: string;
-}
-
 interface PhotoLightboxProps {
   photos: Photo[];
   currentIndex: number;
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (index: number) => void;
-  watermarkSettings?: WatermarkSettings;
 }
 
 export function PhotoLightbox({ 
@@ -25,8 +15,7 @@ export function PhotoLightbox({
   currentIndex, 
   isOpen, 
   onClose, 
-  onNavigate,
-  watermarkSettings 
+  onNavigate
 }: PhotoLightboxProps) {
   const currentPhoto = photos[currentIndex];
 
@@ -68,63 +57,6 @@ export function PhotoLightbox({
   }, [isOpen]);
 
   if (!isOpen || !currentPhoto) return null;
-
-  const renderWatermark = () => {
-    if (!watermarkSettings?.enabled) return null;
-    
-    const { opacity } = watermarkSettings;
-    
-    // If there's a watermark image URL, use it; otherwise use text
-    if (watermarkSettings.watermark_image_url) {
-      return (
-        <img
-          src={watermarkSettings.watermark_image_url}
-          alt="Watermark"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
-          style={{ opacity }}
-        />
-      );
-    } else {
-      // Fallback to text watermark
-      const { position, size, text = 'Preview' } = watermarkSettings;
-      
-      // Calculate font size based on viewport and size setting
-      let fontSize = '';
-      switch (size) {
-        case 'small':
-          fontSize = 'clamp(1.5rem, 6vw, 4rem)';
-          break;
-        case 'large':
-          fontSize = 'clamp(3rem, 12vw, 10rem)';
-          break;
-        case 'medium':
-        default:
-          fontSize = 'clamp(2rem, 8vw, 7rem)';
-          break;
-      }
-      
-      return (
-        <div
-          className="absolute inset-0 flex items-center justify-center text-white font-bold pointer-events-none z-10"
-          style={{ 
-            opacity,
-            fontSize,
-            textShadow: '3px 3px 6px rgba(0,0,0,0.8)',
-            transform: 'rotate(-45deg)',
-            letterSpacing: '0.3em'
-          }}
-        >
-          <div className="whitespace-nowrap">
-            {Array.from({ length: 15 }, (_, i) => (
-              <span key={i} className="inline-block mr-12">
-                {text}
-              </span>
-            ))}
-          </div>
-        </div>
-      );
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
@@ -172,13 +104,6 @@ export function PhotoLightbox({
             alt={currentPhoto.filename}
             className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
           />
-          
-          {/* Watermark */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative max-w-[90vw] max-h-[90vh] w-auto h-auto">
-              {renderWatermark()}
-            </div>
-          </div>
         </div>
       </div>
     </div>

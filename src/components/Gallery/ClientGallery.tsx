@@ -322,14 +322,6 @@ export function ClientGallery() {
                 onToggleSelection={() => handlePhotoSelection(photo.id)}
                 onViewFullSize={() => handlePhotoClick(photo, index)}
                 hasComment={!!photoComments[photo.id]}
-                watermarkSettings={{
-                  enabled: gallery.watermark_settings?.enabled || false,
-                  text: gallery.watermark_settings?.text || 'Preview',
-                  opacity: gallery.watermark_settings?.opacity || 0.4,
-                  position: gallery.watermark_settings?.position || 'center',
-                  size: gallery.watermark_settings?.size || 'medium',
-                  watermark_image_url: gallery.watermark_settings?.watermark_image_url
-                }}
                 onAddComment={() => handleAddComment(photo.id)}
                 canComment={!gallery.selection_completed}
               />
@@ -345,7 +337,6 @@ export function ClientGallery() {
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
         onNavigate={setCurrentPhotoIndex}
-        watermarkSettings={gallery.watermark_settings}
       />
 
       {/* Comment Modal */}
