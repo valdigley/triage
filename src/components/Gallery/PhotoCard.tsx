@@ -122,19 +122,6 @@ export function PhotoCard({
         {/* Watermark */}
         {renderWatermark()}
 
-        {/* Diagonal Preview Watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div 
-            className="text-white font-bold select-none transform rotate-45 opacity-40"
-            style={{
-              fontSize: 'clamp(0.75rem, 4vw, 2rem)',
-              textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
-            }}
-          >
-            Preview
-          </div>
-        </div>
-
         {/* Cover Photo Indicator */}
         {showCoverIndicator && isCoverPhoto && (
           <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
