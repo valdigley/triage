@@ -367,7 +367,9 @@ export function useGalleries() {
             }),
             studio_address: settings?.studio_address || '',
             studio_maps_url: settings?.studio_maps_url || '',
-            delivery_days: (settings.delivery_days || 7).toString()
+            delivery_days: (settings?.delivery_days || 7).toString(),
+            studio_name: settings?.studio_name || '',
+            studio_phone: settings?.studio_phone || ''
           };
 
           console.log('📊 Variáveis do template preparadas:', {

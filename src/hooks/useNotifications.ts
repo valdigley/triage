@@ -211,9 +211,11 @@ export function useNotifications() {
         }),
         studio_address: settings.studio_address || '',
         studio_maps_url: settings.studio_maps_url || '',
-        delivery_days: (settings?.delivery_days || 7).toString(),
+        delivery_days: (settings.delivery_days || 7).toString(),
         price_per_photo: formatCurrency(settings.price_commercial_hour || 30),
-        minimum_photos: (appointment.minimum_photos || 5).toString()
+        minimum_photos: (appointment.minimum_photos || 5).toString(),
+        studio_name: settings.studio_name || '',
+        studio_phone: settings.studio_phone || ''
       };
       
       // Agendar lembrete 1 dia antes
