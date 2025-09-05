@@ -26,7 +26,7 @@ export function useSettings() {
       const settingsWithDefaults = {
         ...data,
         watermark_text: data.watermark_text || 'Preview',
-        watermark_opacity: data.watermark_opacity || 0.4,
+        watermark_opacity: data.watermark_opacity || 0.3,
         watermark_position: data.watermark_position || 'center',
         watermark_size: data.watermark_size || 'medium'
       };
