@@ -123,6 +123,25 @@ export function PhotoLightbox({
       }
       
       return (
+        <div
+          className={`absolute ${positionClasses} ${sizeClasses} text-white font-bold pointer-events-none z-10`}
+          style={{ opacity }}
+        >
+          {text}
+        </div>
+      );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-20 p-4">
+        <div className="flex justify-between items-center">
+          <div className="text-white text-sm">
+            {currentIndex + 1} of {photos.length}
+          </div>
+          <div className="flex items-center space-x-2">
             <button
               onClick={onClose}
               className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-colors"
