@@ -184,5 +184,3 @@ export function PhotoCard({
     </div>
   );
 }
-
-export { PhotoCard }
