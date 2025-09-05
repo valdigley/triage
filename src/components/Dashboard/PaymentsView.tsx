@@ -74,27 +74,38 @@ export function PaymentsView() {
           currency: 'BRL' 
         }).format(payment.amount);
         
-        const message = `💳 *PIX para Pagamento - ${paymentTypeLabel}*\n\n` +
-                       `Olá ${payment.appointment.client.name}!\n\n` +
-                       `Segue o código PIX para pagamento:\n\n` +
-                       `💰 *Valor:* ${formattedAmount}\n\n` +
-                       `📱 *Código PIX:*\n${result.qr_code || 'Código não disponível'}\n\n` +
-                       `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
-                       `💡 *Como pagar:*\n` +
-                       `• Copie o código PIX acima\n` +
-                       `• Abra seu app bancário\n` +
-                       `• Cole o código na opção PIX\n` +
-                       `• Receba confirmação automática\n\n` +
-                       `✅ *Após o pagamento:*\n` +
-                       `• Você receberá confirmação via WhatsApp\n` +
-                       `• ${payment.payment_type === 'initial' ? 'Seu agendamento será confirmado automaticamente' : 'Suas fotos extras serão processadas'}\n\n` +
-                       `Em caso de dúvidas, entre em contato conosco.\n\n` +
-                       `_Mensagem automática do sistema_`;
+        // Primeira mensagem - apenas a chave PIX
+        const firstMessage = `💳 *PIX para Pagamento - ${paymentTypeLabel}*\n\n` +
+                            `Olá ${payment.appointment.client.name}!\n\n` +
+                            `💰 *Valor:* ${formattedAmount}\n\n` +
+                            `📱 *Código PIX:*\n${result.qr_code || 'Código não disponível'}`;
 
-        const whatsappSuccess = await sendMessage(payment.appointment.client.phone, message);
+        // Segunda mensagem - informações e instruções
+        const secondMessage = `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
+                             `💡 *Como pagar:*\n` +
+                             `• Copie o código PIX da mensagem anterior\n` +
+                             `• Abra seu app bancário\n` +
+                             `• Cole o código na opção PIX\n` +
+                             `• Receba confirmação automática\n\n` +
+                             `✅ *Após o pagamento:*\n` +
+                             `• Você receberá confirmação via WhatsApp\n` +
+                             `• ${payment.payment_type === 'initial' ? 'Seu agendamento será confirmado automaticamente' : 'Suas fotos extras serão processadas'}\n\n` +
+                             `Em caso de dúvidas, entre em contato conosco.\n\n` +
+                             `_Mensagem automática do sistema_`;
+
+        // Enviar primeira mensagem (chave PIX)
+        const firstMessageSuccess = await sendMessage(payment.appointment.client.phone, firstMessage);
+        
+        // Aguardar 2 segundos antes de enviar a segunda mensagem
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Enviar segunda mensagem (informações)
+        const secondMessageSuccess = await sendMessage(payment.appointment.client.phone, secondMessage);
+        
+        const whatsappSuccess = firstMessageSuccess && secondMessageSuccess;
         
         if (whatsappSuccess) {
-          alert('✅ PIX gerado e enviado via WhatsApp com sucesso!');
+          alert('✅ PIX gerado e enviado via WhatsApp em 2 mensagens!');
         } else {
           // Show PIX code for manual sending if WhatsApp fails
           const shouldCopy = confirm(`PIX gerado, mas falha no WhatsApp.\n\nDeseja copiar o código PIX para enviar manualmente?\n\n${result.qr_code || 'Código não disponível'}`);
