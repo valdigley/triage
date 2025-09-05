@@ -155,45 +155,79 @@ Deno.serve(async (req: Request) => {
         const paymentData = await mpResponse.json();
         const appointmentId = paymentData.external_reference;
         
-        // Update payment status in database
-        await supabase
-          .from('payments')
-          .update({
-            status: paymentData.status,
-            webhook_data: paymentData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('appointment_id', appointmentId);
+        // Check if this is an extra photos payment (external_reference contains "-extra-")
+        if (appointmentId && appointmentId.includes('-extra-')) {
+          console.log('Processing extra photos payment webhook');
+          
+          // Extract the original appointment ID (before "-extra-")
+          const originalAppointmentId = appointmentId.split('-extra-')[0];
+          
+          // Update payment status in database
+          await supabase
+            .from('payments')
+            .update({
+              status: paymentData.status,
+              webhook_data: paymentData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('mercadopago_id', paymentId.toString());
 
-        // Update appointment payment status
-        await supabase
-          .from('appointments')
-          .update({
-            payment_status: paymentData.status,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', appointmentId);
+          // If payment is approved, update gallery with extra photos payment status
+          if (paymentData.status === 'approved') {
+            await supabase
+              .from('galleries_triage')
+              .update({
+                extra_photos_payment_status: 'approved',
+                updated_at: new Date().toISOString()
+              })
+              .eq('extra_photos_payment_id', paymentId.toString());
+            
+            console.log('Extra photos payment approved and gallery updated');
+          }
+        } else {
+          // Regular appointment payment
+          console.log('Processing regular appointment payment webhook');
+          
+          // Update payment status in database
+          await supabase
+            .from('payments')
+            .update({
+              status: paymentData.status,
+              webhook_data: paymentData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('appointment_id', appointmentId);
 
-        // If payment is approved, confirm appointment
-        if (paymentData.status === 'approved') {
+          // Update appointment payment status
           await supabase
             .from('appointments')
             .update({
-              status: 'confirmed',
+              payment_status: paymentData.status,
               updated_at: new Date().toISOString()
             })
             .eq('id', appointmentId);
-          
-          // Schedule payment confirmation notification
-          try {
-            await schedulePaymentConfirmationNotification(supabase, appointmentId);
-            console.log('Payment confirmation notification scheduled');
-          } catch (error) {
-            console.error('Error sending payment confirmation:', error);
+
+          // If payment is approved, confirm appointment
+          if (paymentData.status === 'approved') {
+            await supabase
+              .from('appointments')
+              .update({
+                status: 'confirmed',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', appointmentId);
+            
+            // Schedule payment confirmation notification
+            try {
+              await schedulePaymentConfirmationNotification(supabase, appointmentId);
+              console.log('Payment confirmation notification scheduled');
+            } catch (error) {
+              console.error('Error sending payment confirmation:', error);
+            }
+            
+            // Note: The database trigger will automatically create a gallery
+            // when the appointment status changes to 'confirmed'
           }
-          
-          // Note: The database trigger will automatically create a gallery
-          // when the appointment status changes to 'confirmed'
         }
       }
     }
