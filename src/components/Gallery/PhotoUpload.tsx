@@ -324,7 +324,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
       // Get settings
       const { data: settings } = await supabase
         .from('settings')
-        .select('*')
+        .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
         .single();
 
       if (!settings) {
@@ -355,7 +355,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
       const variables = {
         client_name: clientName,
         gallery_link: galleryLink,
-        delivery_days: settings.delivery_days.toString(),
+        delivery_days: (settings.delivery_days || 7).toString(),
         amount: formatCurrency(gallery.appointment.total_amount),
         session_type: sessionType?.label || gallery.appointment.session_type,
         appointment_date: appointmentDate.toLocaleDateString('pt-BR', {

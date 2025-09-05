@@ -327,7 +327,7 @@ Deno.serve(async (req: Request) => {
       extra_photos: extraPhotos.toString(),
       extra_cost: formattedExtraCost,
       price_per_photo: formattedPricePerPhoto,
-      delivery_days: deliveryDays.toString()
+      delivery_days: (deliveryDays || 7).toString()
     };
 
     // Process template by replacing variables

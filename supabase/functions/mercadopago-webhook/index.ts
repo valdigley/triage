@@ -24,7 +24,7 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
     // Get settings
     const { data: settings } = await supabase
       .from('settings')
-      .select('*')
+      .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
       .single();
 
     if (!settings) {
@@ -68,7 +68,7 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
       }),
       studio_address: settings.studio_address || '',
       studio_maps_url: settings.studio_maps_url || '',
-      delivery_days: settings.delivery_days.toString(),
+      delivery_days: (settings.delivery_days || 7).toString(),
       price_per_photo: formatCurrency(settings.price_commercial_hour || 30)
     };
 
