@@ -403,7 +403,7 @@ export function ClientGallery() {
             </div>
 
             {/* Photos Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-1 sm:gap-4 lg:gap-6">
               {photos.map((photo) => {
                 const isSelected = selectedPhotos.includes(photo.id);
                 const canSelect = !gallery.selection_completed;
@@ -417,7 +417,7 @@ export function ClientGallery() {
                 } : undefined;
 
                 return (
-                  <div key={photo.id} className="w-full">
+                  <div key={photo.id} className="w-full aspect-square">
                     <PhotoCard
                       photo={photo}
                       isSelected={isSelected}
@@ -433,7 +433,7 @@ export function ClientGallery() {
                       }}
                       hasComment={!!photoComments[photo.id]}
                       watermarkSettings={watermarkSettings}
-                      className="w-full aspect-square"
+                      className="w-full h-full"
                       onAddComment={() => {
                         setShowCommentInput(photo.id);
                         setTempComment(photoComments[photo.id] || '');
