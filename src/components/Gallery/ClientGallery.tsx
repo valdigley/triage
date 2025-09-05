@@ -155,46 +155,41 @@ export function ClientGallery() {
 
       setSubmitting(true);
       
-      // Criar preferência de pagamento no MercadoPago
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago?action=create-preference`, {
+      // Criar pagamento de fotos extras
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-extra-photos-payment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: `Fotos Extras - ${extraPhotos} fotos`,
-          amount: totalAmount,
-          external_reference: `${gallery.appointment.id}-extra-${Date.now()}`,
-          payer: {
-            name: gallery.appointment?.client?.name || 'Cliente',
-            email: gallery.appointment?.client?.email || 'cliente@exemplo.com',
-            phone: {
-              area_code: '11',
-              number: gallery.appointment?.client?.phone?.replace(/\D/g, '').slice(-9) || '999999999'
-            },
-            cpf: '12345678909'
-          },
-          back_urls: {
-            success: `${window.location.origin}/gallery/${token}?payment=success`,
-            failure: `${window.location.origin}/gallery/${token}?payment=failure`,
-            pending: `${window.location.origin}/gallery/${token}?payment=pending`
-          },
-          notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`
+          galleryId: gallery.id,
+          appointmentId: gallery.appointment?.id,
+          extraPhotos: extraPhotos,
+          totalAmount: totalAmount,
+          clientName: gallery.appointment?.client?.name || 'Cliente',
+          clientEmail: gallery.appointment?.client?.email || 'cliente@exemplo.com',
+          selectedPhotos: selectedPhotos
         })
       });
 
       if (response.ok) {
         const result = await response.json();
         
-        if (result.success && result.payment_link) {
+        if (result.success && (result.payment_link || result.qr_code_base64)) {
           // Salvar seleção antes de redirecionar para pagamento
           await submitSelection(gallery.id, selectedPhotos);
           
-          // Redirecionar para página de pagamento
-          window.open(result.payment_link, '_blank');
+          if (result.payment_link) {
+            // Redirecionar para página de pagamento
+            window.open(result.payment_link, '_blank');
+          }
           
-          alert('Seleção salva! Complete o pagamento das fotos extras na nova aba.');
+          if (result.qr_code_base64) {
+            alert('Seleção salva! Use o código PIX gerado para completar o pagamento das fotos extras.');
+          } else {
+            alert('Seleção salva! Complete o pagamento das fotos extras na nova aba.');
+          }
         } else {
           throw new Error(result.error || 'Erro ao criar pagamento');
         }
