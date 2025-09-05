@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, Upload, Eye, Share2, MessageCircle, Clock, Check, AlertTriangle, Plus, Trash2, UserPlus, X, Search, Phone, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { formatCurrency } from '../../utils/pricing';
 import { useGalleries } from '../../hooks/useGalleries';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useClients } from '../../hooks/useClients';
