@@ -803,7 +803,7 @@ export function SettingsView() {
                   />
                   
                   <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Variáveis disponíveis: {{client_name}}, {{amount}}, {{session_type}}, {{appointment_date}}, {{appointment_time}}, {{studio_address}}, {{delivery_days}}
+                    {"Variáveis disponíveis: {{client_name}}, {{amount}}, {{session_type}}, {{appointment_date}}, {{appointment_time}}, {{studio_address}}, {{delivery_days}}"}
                   </div>
                 </div>
               ))}
