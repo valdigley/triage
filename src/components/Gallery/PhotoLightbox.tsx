@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Info, Download } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Info, Download, Heart } from 'lucide-react';
 import { Photo } from '../../types';
 
 interface WatermarkSettings {
@@ -176,16 +176,20 @@ export function PhotoLightbox({
       )}
 
       {/* Photo Container */}
-      <div className="flex items-center justify-center h-full p-16">
-        <div className="relative max-w-[95vw] max-h-[95vh] w-auto h-auto">
+      <div className="flex items-center justify-center h-full p-4 sm:p-8 lg:p-16">
+        <div className="relative w-full h-full flex items-center justify-center">
           <img
             src={currentPhoto.url}
             alt={currentPhoto.filename}
-            className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
           />
           
           {/* Watermark */}
-          {renderWatermark()}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative max-w-[90vw] max-h-[90vh] w-auto h-auto">
+              {renderWatermark()}
+            </div>
+          </div>
         </div>
       </div>
     </div>
