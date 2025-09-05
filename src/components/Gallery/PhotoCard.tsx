@@ -47,7 +47,7 @@ export function PhotoCard({
         <img
           src={watermarkSettings.watermark_image_url}
           alt="Watermark"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+          className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10"
           style={{ opacity }}
         />
       );
@@ -104,11 +104,10 @@ export function PhotoCard({
     <div className={`relative group cursor-pointer ${className}`}>
       {/* Main Photo Container */}
       <div className="relative w-full aspect-square overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-700">
-        {/* Photo */}
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-200 touch-manipulation"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = `https://via.placeholder.com/400x400/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
