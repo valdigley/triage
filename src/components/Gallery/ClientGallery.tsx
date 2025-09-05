@@ -374,23 +374,6 @@ export function ClientGallery() {
               </div>
 
               <div className="mb-4">
-                {commentingPhoto && (
-                  <img
-                    src={photos.find(p => p.id === commentingPhoto)?.thumbnail || photos.find(p => p.id === commentingPhoto)?.url}
-                    alt="Foto selecionada"
-                    className="w-full h-32 object-cover rounded-lg"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      const photo = photos.find(p => p.id === commentingPhoto);
-                      if (photo) {
-                        target.src = photo.url;
-                      }
-                    }}
-                  />
-                )}
-              </div>
-
-              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Instruções para edição desta foto:
                 </label>
