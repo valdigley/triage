@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
     console.log('🚀 Edge Function: send-selection-confirmation iniciada');
     
     const requestBody = await req.json();
-    const { action, clientName, clientPhone, selectedCount, minimumPhotos, extraPhotos, totalAmount, paymentLink, formattedAmount, evolution_api_url, evolution_api_key, instance_name } = requestBody;
+    const { action, clientName, clientPhone, selectedCount, minimumPhotos, extraPhotos, totalAmount, paymentLink, formattedAmount, hasExtras, evolution_api_url, evolution_api_key, instance_name } = requestBody;
     
     // Handle connection test
     if (action === 'test-connection') {
@@ -271,10 +271,58 @@ Deno.serve(async (req: Request) => {
 
     console.log('🔧 Credenciais WhatsApp OK');
     
+    // Get active WhatsApp instance
+    const { data: instances } = await supabase
+      .from('whatsapp_instances')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    console.log('📱 Instâncias encontradas:', instances?.length || 0);
+    const activeInstance = instances?.find(instance => 
+      instance.status === 'connected' || instance.status === 'created'
+    ) || instances?.[0];
+
+    if (!activeInstance) {
+      console.error('❌ Nenhuma instância WhatsApp ativa encontrada');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Nenhuma instância WhatsApp ativa encontrada' 
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
+    console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
+    const { evolution_api_url: apiUrl, evolution_api_key: apiKey } = activeInstance.instance_data;
+    
+    if (!apiUrl || !apiKey) {
+      console.error('❌ Credenciais WhatsApp não configuradas');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Credenciais WhatsApp não configuradas' 
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
     // Criar mensagem personalizada baseada se há fotos extras ou não
     let message = '';
     
-    if (extraPhotos && extraPhotos > 0 && paymentLink) {
+    if (hasExtras && extraPhotos && extraPhotos > 0 && paymentLink) {
       // Mensagem para fotos extras com pagamento
       console.log('📝 Montando mensagem para fotos extras...');
       
@@ -306,62 +354,24 @@ Deno.serve(async (req: Request) => {
       // Mensagem padrão para seleção sem fotos extras
       console.log('📝 Montando mensagem padrão de seleção...');
       
-      // Get notification template
-      const { data: template, error: templateError } = await supabase
-        .from('notification_templates')
-        .select('message_template')
-        .eq('type', 'selection_received')
-        .eq('is_active', true)
-        .single();
-
-      if (templateError || !template) {
-        console.error('❌ Template selection_received não encontrado ou inativo');
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Template de notificação não encontrado' 
-          }),
-          {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              ...corsHeaders,
-            },
-          }
-        );
-      }
-      
-      // Process template by replacing variables
-      const extraPhotosCount = Math.max(0, selectedCount - minimumPhotos);
-      const extraCost = extraPhotosCount * pricePerPhoto;
-      const formattedExtraCost = new Intl.NumberFormat('pt-BR', { 
-        style: 'currency', 
-        currency: 'BRL' 
-      }).format(extraCost);
-      
-      const formattedPricePerPhoto = new Intl.NumberFormat('pt-BR', { 
-        style: 'currency', 
-        currency: 'BRL' 
-      }).format(pricePerPhoto);
-      
-      // Variables for template processing
-      const variables = {
-        client_name: clientName,
-        selected_count: selectedCount.toString(),
-        minimum_photos: minimumPhotos.toString(),
-        extra_photos: extraPhotosCount.toString(),
-        extra_cost: formattedExtraCost,
-        price_per_photo: formattedPricePerPhoto,
-        delivery_days: (deliveryDays || 7).toString(),
-        studio_name: 'Estúdio', // Fallback since settings not available in this context
-        studio_phone: '' // Fallback since settings not available in this context
-      };
-      
-      message = template.message_template;
-      Object.entries(variables).forEach(([key, value]) => {
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        message = message.replace(regex, value);
-      });
+      message = `✅ *Seleção Confirmada!*\n\n` +
+                `Olá ${clientName}!\n\n` +
+                `Recebemos sua seleção de fotos com sucesso! 🎉\n\n` +
+                `📊 *Resumo da sua seleção:*\n` +
+                `📸 *Fotos selecionadas:* ${selectedCount}\n` +
+                `✅ *Fotos incluídas:* ${minimumPhotos}\n\n` +
+                `⏰ *Próximos passos:*\n` +
+                `• Suas fotos serão editadas profissionalmente\n` +
+                `• Prazo de entrega: até ${deliveryDays} dias úteis\n` +
+                `• Você receberá o link para download das fotos finais\n` +
+                `• As fotos finais não terão marca d'água\n\n` +
+                `🎨 *Processo de edição:*\n` +
+                `• Correção de cores e iluminação\n` +
+                `• Ajustes de contraste e nitidez\n` +
+                `• Retoques básicos quando necessário\n\n` +
+                `Obrigado por escolher nossos serviços! 📸✨\n\n` +
+                `Em caso de dúvidas, entre em contato conosco.\n\n` +
+                `_Mensagem automática do sistema_`;
     }
     
     console.log('✅ Mensagem preparada');
@@ -373,8 +383,8 @@ Deno.serve(async (req: Request) => {
     try {
       whatsappSuccess = await sendWhatsAppMessage(
         activeInstance.instance_name,
-        evolution_api_url,
-        evolution_api_key,
+        apiUrl,
+        apiKey,
         clientPhone,
         message
       );

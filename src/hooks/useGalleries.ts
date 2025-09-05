@@ -312,122 +312,31 @@ export function useGalleries() {
         if (galleryData.appointment?.client) {
           console.log('📱 Agendando notificação de seleção para:', galleryData.appointment.client.name);
           
-          // Verificar se já existe notificação pendente para evitar duplicatas
-          const { data: existingNotification } = await supabase
-            .from('notification_queue')
-            .select('id')
-            .eq('appointment_id', galleryData.appointment.id)
-            .eq('template_type', 'selection_received')
-            .eq('status', 'pending')
-            .maybeSingle();
-
-          if (existingNotification) {
-            console.log('⚠️ Notificação já existe na fila, pulando duplicata');
-            return true;
-          }
-
-          // Buscar configurações para preços
-          const { data: settings } = await supabase
-            .from('settings')
-            .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
-            .single();
-
-          if (!settings) {
-            console.warn('⚠️ Configurações não encontradas, usando valores padrão');
-          }
-
-          // Buscar tipo de sessão
-          const { data: sessionType } = await supabase
-            .from('session_types')
-            .select('*')
-            .eq('name', galleryData.appointment.session_type)
-            .single();
-
-          const pricePerPhoto = settings?.price_commercial_hour || 30;
-          const minimumPhotos = galleryData.appointment.minimum_photos || 5;
-          const extraPhotos = Math.max(0, photoIds.length - minimumPhotos);
-          const extraCost = extraPhotos * pricePerPhoto;
-          const appointmentDate = new Date(galleryData.appointment.scheduled_date);
+          // Enviar mensagem diretamente via Edge Function
+          console.log('📱 Enviando confirmação via Edge Function...');
           
-          // Formatação de valores
-          const formatCurrency = (amount: number): string => {
-            return new Intl.NumberFormat('pt-BR', {
-              style: 'currency',
-              currency: 'BRL'
-            }).format(amount);
-          };
-          
-          const formattedExtraCost = formatCurrency(extraCost);
-          const formattedPricePerPhoto = formatCurrency(pricePerPhoto);
-          const formattedTotalAmount = formatCurrency(galleryData.appointment.total_amount);
-          
-          // Variáveis para o template
-          const variables = {
-            client_name: galleryData.appointment.client.name,
-            selected_count: photoIds.length.toString(),
-            minimum_photos: minimumPhotos.toString(),
-            extra_photos: extraPhotos.toString(),
-            extra_cost: formattedExtraCost,
-            price_per_photo: formattedPricePerPhoto,
-            amount: formattedTotalAmount,
-            session_type: sessionType?.label || galleryData.appointment.session_type,
-            appointment_date: appointmentDate.toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            }),
-            appointment_time: appointmentDate.toLocaleTimeString('pt-BR', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            studio_address: settings?.studio_address || '',
-            studio_maps_url: settings?.studio_maps_url || '',
-            delivery_days: (settings?.delivery_days || 7).toString(),
-            studio_name: settings?.studio_name || '',
-            studio_phone: settings?.studio_phone || ''
-          };
-
-          console.log('📊 Variáveis do template preparadas:', {
-            selected_count: variables.selected_count,
-            extra_photos: variables.extra_photos,
-            extra_cost: variables.extra_cost
+          const confirmationResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-selection-confirmation`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              clientName: galleryData.appointment.client.name,
+              clientPhone: galleryData.appointment.client.phone,
+              selectedCount: photoIds.length,
+              minimumPhotos: galleryData.appointment.minimum_photos || 5,
+              extraPhotos: 0,
+              totalAmount: 0,
+              hasExtras: false
+            })
           });
-
-          // Agendar notificação imediata (única)
-          const notificationSuccess = await scheduleNotificationSafe(
-            galleryData.appointment.id,
-            'selection_received',
-            galleryData.appointment.client.phone,
-            galleryData.appointment.client.name,
-            new Date().toISOString(),
-            variables
-          );
-
-          if (notificationSuccess) {
-            console.log('✅ Notificação agendada com sucesso');
-            
-            // Processar fila após delay para evitar múltiplas execuções
-            setTimeout(async () => {
-              console.log('🔄 Processando fila de notificações...');
-              await processNotificationQueue();
-            }, 5000); // Aumentado para 5 segundos
-          } else {
-            console.error('❌ Falha ao agendar notificação');
-          }
-
-          // Agendar lembrete de entrega (delivery_days - 1)
-          const deliveryReminderDate = new Date();
-          deliveryReminderDate.setDate(deliveryReminderDate.getDate() + (settings?.delivery_days || 7) - 1);
           
-          await scheduleNotificationSafe(
-            galleryData.appointment.id,
-            'delivery_reminder',
-            galleryData.appointment.client.phone,
-            galleryData.appointment.client.name,
-            deliveryReminderDate.toISOString(),
-            variables
-          );
+          if (confirmationResponse.ok) {
+            console.log('✅ Confirmação enviada via Edge Function');
+          } else {
+            console.warn('⚠️ Falha ao enviar confirmação via Edge Function');
+          }
 
         } else {
           console.warn('⚠️ Dados do cliente não encontrados para notificação');

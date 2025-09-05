@@ -110,10 +110,42 @@ export function ClientGallery() {
       
       setSubmitting(true);
       try {
+        // 1. Salvar seleção no banco
         const success = await submitSelection(gallery.id, selectedPhotos);
         
         if (success) {
-          alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+          // 2. Enviar confirmação via WhatsApp
+          console.log('📱 Enviando confirmação da seleção via WhatsApp...');
+          try {
+            const whatsappResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-selection-confirmation`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                clientName: gallery.appointment?.client?.name,
+                clientPhone: gallery.appointment?.client?.phone,
+                selectedCount: selectedPhotos.length,
+                minimumPhotos: gallery.appointment?.minimum_photos || 5,
+                extraPhotos: 0,
+                totalAmount: 0,
+                hasExtras: false
+              })
+            });
+            
+            if (whatsappResponse.ok) {
+              console.log('✅ Mensagem WhatsApp enviada com sucesso');
+              alert('✅ Seleção confirmada!\n\n📱 Mensagem de confirmação enviada via WhatsApp\n\n🎨 Suas fotos serão editadas e entregues em breve!');
+            } else {
+              console.warn('⚠️ Falha ao enviar WhatsApp');
+              alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+            }
+          } catch (whatsappError) {
+            console.warn('⚠️ Erro no WhatsApp:', whatsappError);
+            alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+          }
+          
           await loadGallery();
         } else {
           alert('Erro ao confirmar seleção. Tente novamente.');
