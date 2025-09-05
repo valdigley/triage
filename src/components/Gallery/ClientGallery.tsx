@@ -90,48 +90,125 @@ export function ClientGallery() {
   };
 
   const handleSubmitSelection = async () => {
-    if (!gallery || selectedPhotos.length === 0) {
-      alert('Selecione pelo menos uma foto antes de confirmar');
+    if (!gallery) return;
+    
+    const minimumPhotos = gallery.appointment?.minimum_photos || 5;
+    
+    // Validar quantidade mínima
+    if (selectedPhotos.length < minimumPhotos) {
+      alert(`Você deve selecionar pelo menos ${minimumPhotos} fotos para finalizar sua seleção.`);
       return;
     }
 
-    if (!confirm(`Confirmar seleção de ${selectedPhotos.length} fotos? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      // Save comments to photo metadata
-      for (const [photoId, comment] of Object.entries(photoComments)) {
-        if (comment.trim()) {
-          await supabase
-            .from('photos_triage')
-            .update({
-              metadata: {
-                ...photos.find(p => p.id === photoId)?.metadata,
-                client_comment: comment.trim()
-              }
-            })
-            .eq('id', photoId);
+    const extraPhotos = selectedPhotos.length - minimumPhotos;
+    
+    // Se seleção exata, confirmar diretamente
+    if (extraPhotos === 0) {
+      if (!confirm(`Confirmar seleção de ${selectedPhotos.length} fotos? Esta ação não pode ser desfeita.`)) {
+        return;
+      }
+      
+      setSubmitting(true);
+      try {
+        const success = await submitSelection(gallery.id, selectedPhotos);
+        
+        if (success) {
+          alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+          await loadGallery();
+        } else {
+          alert('Erro ao confirmar seleção. Tente novamente.');
         }
+      } catch (error) {
+        console.error('Erro ao submeter seleção:', error);
+        alert('Erro ao confirmar seleção. Tente novamente.');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+    
+    // Se há fotos extras, gerar pagamento
+    if (extraPhotos > 0) {
+      await handleExtraPhotosPayment(extraPhotos);
+    }
+  };
+
+  const handleExtraPhotosPayment = async (extraPhotos: number) => {
+    try {
+      // Buscar configurações de preço
+      const { data: settings } = await supabase
+        .from('settings')
+        .select('price_commercial_hour')
+        .single();
+
+      const pricePerPhoto = settings?.price_commercial_hour || 30;
+      const totalAmount = extraPhotos * pricePerPhoto;
+      
+      const formattedAmount = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(totalAmount);
+
+      if (!confirm(`Você selecionou ${extraPhotos} fotos extras.\n\nValor adicional: ${formattedAmount}\n\nDeseja prosseguir com o pagamento?`)) {
+        return;
       }
 
-      const success = await submitSelection(gallery.id, selectedPhotos);
+      setSubmitting(true);
       
-      if (success) {
-        alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
-        // Reload to show updated status
-        await loadGallery();
+      // Criar preferência de pagamento no MercadoPago
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago?action=create-preference`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `Fotos Extras - ${extraPhotos} fotos`,
+          amount: totalAmount,
+          external_reference: `${gallery.appointment.id}-extra-${Date.now()}`,
+          payer: {
+            name: gallery.appointment?.client?.name || 'Cliente',
+            email: gallery.appointment?.client?.email || 'cliente@exemplo.com',
+            phone: {
+              area_code: '11',
+              number: gallery.appointment?.client?.phone?.replace(/\D/g, '').slice(-9) || '999999999'
+            },
+            cpf: '12345678909'
+          },
+          back_urls: {
+            success: `${window.location.origin}/gallery/${token}?payment=success`,
+            failure: `${window.location.origin}/gallery/${token}?payment=failure`,
+            pending: `${window.location.origin}/gallery/${token}?payment=pending`
+          },
+          notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success && result.payment_link) {
+          // Salvar seleção antes de redirecionar para pagamento
+          await submitSelection(gallery.id, selectedPhotos);
+          
+          // Redirecionar para página de pagamento
+          window.open(result.payment_link, '_blank');
+          
+          alert('Seleção salva! Complete o pagamento das fotos extras na nova aba.');
+        } else {
+          throw new Error(result.error || 'Erro ao criar pagamento');
+        }
       } else {
-        alert('Erro ao confirmar seleção. Tente novamente.');
+        throw new Error('Erro na comunicação com o servidor');
       }
     } catch (error) {
-      console.error('Erro ao submeter seleção:', error);
-      alert('Erro ao confirmar seleção. Tente novamente.');
+      console.error('Erro ao processar pagamento de fotos extras:', error);
+      alert('Erro ao processar pagamento. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
   };
+
 
   const handlePhotoClick = (photo: Photo, index: number) => {
     setCurrentPhotoIndex(index);
@@ -386,24 +463,39 @@ export function ClientGallery() {
       )}
 
       {/* Selection Summary - Fixed Bottom */}
-      {selectedCount > 0 && !gallery.selection_completed && (
+      {!gallery.selection_completed && (
         <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Check className="h-5 w-5 text-green-600" />
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {selectedCount} fotos selecionadas
-                  </span>
-                </div>
+                {selectedCount > 0 ? (
+                  <div className="flex items-center space-x-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {selectedCount} fotos selecionadas
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      Selecione suas fotos favoritas
+                    </span>
+                  </div>
+                )}
                 
                 {gallery.appointment?.minimum_photos && (
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Mínimo: {gallery.appointment.minimum_photos} fotos
-                    {selectedCount > gallery.appointment.minimum_photos && (
-                      <span className="text-purple-600 dark:text-purple-400 ml-2">
-                        (+{selectedCount - gallery.appointment.minimum_photos} extras)
+                  <div className="text-sm">
+                    {selectedCount < gallery.appointment.minimum_photos ? (
+                      <span className="text-red-600 dark:text-red-400">
+                        Mínimo: {gallery.appointment.minimum_photos} fotos (faltam {gallery.appointment.minimum_photos - selectedCount})
+                      </span>
+                    ) : selectedCount === gallery.appointment.minimum_photos ? (
+                      <span className="text-green-600 dark:text-green-400">
+                        ✓ Mínimo atingido: {gallery.appointment.minimum_photos} fotos
+                      </span>
+                    ) : (
+                      <span className="text-purple-600 dark:text-purple-400">
+                        {gallery.appointment.minimum_photos} incluídas + {selectedCount - gallery.appointment.minimum_photos} extras
                       </span>
                     )}
                   </div>
@@ -411,16 +503,18 @@ export function ClientGallery() {
               </div>
 
               <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => setSelectedPhotos([])}
-                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm"
-                >
-                  Limpar Seleção
-                </button>
+                {selectedCount > 0 && (
+                  <button
+                    onClick={() => setSelectedPhotos([])}
+                    className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm"
+                  >
+                    Limpar Seleção
+                  </button>
+                )}
                 
                 <button
                   onClick={handleSubmitSelection}
-                  disabled={submitting}
+                  disabled={submitting || selectedCount === 0}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
                   {submitting ? (
@@ -428,7 +522,13 @@ export function ClientGallery() {
                   ) : (
                     <Check className="h-4 w-4" />
                   )}
-                  <span>{submitting ? 'Confirmando...' : 'Confirmar Seleção'}</span>
+                  <span>
+                    {submitting ? 'Processando...' : 
+                     selectedCount === 0 ? 'Selecione fotos' :
+                     selectedCount < (gallery.appointment?.minimum_photos || 5) ? 'Selecione mais fotos' :
+                     selectedCount === (gallery.appointment?.minimum_photos || 5) ? 'Confirmar Seleção' :
+                     'Confirmar e Pagar Extras'}
+                  </span>
                 </button>
               </div>
             </div>
