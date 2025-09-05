@@ -10,7 +10,7 @@ export function PaymentsView() {
   const [loading, setLoading] = useState(true);
   const [sendingPaymentRequest, setSendingPaymentRequest] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('all');
-  const { sendPaymentReminder } = useWhatsApp();
+  const { sendMessage } = useWhatsApp();
 
   useEffect(() => {
     fetchPayments();
@@ -38,7 +38,7 @@ export function PaymentsView() {
     }
   };
 
-  const handleSendPaymentRequest = async (payment: Payment) => {
+  const handleSendPaymentLink = async (payment: Payment) => {
     if (!payment.appointment?.client) {
       alert('Dados do cliente não encontrados');
       return;
@@ -46,20 +46,55 @@ export function PaymentsView() {
 
     setSendingPaymentRequest(payment.id);
     try {
-      const success = await sendPaymentReminder(
-        payment.appointment.client.name,
-        payment.appointment.client.phone,
-        payment.amount
-      );
+      // Create new payment link via MercadoPago
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          paymentId: payment.id,
+          appointmentId: payment.appointment_id,
+          amount: payment.amount,
+          clientName: payment.appointment.client.name,
+          clientEmail: payment.appointment.client.email,
+          clientPhone: payment.appointment.client.phone,
+          paymentType: payment.payment_type
+        })
+      });
 
-      if (success) {
-        alert('Solicitação de pagamento enviada via WhatsApp!');
+      const result = await response.json();
+      
+      if (result.success) {
+        // Send payment link via WhatsApp
+        const message = `💳 *Link de Pagamento - ${payment.payment_type === 'initial' ? 'Sessão Fotográfica' : 'Fotos Extras'}*\n\n` +
+                       `Olá ${payment.appointment.client.name}!\n\n` +
+                       `Segue o link para pagamento:\n\n` +
+                       `💰 *Valor:* ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.amount)}\n\n` +
+                       `🔗 *Link de Pagamento:*\n${result.payment_url}\n\n` +
+                       `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
+                       `💡 *Como pagar:*\n` +
+                       `• Clique no link acima\n` +
+                       `• Escolha PIX ou cartão\n` +
+                       `• Complete o pagamento\n` +
+                       `• Receba confirmação automática\n\n` +
+                       `Em caso de dúvidas, entre em contato conosco.\n\n` +
+                       `_Mensagem automática do sistema_`;
+
+        const whatsappSuccess = await sendMessage(payment.appointment.client.phone, message);
+        
+        if (whatsappSuccess) {
+          alert('Link de pagamento gerado e enviado via WhatsApp com sucesso!');
+        } else {
+          alert(`Link de pagamento gerado! Envie manualmente para o cliente:\n\n${result.payment_url}`);
+        }
       } else {
-        alert('Erro ao enviar solicitação. Verifique as configurações do WhatsApp.');
+        throw new Error(result.error || 'Erro ao gerar link de pagamento');
       }
     } catch (error) {
-      console.error('Erro ao enviar solicitação de pagamento:', error);
-      alert('Erro ao enviar solicitação de pagamento.');
+      console.error('Erro ao gerar link de pagamento:', error);
+      alert(`Erro ao gerar link de pagamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setSendingPaymentRequest(null);
     }
@@ -222,10 +257,10 @@ export function PaymentsView() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {payment.status === 'pending' && payment.appointment?.client && (
                       <button
-                        onClick={() => handleSendPaymentRequest(payment)}
+                        onClick={() => handleSendPaymentLink(payment)}
                         disabled={sendingPaymentRequest === payment.id}
-                        className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                        title="Enviar solicitação de pagamento via WhatsApp"
+                        className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                        title="Gerar e enviar link de pagamento via WhatsApp"
                       >
                         {sendingPaymentRequest === payment.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -301,9 +336,9 @@ export function PaymentsView() {
             {payment.status === 'pending' && payment.appointment?.client && (
               <div className="mb-3">
                 <button
-                  onClick={() => handleSendPaymentRequest(payment)}
+                  onClick={() => handleSendPaymentLink(payment)}
                   disabled={sendingPaymentRequest === payment.id}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
                 >
                   {sendingPaymentRequest === payment.id ? (
                     <>
@@ -313,7 +348,7 @@ export function PaymentsView() {
                   ) : (
                     <>
                       <DollarSign className="h-4 w-4" />
-                      <span>Solicitar Pagamento</span>
+                      <span>Enviar Link de Pagamento</span>
                     </>
                   )}
                 </button>
