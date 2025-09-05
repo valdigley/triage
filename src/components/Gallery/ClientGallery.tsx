@@ -166,7 +166,7 @@ export function ClientGallery() {
   };
 
   const createExtraPhotosPayment = async () => {
-    if (!gallery || extraPhotos <= 0) return;
+    if (!gallery || selectedPhotos.length <= 0) return;
 
     try {
       setShowCart(false);
@@ -181,7 +181,7 @@ export function ClientGallery() {
         body: JSON.stringify({
           galleryId: gallery.id,
           appointmentId: gallery.appointment_id,
-          extraPhotos: selectedPhotos.length,
+          extraPhotos,
           totalAmount: extraCost,
           clientName: gallery.appointment?.client?.name,
           clientEmail: gallery.appointment?.client?.email,
@@ -310,7 +310,7 @@ export function ClientGallery() {
         setShowCode(true);
         
         // Se há fotos extras, mostrar carrinho
-        if (extraPhotos > 0) {
+        if (selectedPhotos.length > 0) {
           setShowCart(true);
         }
         
