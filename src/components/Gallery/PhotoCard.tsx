@@ -141,7 +141,7 @@ export function PhotoCard({
 
         {/* Photo Filename */}
         {/* Photo Filename - Bottom left */}
-        <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+        <div className="absolute bottom-2 left-2 text-white text-xs font-medium drop-shadow-lg">
           {photo.filename}
         </div>
 
