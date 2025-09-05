@@ -5,6 +5,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useMercadoPago } from '../../hooks/useMercadoPago';
+import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { calculatePrice, isDateTimeAvailable, formatCurrency } from '../../utils/pricing';
 import { SessionDetailsForm } from './SessionDetailsForm';
 
@@ -13,6 +14,7 @@ export function BookingForm() {
   const { getActiveSessionTypes } = useSessionTypes();
   const { appointments, checkAvailability, createAppointment } = useAppointments();
   const { getActiveSettings } = useMercadoPago();
+  const { sendPaymentConfirmation } = useWhatsApp();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<BookingFormData>({
     clientName: '',
