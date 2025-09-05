@@ -158,9 +158,14 @@ export function useGalleries() {
         .from('galleries_triage')
         .select('*')
         .eq('gallery_token', token)
-        .single();
+        .maybeSingle();
 
       if (galleryError) throw galleryError;
+
+      if (!gallery) {
+        console.log('Galeria não encontrada para o token:', token);
+        return null;
+      }
 
       const { data: photos, error: photosError } = await supabase
         .from('photos_triage')
