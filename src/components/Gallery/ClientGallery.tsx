@@ -110,10 +110,37 @@ export function ClientGallery() {
       
       setSubmitting(true);
       try {
+        // 1. Salvar seleção no banco
         const success = await submitSelection(gallery.id, selectedPhotos);
         
         if (success) {
-          alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+          // 2. Enviar confirmação via WhatsApp
+          console.log('📱 Enviando confirmação da seleção via WhatsApp...');
+          try {
+            const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-selection-confirmation', {
+              body: {
+                clientName: gallery.appointment?.client?.name,
+                clientPhone: gallery.appointment?.client?.phone,
+                selectedCount: selectedPhotos.length,
+                minimumPhotos: gallery.appointment?.minimum_photos || 5,
+                extraPhotos: 0,
+                totalAmount: 0,
+                hasExtras: false
+              }
+            });
+            
+            if (!whatsappError) {
+              console.log('✅ Mensagem WhatsApp enviada com sucesso');
+              alert('✅ Seleção confirmada!\n\n📱 Mensagem de confirmação enviada via WhatsApp\n\n🎨 Suas fotos serão editadas e entregues em breve!');
+            } else {
+              console.warn('⚠️ Falha ao enviar WhatsApp:', whatsappError);
+              alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+            }
+          } catch (whatsappError) {
+            console.warn('⚠️ Erro no WhatsApp:', whatsappError);
+            alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+          }
+          
           await loadGallery();
         } else {
           alert('Erro ao confirmar seleção. Tente novamente.');
@@ -129,12 +156,14 @@ export function ClientGallery() {
     
     // Se há fotos extras, gerar pagamento
     if (extraPhotos > 0) {
-      await handleExtraPhotosPayment(extraPhotos);
+      await handleExtraPhotosPayment(extraPhotos, selectedPhotos);
     }
   };
 
-  const handleExtraPhotosPayment = async (extraPhotos: number) => {
+  const handleExtraPhotosPayment = async (extraPhotos: number, selectedPhotos: string[]) => {
     try {
+      setSubmitting(true);
+      
       // Buscar configurações de preço
       const { data: settings } = await supabase
         .from('settings')
@@ -150,10 +179,12 @@ export function ClientGallery() {
       }).format(totalAmount);
 
       if (!confirm(`Você selecionou ${extraPhotos} fotos extras.\n\nValor adicional: ${formattedAmount}\n\nDeseja prosseguir com o pagamento?`)) {
+        setSubmitting(false);
         return;
       }
 
-      setSubmitting(true);
+      // 1. Primeiro, salvar a seleção
+      const selectionSuccess = await submitSelection(gallery.id, selectedPhotos);
       
       // Buscar configurações do MercadoPago
       const { data: mpSettings } = await supabase
@@ -197,13 +228,77 @@ export function ClientGallery() {
           notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`
         })
       });
-
-      if (response.ok) {
-        const result = await response.json();
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro na comunicação com o servidor');
+      }
+      
+      const result = await response.json();
+      
+      if (!selectionSuccess) {
+        alert('Erro ao salvar seleção. Tente novamente.');
+        setSubmitting(false);
+        return;
+      }
+      
+      console.log('✅ Seleção salva com sucesso');
+      
+      // 2. Criar pagamento PIX para fotos extras
+      console.log('💳 Criando pagamento PIX para fotos extras...');
+      const paymentResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-extra-photos-payment`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          access_token: mpSettings.access_token,
+          environment: mpSettings.environment,
+          title: `Fotos Extras - ${extraPhotos} fotos adicionais`,
+          amount: totalAmount,
+          external_reference: `${gallery.appointment?.id}-extra-${Date.now()}`,
+          payer: {
+            name: gallery.appointment?.client?.name || 'Cliente',
+            email: gallery.appointment?.client?.email || 'cliente@exemplo.com',
+            phone: {
+              area_code: '11',
+              number: gallery.appointment?.client?.phone?.replace(/\D/g, '').slice(-9) || '999999999'
+            },
+            cpf: '12345678909'
+          },
+          back_urls: {
+            success: `${window.location.origin}/gallery/${token}?payment=success`,
+            failure: `${window.location.origin}/gallery/${token}?payment=failure`,
+            pending: `${window.location.origin}/gallery/${token}?payment=pending`
+          },
+          notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`
+        })
+      });
+      
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json();
+        throw new Error(errorData.error || 'Erro ao criar pagamento');
+      }
+      
+      if (result.success && result.payment_link) {
+        const paymentData = await paymentResponse.json();
+        console.log('✅ Pagamento PIX criado:', paymentData.payment_id);
         
-        if (result.success && result.payment_link) {
-          // Salvar seleção antes de redirecionar para pagamento
-          await submitSelection(gallery.id, selectedPhotos);
+        // 3. Enviar mensagem de confirmação da seleção via WhatsApp
+        console.log('📱 Enviando confirmação da seleção via WhatsApp...');
+        try {
+          const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-selection-confirmation', {
+            body: {
+              clientName: gallery.appointment?.client?.name,
+              clientPhone: gallery.appointment?.client?.phone,
+              selectedCount: selectedPhotos.length,
+              minimumPhotos: gallery.appointment?.minimum_photos || 5,
+              extraPhotos,
+              totalAmount,
+              hasExtras: true
+            }
+          });
           
           // Criar registro de pagamento no banco
           await supabase
@@ -220,15 +315,29 @@ export function ClientGallery() {
               }
             });
           
-          // Redirecionar para página de pagamento do MercadoPago
-          window.location.href = result.payment_link;
-        } else {
-          throw new Error(result.error || 'Erro ao criar pagamento');
+          if (!whatsappError) {
+            console.log('✅ Mensagem WhatsApp enviada com sucesso');
+          } else {
+            console.warn('⚠️ Falha ao enviar WhatsApp (não crítico):', whatsappError);
+          }
+        } catch (whatsappError) {
+          console.warn('⚠️ Erro no WhatsApp (não crítico):', whatsappError);
         }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro na comunicação com o servidor');
+        
+        // 4. Mostrar mensagem de sucesso
+        alert(`✅ Seleção confirmada!\n\n📱 Mensagem enviada via WhatsApp com:\n• Confirmação da seleção\n• Link de pagamento para ${extraPhotos} fotos extras\n• Valor: ${formattedAmount}\n\n🔄 Redirecionando para pagamento...`);
+        
+        // 5. Aguardar um pouco para o usuário ler a mensagem
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 6. Redirecionar para página de pagamento
+        const paymentUrl = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${paymentData.payment_id}`;
+        console.log('🔄 Redirecionando para:', paymentUrl);
+        
+        // Redirecionar para página de pagamento do MercadoPago
+        window.location.href = result.payment_link;
       }
+      
     } catch (error) {
       console.error('Erro ao processar pagamento de fotos extras:', error);
       alert('Erro ao processar pagamento. Tente novamente.');
@@ -334,29 +443,34 @@ export function ClientGallery() {
           <div className="absolute inset-0 bg-black bg-opacity-90" />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
           
-          <div className="relative h-full flex items-end">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
-              <div className="text-white">
-                <h1 className="text-4xl md:text-5xl font-bold mb-2">{gallery.name}</h1>
-                <div className="flex items-center gap-4 text-lg opacity-90">
-                  <span>{new Date(gallery.created_at).toLocaleDateString('pt-BR')}</span>
-                  {daysUntilExpiration !== null && (
-                    <>
-                      <span>•</span>
-                      <div className={`flex items-center gap-1 ${isExpired ? 'text-red-300' : daysUntilExpiration <= 7 ? 'text-yellow-300' : 'text-green-300'}`}>
-                        <Clock size={16} />
-                        <span>
-                          {isExpired 
-                            ? 'Expirada' 
-                            : daysUntilExpiration === 1 
-                              ? '1 dia restante'
-                              : `${daysUntilExpiration} dias restantes`
-                          }
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
+          <div className="relative z-10 h-full flex items-center justify-center">
+            <div className="text-center text-white max-w-4xl mx-auto px-4">
+              <h1 className="text-4xl md:text-6xl font-bold mb-4">
+                {gallery.title}
+              </h1>
+              {gallery.description && (
+                <p className="text-xl md:text-2xl text-gray-200 mb-6">
+                  {gallery.description}
+                </p>
+              )}
+              <div className="flex items-center justify-center space-x-4 text-gray-300">
+                <span>{new Date(gallery.created_at).toLocaleDateString('pt-BR')}</span>
+                {daysUntilExpiration !== null && (
+                  <>
+                    <span>•</span>
+                    <div className={`flex items-center gap-1 ${isExpired ? 'text-red-300' : daysUntilExpiration <= 7 ? 'text-yellow-300' : 'text-green-300'}`}>
+                      <Clock size={16} />
+                      <span>
+                        {isExpired 
+                          ? 'Expirada' 
+                          : daysUntilExpiration === 1 
+                            ? '1 dia restante'
+                            : `${daysUntilExpiration} dias restantes`
+                        }
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
