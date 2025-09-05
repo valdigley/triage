@@ -2,6 +2,15 @@ import React from 'react';
 import { Check, MessageSquare, Expand, Heart, Printer, Star } from 'lucide-react';
 import { Photo } from '../../types';
 
+interface WatermarkSettings {
+  enabled: boolean;
+  text: string;
+  opacity: number;
+  position: string;
+  size: string;
+  watermark_image_url?: string;
+}
+
 interface PhotoCardProps {
   photo: Photo;
   isSelected: boolean;
@@ -9,6 +18,7 @@ interface PhotoCardProps {
   onToggleSelection: () => void;
   onViewFullSize: () => void;
   hasComment?: boolean;
+  watermarkSettings?: WatermarkSettings;
   className?: string;
   onAddComment?: () => void;
   canComment?: boolean;
@@ -23,12 +33,77 @@ export function PhotoCard({
   onToggleSelection,
   onViewFullSize,
   hasComment = false,
+  watermarkSettings,
   className = '',
   onAddComment,
   canComment = true,
   showCoverIndicator = false,
   isCoverPhoto = false
 }: PhotoCardProps) {
+  const renderWatermark = () => {
+    if (!watermarkSettings?.enabled) return null;
+    
+    const { opacity } = watermarkSettings;
+    
+    // If there's a watermark image URL, use it; otherwise use text
+    if (watermarkSettings.watermark_image_url) {
+      return (
+        <img
+          src={watermarkSettings.watermark_image_url}
+          alt="Watermark"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+          style={{ opacity }}
+        />
+      );
+    } else {
+      // Fallback to text watermark
+      const { position, size, text } = watermarkSettings;
+      
+      let positionClasses = '';
+      switch (position) {
+        case 'top-left':
+          positionClasses = 'top-2 left-2';
+          break;
+        case 'top-right':
+          positionClasses = 'top-2 right-2';
+          break;
+        case 'bottom-left':
+          positionClasses = 'bottom-2 left-2';
+          break;
+        case 'bottom-right':
+          positionClasses = 'bottom-2 right-2';
+          break;
+        case 'center':
+        default:
+          positionClasses = 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
+          break;
+      }
+      
+      let sizeClasses = '';
+      switch (size) {
+        case 'small':
+          sizeClasses = 'text-xs sm:text-sm';
+          break;
+        case 'large':
+          sizeClasses = 'text-lg sm:text-xl';
+          break;
+        case 'medium':
+        default:
+          sizeClasses = 'text-sm sm:text-base';
+          break;
+      }
+      
+      return (
+        <div
+          className={`absolute ${positionClasses} text-white font-bold select-none pointer-events-none z-10 ${sizeClasses} drop-shadow-lg`}
+          style={{ opacity }}
+        >
+          {text}
+        </div>
+      );
+    }
+  };
+
   return (
     <div className={`relative group cursor-pointer bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${className}`}>
       {/* Main Photo Container */}
@@ -44,6 +119,9 @@ export function PhotoCard({
           }}
         />
 
+        {/* Watermark */}
+        {renderWatermark()}
+
         {/* Cover Photo Indicator */}
         {showCoverIndicator && isCoverPhoto && (
           <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
@@ -52,7 +130,21 @@ export function PhotoCard({
           </div>
         )}
 
+        {/* Selection Overlay */}
+        {isSelected && (
+          <div className="absolute inset-0 bg-purple-600 bg-opacity-30 flex items-center justify-center">
+            <div className="bg-purple-600 rounded-full p-2">
+              <Check className="h-5 w-5 text-white" />
+            </div>
+          </div>
+        )}
+
         {/* Photo Filename */}
+        {/* Photo Filename - Bottom left */}
+        <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+          {photo.filename}
+        </div>
+
         {/* Expand Button - Top right */}
         <button
           onClick={(e) => {
@@ -88,9 +180,11 @@ export function PhotoCard({
 
       {/* Photo Info */}
       <div className="p-3 bg-white dark:bg-gray-800">
-        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-          {photo.filename}
-        </p>
+        {photo.metadata && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            {(photo.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+        )}
         
         {/* Mobile Comment Button - Only show if comments enabled */}
         {canComment && onAddComment && (

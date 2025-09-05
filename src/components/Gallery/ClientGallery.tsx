@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Camera, MessageSquare, Check, X, Send, AlertTriangle, Clock, Expand } from 'lucide-react';
+import { Camera, Eye, EyeOff, MessageSquare, Check, X, Send, AlertTriangle, Clock, Expand } from 'lucide-react';
 import { useGalleries } from '../../hooks/useGalleries';
 import { supabase } from '../../lib/supabase';
 import { Photo } from '../../types';
@@ -17,6 +17,7 @@ export function ClientGallery() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+  const [showWatermark, setShowWatermark] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -90,262 +91,48 @@ export function ClientGallery() {
   };
 
   const handleSubmitSelection = async () => {
-    if (!gallery) return;
-    
-    const minimumPhotos = gallery.appointment?.minimum_photos || 5;
-    
-    // Validar quantidade mínima
-    if (selectedPhotos.length < minimumPhotos) {
-      alert(`Você deve selecionar pelo menos ${minimumPhotos} fotos para finalizar sua seleção.`);
+    if (!gallery || selectedPhotos.length === 0) {
+      alert('Selecione pelo menos uma foto antes de confirmar');
       return;
     }
 
-    const extraPhotos = selectedPhotos.length - minimumPhotos;
-    
-    // Se seleção exata, confirmar diretamente
-    if (extraPhotos === 0) {
-      if (!confirm(`Confirmar seleção de ${selectedPhotos.length} fotos? Esta ação não pode ser desfeita.`)) {
-        return;
-      }
-      
-      setSubmitting(true);
-      try {
-        // 1. Salvar seleção no banco
-        const success = await submitSelection(gallery.id, selectedPhotos);
-        
-        if (success) {
-          // 2. Enviar confirmação via WhatsApp
-          console.log('📱 Enviando confirmação da seleção via WhatsApp...');
-          try {
-            const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-selection-confirmation', {
-              body: {
-                clientName: gallery.appointment?.client?.name,
-                clientPhone: gallery.appointment?.client?.phone,
-                selectedCount: selectedPhotos.length,
-                minimumPhotos: gallery.appointment?.minimum_photos || 5,
-                extraPhotos: 0,
-                totalAmount: 0,
-                hasExtras: false
-              }
-            });
-            
-            if (!whatsappError) {
-              console.log('✅ Mensagem WhatsApp enviada com sucesso');
-              alert('✅ Seleção confirmada!\n\n📱 Mensagem de confirmação enviada via WhatsApp\n\n🎨 Suas fotos serão editadas e entregues em breve!');
-            } else {
-              console.warn('⚠️ Falha ao enviar WhatsApp:', whatsappError);
-              alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
-            }
-          } catch (whatsappError) {
-            console.warn('⚠️ Erro no WhatsApp:', whatsappError);
-            alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
-          }
-          
-          await loadGallery();
-        } else {
-          alert('Erro ao confirmar seleção. Tente novamente.');
-        }
-      } catch (error) {
-        console.error('Erro ao submeter seleção:', error);
-        alert('Erro ao confirmar seleção. Tente novamente.');
-      } finally {
-        setSubmitting(false);
-      }
+    if (!confirm(`Confirmar seleção de ${selectedPhotos.length} fotos? Esta ação não pode ser desfeita.`)) {
       return;
     }
-    
-    // Se há fotos extras, gerar pagamento
-    if (extraPhotos > 0) {
-      await handleExtraPhotosPayment(extraPhotos, selectedPhotos);
-    }
-  };
 
-  const handleExtraPhotosPayment = async (extraPhotos: number, selectedPhotos: string[]) => {
+    setSubmitting(true);
     try {
-      setSubmitting(true);
-      
-      // Buscar configurações de preço
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('price_commercial_hour')
-        .single();
-
-      const pricePerPhoto = settings?.price_commercial_hour || 30;
-      const totalAmount = extraPhotos * pricePerPhoto;
-      
-      const formattedAmount = new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-      }).format(totalAmount);
-
-      if (!confirm(`Você selecionou ${extraPhotos} fotos extras.\n\nValor adicional: ${formattedAmount}\n\nDeseja prosseguir com o pagamento?`)) {
-        setSubmitting(false);
-        return;
-      }
-
-      // 1. Primeiro, salvar a seleção
-      const selectionSuccess = await submitSelection(gallery.id, selectedPhotos);
-      
-      // Buscar configurações do MercadoPago
-      const { data: mpSettings } = await supabase
-        .from('mercadopago_settings')
-        .select('*')
-        .eq('is_active', true)
-        .single();
-
-      if (!mpSettings || !mpSettings.access_token) {
-        alert('Configurações de pagamento não encontradas. Entre em contato com o estúdio.');
-        return;
-      }
-
-      // Criar preferência de pagamento no MercadoPago
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago?action=create-preference`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          access_token: mpSettings.access_token,
-          environment: mpSettings.environment,
-          title: `Fotos Extras - ${extraPhotos} fotos adicionais`,
-          amount: totalAmount,
-          external_reference: `${gallery.appointment?.id}-extra-${Date.now()}`,
-          payer: {
-            name: gallery.appointment?.client?.name || 'Cliente',
-            email: gallery.appointment?.client?.email || 'cliente@exemplo.com',
-            phone: {
-              area_code: '11',
-              number: gallery.appointment?.client?.phone?.replace(/\D/g, '').slice(-9) || '999999999'
-            },
-            cpf: '12345678909'
-          },
-          back_urls: {
-            success: `${window.location.origin}/gallery/${token}?payment=success`,
-            failure: `${window.location.origin}/gallery/${token}?payment=failure`,
-            pending: `${window.location.origin}/gallery/${token}?payment=pending`
-          },
-          notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro na comunicação com o servidor');
-      }
-      
-      const result = await response.json();
-      
-      if (!selectionSuccess) {
-        alert('Erro ao salvar seleção. Tente novamente.');
-        setSubmitting(false);
-        return;
-      }
-      
-      console.log('✅ Seleção salva com sucesso');
-      
-      // 2. Criar pagamento PIX para fotos extras
-      console.log('💳 Criando pagamento PIX para fotos extras...');
-      const paymentResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-extra-photos-payment`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          access_token: mpSettings.access_token,
-          environment: mpSettings.environment,
-          title: `Fotos Extras - ${extraPhotos} fotos adicionais`,
-          amount: totalAmount,
-          external_reference: `${gallery.appointment?.id}-extra-${Date.now()}`,
-          payer: {
-            name: gallery.appointment?.client?.name || 'Cliente',
-            email: gallery.appointment?.client?.email || 'cliente@exemplo.com',
-            phone: {
-              area_code: '11',
-              number: gallery.appointment?.client?.phone?.replace(/\D/g, '').slice(-9) || '999999999'
-            },
-            cpf: '12345678909'
-          },
-          back_urls: {
-            success: `${window.location.origin}/gallery/${token}?payment=success`,
-            failure: `${window.location.origin}/gallery/${token}?payment=failure`,
-            pending: `${window.location.origin}/gallery/${token}?payment=pending`
-          },
-          notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`
-        })
-      });
-      
-      if (!paymentResponse.ok) {
-        const errorData = await paymentResponse.json();
-        throw new Error(errorData.error || 'Erro ao criar pagamento');
-      }
-      
-      if (result.success && result.payment_link) {
-        const paymentData = await paymentResponse.json();
-        console.log('✅ Pagamento PIX criado:', paymentData.payment_id);
-        
-        // 3. Enviar mensagem de confirmação da seleção via WhatsApp
-        console.log('📱 Enviando confirmação da seleção via WhatsApp...');
-        try {
-          const { data: whatsappData, error: whatsappError } = await supabase.functions.invoke('send-selection-confirmation', {
-            body: {
-              clientName: gallery.appointment?.client?.name,
-              clientPhone: gallery.appointment?.client?.phone,
-              selectedCount: selectedPhotos.length,
-              minimumPhotos: gallery.appointment?.minimum_photos || 5,
-              extraPhotos,
-              totalAmount,
-              hasExtras: true
-            }
-          });
-          
-          // Criar registro de pagamento no banco
+      // Save comments to photo metadata
+      for (const [photoId, comment] of Object.entries(photoComments)) {
+        if (comment.trim()) {
           await supabase
-            .from('payments')
-            .insert({
-              appointment_id: gallery.appointment?.id,
-              amount: totalAmount,
-              status: 'pending',
-              payment_type: 'extra_photos',
-              webhook_data: {
-                preference_id: result.preference.id,
-                extra_photos: extraPhotos,
-                selected_photos: selectedPhotos
+            .from('photos_triage')
+            .update({
+              metadata: {
+                ...photos.find(p => p.id === photoId)?.metadata,
+                client_comment: comment.trim()
               }
-            });
-          
-          if (!whatsappError) {
-            console.log('✅ Mensagem WhatsApp enviada com sucesso');
-          } else {
-            console.warn('⚠️ Falha ao enviar WhatsApp (não crítico):', whatsappError);
-          }
-        } catch (whatsappError) {
-          console.warn('⚠️ Erro no WhatsApp (não crítico):', whatsappError);
+            })
+            .eq('id', photoId);
         }
-        
-        // 4. Mostrar mensagem de sucesso
-        alert(`✅ Seleção confirmada!\n\n📱 Mensagem enviada via WhatsApp com:\n• Confirmação da seleção\n• Link de pagamento para ${extraPhotos} fotos extras\n• Valor: ${formattedAmount}\n\n🔄 Redirecionando para pagamento...`);
-        
-        // 5. Aguardar um pouco para o usuário ler a mensagem
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // 6. Redirecionar para página de pagamento
-        const paymentUrl = `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${paymentData.payment_id}`;
-        console.log('🔄 Redirecionando para:', paymentUrl);
-        
-        // Redirecionar para página de pagamento do MercadoPago
-        window.location.href = result.payment_link;
       }
+
+      const success = await submitSelection(gallery.id, selectedPhotos);
       
+      if (success) {
+        alert('Seleção confirmada com sucesso! Você receberá suas fotos editadas em breve.');
+        // Reload to show updated status
+        await loadGallery();
+      } else {
+        alert('Erro ao confirmar seleção. Tente novamente.');
+      }
     } catch (error) {
-      console.error('Erro ao processar pagamento de fotos extras:', error);
-      alert('Erro ao processar pagamento. Tente novamente.');
+      console.error('Erro ao submeter seleção:', error);
+      alert('Erro ao confirmar seleção. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
   };
-
 
   const handlePhotoClick = (photo: Photo, index: number) => {
     setCurrentPhotoIndex(index);
@@ -440,25 +227,18 @@ export function ClientGallery() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${coverPhoto.url})` }}
           />
-          <div className="absolute inset-0 bg-black bg-opacity-90" />
+          <div className="absolute inset-0 bg-black bg-opacity-40" />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
           
-          <div className="relative z-10 h-full flex items-center justify-center">
-            <div className="text-center text-white max-w-4xl mx-auto px-4">
-              <h1 className="text-4xl md:text-6xl font-bold mb-4">
-                {gallery.title}
-              </h1>
-              {gallery.description && (
-                <p className="text-xl md:text-2xl text-gray-200 mb-6">
-                  {gallery.description}
-                </p>
-              )}
-              <div className="flex items-center justify-center space-x-4 text-gray-300">
-                <div className="flex items-center space-x-2">
-                  <Camera size={20} />
+          <div className="relative h-full flex items-end">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 w-full">
+              <div className="text-white">
+                <h1 className="text-4xl md:text-5xl font-bold mb-2">{gallery.name}</h1>
+                <div className="flex items-center gap-4 text-lg opacity-90">
+                  <span>{gallery.appointment?.client?.name || 'Cliente'}</span>
+                  <span>•</span>
                   <span>{photos.length} fotos</span>
-                </div>
-                <div className="flex items-center space-x-4 text-sm">
+                  <span>•</span>
                   <span>{new Date(gallery.created_at).toLocaleDateString('pt-BR')}</span>
                   {daysUntilExpiration !== null && (
                     <>
@@ -495,6 +275,20 @@ export function ClientGallery() {
               </div>
 
               <div className="flex items-center gap-3">
+                {/* Watermark Toggle */}
+                {gallery.watermark_settings?.enabled && (
+                  <button
+                    onClick={() => setShowWatermark(!showWatermark)}
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      showWatermark
+                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {showWatermark ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <span>{showWatermark ? 'Ocultar' : 'Mostrar'} Marca d'água</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -543,6 +337,7 @@ export function ClientGallery() {
                 onToggleSelection={() => handlePhotoSelection(photo.id)}
                 onViewFullSize={() => handlePhotoClick(photo, index)}
                 hasComment={!!photoComments[photo.id]}
+                watermarkSettings={showWatermark ? gallery.watermark_settings : { enabled: false }}
                 onAddComment={() => handleAddComment(photo.id)}
                 canComment={!gallery.selection_completed}
               />
@@ -558,6 +353,7 @@ export function ClientGallery() {
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
         onNavigate={setCurrentPhotoIndex}
+        watermarkSettings={showWatermark ? gallery.watermark_settings : { enabled: false }}
       />
 
       {/* Comment Modal */}
@@ -611,39 +407,24 @@ export function ClientGallery() {
       )}
 
       {/* Selection Summary - Fixed Bottom */}
-      {!gallery.selection_completed && (
+      {selectedCount > 0 && !gallery.selection_completed && (
         <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-40">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                {selectedCount > 0 ? (
-                  <div className="flex items-center space-x-2">
-                    <Check className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {selectedCount} fotos selecionadas
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      Selecione suas fotos favoritas
-                    </span>
-                  </div>
-                )}
+                <div className="flex items-center space-x-2">
+                  <Check className="h-5 w-5 text-green-600" />
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {selectedCount} fotos selecionadas
+                  </span>
+                </div>
                 
                 {gallery.appointment?.minimum_photos && (
-                  <div className="text-sm">
-                    {selectedCount < gallery.appointment.minimum_photos ? (
-                      <span className="text-red-600 dark:text-red-400">
-                        Mínimo: {gallery.appointment.minimum_photos} fotos (faltam {gallery.appointment.minimum_photos - selectedCount})
-                      </span>
-                    ) : selectedCount === gallery.appointment.minimum_photos ? (
-                      <span className="text-green-600 dark:text-green-400">
-                        ✓ Mínimo atingido: {gallery.appointment.minimum_photos} fotos
-                      </span>
-                    ) : (
-                      <span className="text-purple-600 dark:text-purple-400">
-                        {gallery.appointment.minimum_photos} incluídas + {selectedCount - gallery.appointment.minimum_photos} extras
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Mínimo: {gallery.appointment.minimum_photos} fotos
+                    {selectedCount > gallery.appointment.minimum_photos && (
+                      <span className="text-purple-600 dark:text-purple-400 ml-2">
+                        (+{selectedCount - gallery.appointment.minimum_photos} extras)
                       </span>
                     )}
                   </div>
@@ -651,18 +432,16 @@ export function ClientGallery() {
               </div>
 
               <div className="flex items-center space-x-3">
-                {selectedCount > 0 && (
-                  <button
-                    onClick={() => setSelectedPhotos([])}
-                    className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm"
-                  >
-                    Limpar Seleção
-                  </button>
-                )}
+                <button
+                  onClick={() => setSelectedPhotos([])}
+                  className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm"
+                >
+                  Limpar Seleção
+                </button>
                 
                 <button
                   onClick={handleSubmitSelection}
-                  disabled={submitting || selectedCount === 0}
+                  disabled={submitting}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
                   {submitting ? (
@@ -670,13 +449,7 @@ export function ClientGallery() {
                   ) : (
                     <Check className="h-4 w-4" />
                   )}
-                  <span>
-                    {submitting ? 'Processando...' : 
-                     selectedCount === 0 ? 'Selecione fotos' :
-                     selectedCount < (gallery.appointment?.minimum_photos || 5) ? 'Selecione mais fotos' :
-                     selectedCount === (gallery.appointment?.minimum_photos || 5) ? 'Confirmar Seleção' :
-                     'Confirmar e Pagar Extras'}
-                  </span>
+                  <span>{submitting ? 'Confirmando...' : 'Confirmar Seleção'}</span>
                 </button>
               </div>
             </div>

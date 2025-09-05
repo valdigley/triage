@@ -2,12 +2,22 @@ import React, { useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Info, Download, Heart } from 'lucide-react';
 import { Photo } from '../../types';
 
+interface WatermarkSettings {
+  enabled: boolean;
+  text: string;
+  opacity: number;
+  position: string;
+  size: string;
+  watermark_image_url?: string;
+}
+
 interface PhotoLightboxProps {
   photos: Photo[];
   currentIndex: number;
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (index: number) => void;
+  watermarkSettings?: WatermarkSettings;
 }
 
 export function PhotoLightbox({ 
@@ -15,7 +25,8 @@ export function PhotoLightbox({
   currentIndex, 
   isOpen, 
   onClose, 
-  onNavigate
+  onNavigate,
+  watermarkSettings 
 }: PhotoLightboxProps) {
   const currentPhoto = photos[currentIndex];
 
@@ -57,6 +68,70 @@ export function PhotoLightbox({
   }, [isOpen]);
 
   if (!isOpen || !currentPhoto) return null;
+
+  const renderWatermark = () => {
+    if (!watermarkSettings?.enabled) return null;
+    
+    const { opacity } = watermarkSettings;
+    
+    // If there's a watermark image URL, use it; otherwise use text
+    if (watermarkSettings.watermark_image_url) {
+      return (
+        <img
+          src={watermarkSettings.watermark_image_url}
+          alt="Watermark"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+          style={{ opacity }}
+        />
+      );
+    } else {
+      // Fallback to text watermark
+      const { position, size, text } = watermarkSettings;
+      
+      let positionClasses = '';
+      switch (position) {
+        case 'top-left':
+          positionClasses = 'top-4 left-4';
+          break;
+        case 'top-right':
+          positionClasses = 'top-4 right-4';
+          break;
+        case 'bottom-left':
+          positionClasses = 'bottom-4 left-4';
+          break;
+        case 'bottom-right':
+          positionClasses = 'bottom-4 right-4';
+          break;
+        case 'center':
+        default:
+          positionClasses = 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2';
+          break;
+      }
+      
+      let sizeClasses = '';
+      switch (size) {
+        case 'small':
+          sizeClasses = 'text-lg sm:text-xl lg:text-2xl';
+          break;
+        case 'large':
+          sizeClasses = 'text-3xl sm:text-4xl lg:text-5xl';
+          break;
+        case 'medium':
+        default:
+          sizeClasses = 'text-xl sm:text-2xl lg:text-3xl';
+          break;
+      }
+      
+      return (
+        <div
+          className={`absolute ${positionClasses} ${sizeClasses} text-white font-bold pointer-events-none z-10`}
+          style={{ opacity }}
+        >
+          {text}
+        </div>
+      );
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
@@ -104,6 +179,13 @@ export function PhotoLightbox({
             alt={currentPhoto.filename}
             className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
           />
+          
+          {/* Watermark */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative max-w-[90vw] max-h-[90vh] w-auto h-auto">
+              {renderWatermark()}
+            </div>
+          </div>
         </div>
       </div>
     </div>
