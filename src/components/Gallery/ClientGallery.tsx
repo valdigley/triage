@@ -198,13 +198,20 @@ export function ClientGallery() {
         setGallery(prev => prev ? { ...prev, selection_completed: true, status: 'completed' } : null);
         setShowCode(true);
         
+        // Se há fotos extras, mostrar carrinho
+        if (extraPhotos > 0) {
+          setShowCart(true);
+        }
+        
         // Reprocessar notificações apenas uma vez após delay maior
         setTimeout(async () => {
           console.log('🔄 Reprocessando notificações pendentes (única vez)...');
           await reprocessPendingNotifications();
         }, 8000); // Aumentado para 8 segundos
         
-        alert('✅ Seleção enviada com sucesso!\n\nSua seleção foi salva e o estúdio foi notificado.\n\nVocê receberá as fotos editadas conforme combinado.\n\n💡 Dica: Você receberá uma confirmação por WhatsApp em alguns minutos.');
+        if (extraPhotos === 0) {
+          alert('✅ Seleção enviada com sucesso!\n\nSua seleção foi salva e o estúdio foi notificado.\n\nVocê receberá as fotos editadas conforme combinado.\n\n💡 Dica: Você receberá uma confirmação por WhatsApp em alguns minutos.');
+        }
       } else {
         console.warn('⚠️ Falha na submissão, mas seleção pode ter sido salva');
         alert('✅ Sua seleção foi salva!\n\nO sistema de notificação pode estar temporariamente indisponível, mas sua seleção foi registrada com sucesso.\n\nEntre em contato com o estúdio para confirmar.');
@@ -673,7 +680,7 @@ export function ClientGallery() {
             <div className="bg-white dark:bg-gray-800 rounded-lg max-w-lg w-full mx-3 sm:mx-0 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
-                  🛒 Carrinho de Fotos Extras
+                  🛒 Fotos Extras Selecionadas
                 </h3>
                 <button
                   onClick={() => setShowCart(false)}
@@ -681,6 +688,65 @@ export function ClientGallery() {
                 >
                   <X className="h-5 w-5" />
                 </button>
+              </div>
+              
+              <div className="space-y-4 sm:space-y-6">
+                {/* Resumo */}
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                  <div className="text-center">
+                    <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                      +{extraPhotos} fotos extras
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Além das {minimumPhotos} fotos incluídas
+                    </div>
+                    <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(extraCost)}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {formatCurrency(pricePerPhoto)} por foto extra
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações */}
+                <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-start space-x-2">
+                    <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Sua seleção de {selectedPhotos.length} fotos foi confirmada</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <Clock className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span>As {minimumPhotos} primeiras fotos estão incluídas no pacote</span>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                    <span>Para receber as {extraPhotos} fotos extras, é necessário efetuar o pagamento adicional</span>
+                  </div>
+                {/* Botões de Ação */}
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      // TODO: Implementar pagamento das fotos extras
+                      alert('🚧 Funcionalidade de pagamento em desenvolvimento!\n\nPor enquanto, entre em contato com o estúdio para efetuar o pagamento das fotos extras.');
+                    }}
+                    className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 font-medium"
+                  >
+                    <span>💳 Pagar Fotos Extras</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowCart(false)}
+                    className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Fechar
+                  </button>
+                </div>
+                </div>
+                {/* Nota */}
+                <div className="text-xs text-gray-500 dark:text-gray-400 text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  💡 <strong>Importante:</strong> Você receberá as {minimumPhotos} fotos incluídas independentemente do pagamento das extras. As fotos extras serão entregues após a confirmação do pagamento.
+                </div>
               </div>
             </div>
           </div>
