@@ -57,7 +57,7 @@ export function PhotoCard({
       );
     } else {
       // Fallback to text watermark
-      const { position, size, text } = watermarkSettings;
+      const { position, size, text = 'Preview' } = watermarkSettings;
       
       let positionClasses = '';
       switch (position) {

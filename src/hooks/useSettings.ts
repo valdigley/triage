@@ -22,7 +22,15 @@ export function useSettings() {
         .single();
 
       if (error) throw error;
-      setSettings(data);
+      // Ensure watermark settings have default values
+      const settingsWithDefaults = {
+        ...data,
+        watermark_text: data.watermark_text || 'Preview',
+        watermark_opacity: data.watermark_opacity || 0.4,
+        watermark_position: data.watermark_position || 'center',
+        watermark_size: data.watermark_size || 'medium'
+      };
+      setSettings(settingsWithDefaults);
     } catch (err) {
       console.error('Erro ao buscar configurações:', err);
       setError(err instanceof Error ? err.message : 'Falha ao buscar configurações');
