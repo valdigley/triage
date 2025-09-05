@@ -202,16 +202,35 @@ Deno.serve(async (req: Request) => {
       console.log('ℹ️ Tipo de webhook não processado:', webhookData.type || webhookData.action);
     }
 
-    return new Response('OK', { 
-      status: 200,
-      headers: corsHeaders 
+    return new Response(
+      JSON.stringify({
+        success: true,
+        status: paymentData.status,
+        payment_id: paymentId
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      }
     });
 
   } catch (error) {
     console.error('❌ Erro crítico no webhook:', error);
-    return new Response(`Webhook processing error: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
-      status: 500,
-      headers: corsHeaders 
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: `Webhook processing error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      }
     });
   }
 });
