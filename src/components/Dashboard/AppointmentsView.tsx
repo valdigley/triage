@@ -1,29 +1,15 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Phone, Mail, Eye, Check, X, Download, ExternalLink, Edit, Save } from 'lucide-react';
+import { Calendar, Clock, Phone, Mail, Eye, Check, X, Download, ExternalLink } from 'lucide-react';
 import { useAppointments } from '../../hooks/useAppointments';
-import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
-import { Appointment, SessionType } from '../../types';
+import { Appointment } from '../../types';
 import { downloadICalendar } from '../../utils/calendar';
 
 export function AppointmentsView() {
   const { appointments, updateAppointmentStatus } = useAppointments();
-  const { getActiveSessionTypes } = useSessionTypes();
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
-  const [editForm, setEditForm] = useState({
-    clientName: '',
-    clientPhone: '',
-    clientEmail: '',
-    sessionType: 'aniversario' as SessionType,
-    scheduledDate: '',
-    totalAmount: 0
-  });
-  const [saving, setSaving] = useState(false);
-
-  const activeSessionTypes = getActiveSessionTypes();
 
   const filteredAppointments = appointments.filter(apt => 
     statusFilter === 'all' || apt.status === statusFilter
@@ -440,124 +426,6 @@ export function AppointmentsView() {
                     Confirmar
                   </button>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Appointment Modal */}
-      {editingAppointment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-start mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-white">Editar Agendamento</h3>
-                <button
-                  onClick={() => setEditingAppointment(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Nome do Cliente
-                    </label>
-                    <input
-                      type="text"
-                      value={editForm.clientName}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, clientName: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      value={editForm.clientPhone}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, clientPhone: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      E-mail
-                    </label>
-                    <input
-                      type="email"
-                      value={editForm.clientEmail}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, clientEmail: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Tipo de Sessão
-                    </label>
-                    <select
-                      value={editForm.sessionType}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, sessionType: e.target.value as SessionType }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      {activeSessionTypes.map((sessionType) => (
-                        <option key={sessionType.name} value={sessionType.name}>
-                          {sessionType.icon} {sessionType.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Data e Horário
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={editForm.scheduledDate}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, scheduledDate: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Valor Total (R$)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editForm.totalAmount}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, totalAmount: parseFloat(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
-                <button
-                  onClick={() => setEditingAppointment(null)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm sm:text-base"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={saving}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
-                >
-                  {saving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  <span>{saving ? 'Salvando...' : 'Salvar'}</span>
-                </button>
               </div>
             </div>
           </div>
