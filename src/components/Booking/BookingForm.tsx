@@ -58,7 +58,12 @@ export function AppointmentsView() {
         .eq('id', editingAppointment.client_id);
 
       if (clientError) throw clientError;
-
+    } catch (error) {
+      console.error('Error saving edit:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleExportCalendar = () => {
     const confirmedAppointments = appointments.filter(apt => 
