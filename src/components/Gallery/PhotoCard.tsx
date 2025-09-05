@@ -101,10 +101,10 @@ export function PhotoCard({
 
 
   return (
-    <div className={`relative group cursor-pointer w-full h-full ${className}`}>
+    <div className={`relative group cursor-pointer w-full ${className}`}>
       {/* Main Photo Container */}
       <div 
-        className="relative w-full h-full overflow-hidden rounded-lg border-2 transition-all duration-200 sm:hover:shadow-lg"
+        className="relative w-full h-full overflow-hidden rounded-lg border-2 transition-all duration-200 sm:hover:shadow-lg bg-gray-100 dark:bg-gray-700"
         style={{
           borderColor: isSelected ? '#7c3aed' : '#e5e7eb'
         }}
@@ -121,7 +121,7 @@ export function PhotoCard({
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-full object-cover transition-transform duration-200 touch-manipulation"
+          className="w-full h-full object-cover"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = `https://via.placeholder.com/300x200/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
