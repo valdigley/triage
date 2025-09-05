@@ -7,7 +7,7 @@ import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
 import { Appointment, SessionType } from '../../types';
 import { downloadICalendar } from '../../utils/calendar';
 
-export function AppointmentsView() {
+export function BookingForm() {
   const { appointments, updateAppointmentStatus } = useAppointments();
   const { getActiveSessionTypes } = useSessionTypes();
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
