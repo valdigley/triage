@@ -65,15 +65,16 @@ export function useGalleries() {
 
   const updateGalleryStatus = async (id: string, status: Gallery['status']) => {
     try {
-      // Se estamos reativando a seleção, também resetamos o flag de seleção completa
+      // Se estamos reativando a seleção (mudando para pending), resetamos os flags de seleção
       const updateData: any = { 
         status,
         updated_at: new Date().toISOString()
       };
       
-      if (status === 'started') {
+      if (status === 'pending') {
         updateData.selection_completed = false;
         updateData.selection_submitted_at = null;
+        updateData.photos_selected = [];
       }
       
       const { error } = await supabase
@@ -82,6 +83,15 @@ export function useGalleries() {
         .eq('id', id);
 
       if (error) throw error;
+      
+      // Se estamos reativando, também limpar as seleções das fotos individuais
+      if (status === 'pending') {
+        await supabase
+          .from('photos_triage')
+          .update({ is_selected: false })
+          .eq('gallery_id', id);
+      }
+      
       await fetchGalleries();
       return true;
     } catch (err) {

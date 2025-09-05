@@ -407,7 +407,7 @@ export function GalleriesView() {
                           )}
                           {gallery.status === 'completed' && (
                             <button
-                              onClick={() => updateGalleryStatus(gallery.id, 'started')}
+                              onClick={() => updateGalleryStatus(gallery.id, 'pending')}
                               className="text-orange-600 hover:text-orange-900 transition-colors"
                               title="Reativar seleção"
                             >
@@ -526,7 +526,7 @@ export function GalleriesView() {
                   )}
                   {gallery.status === 'completed' && (
                     <button
-                      onClick={() => updateGalleryStatus(gallery.id, 'started')}
+                      onClick={() => updateGalleryStatus(gallery.id, 'pending')}
                       className="flex-1 bg-orange-100 text-orange-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors flex items-center justify-center space-x-1"
                     >
                       <Clock className="h-4 w-4" />
