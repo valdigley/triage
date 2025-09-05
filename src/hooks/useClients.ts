@@ -14,13 +14,45 @@ export function useClients() {
   const fetchClients = async () => {
     try {
       setLoading(true);
+      
+      // Buscar clientes com cálculo real do total gasto
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          appointments!inner(
+            id,
+            total_amount,
+            payment_status
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setClients(data || []);
+      
+      // Calcular total gasto real para cada cliente
+      const clientsWithRealTotal = (data || []).map(client => {
+        const totalSpent = client.appointments
+          .filter((apt: any) => apt.payment_status === 'approved')
+          .reduce((sum: number, apt: any) => sum + apt.total_amount, 0);
+        
+        return {
+          ...client,
+          total_spent: totalSpent,
+          appointments: undefined // Remove appointments do objeto final
+        };
+      });
+      
+      // Remover duplicatas (clientes podem aparecer múltiplas vezes devido ao join)
+      const uniqueClients = clientsWithRealTotal.reduce((acc: any[], client) => {
+        const existing = acc.find(c => c.id === client.id);
+        if (!existing) {
+          acc.push(client);
+        }
+        return acc;
+      }, []);
+      
+      setClients(uniqueClients);
     } catch (err) {
       console.error('Erro ao buscar clientes:', err);
       setError(err instanceof Error ? err.message : 'Falha ao buscar clientes');
@@ -33,9 +65,17 @@ export function useClients() {
     try {
       setLoading(true);
       
+      // Buscar clientes com cálculo real do total gasto
       let query = supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          appointments!inner(
+            id,
+            total_amount,
+            payment_status
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (searchTerm.trim()) {
@@ -45,7 +85,30 @@ export function useClients() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setClients(data || []);
+      
+      // Calcular total gasto real para cada cliente
+      const clientsWithRealTotal = (data || []).map(client => {
+        const totalSpent = client.appointments
+          .filter((apt: any) => apt.payment_status === 'approved')
+          .reduce((sum: number, apt: any) => sum + apt.total_amount, 0);
+        
+        return {
+          ...client,
+          total_spent: totalSpent,
+          appointments: undefined // Remove appointments do objeto final
+        };
+      });
+      
+      // Remover duplicatas
+      const uniqueClients = clientsWithRealTotal.reduce((acc: any[], client) => {
+        const existing = acc.find(c => c.id === client.id);
+        if (!existing) {
+          acc.push(client);
+        }
+        return acc;
+      }, []);
+      
+      setClients(uniqueClients);
     } catch (err) {
       console.error('Erro ao pesquisar clientes:', err);
       setError(err instanceof Error ? err.message : 'Falha ao pesquisar clientes');
