@@ -85,13 +85,20 @@ export function PhotoCard({
         style={{
           borderColor: isSelected ? '#7c3aed' : '#e5e7eb'
         }}
-        onClick={canSelect ? onToggleSelection : undefined}
+        onClick={() => {
+          // No mobile, sempre seleciona se possível. No desktop, chama onViewFullSize
+          if (window.innerWidth < 640) { // sm breakpoint
+            if (canSelect) onToggleSelection();
+          } else {
+            onViewFullSize();
+          }
+        }}
       >
         {/* Photo */}
         <img
           src={photo.thumbnail || photo.url}
           alt={photo.filename}
-          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-200 sm:group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = `https://via.placeholder.com/300x200/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
@@ -134,11 +141,16 @@ export function PhotoCard({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onViewFullSize();
+          // No mobile, seleciona. No desktop, abre lightbox
+          if (window.innerWidth < 640) {
+            if (canSelect) onToggleSelection();
+          } else {
+            onViewFullSize();
+          }
         }}
-        className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-lg"
+        className="absolute inset-0 bg-black bg-opacity-0 sm:hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 sm:group-hover:opacity-100 rounded-lg"
       >
-        <div className="bg-white bg-opacity-90 rounded-full p-2">
+        <div className="hidden sm:block bg-white bg-opacity-90 rounded-full p-2">
           <Expand className="h-5 w-5 text-gray-800" />
         </div>
       </button>
@@ -150,7 +162,7 @@ export function PhotoCard({
             e.stopPropagation();
             onAddComment();
           }}
-          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
+          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
           title="Adicionar comentário"
         >
           <MessageSquare className="h-3 w-3" />
@@ -159,7 +171,7 @@ export function PhotoCard({
 
       {/* Selection Status */}
       {canSelect && (
-        <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+        <div className="absolute bottom-2 left-2 opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
           <div className={`px-2 py-1 rounded text-xs font-medium ${
             isSelected 
               ? 'bg-purple-600 text-white' 
