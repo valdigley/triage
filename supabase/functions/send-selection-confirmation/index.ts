@@ -30,9 +30,11 @@ async function sendWhatsAppMessage(
       text: message
     };
 
+    const fullUrl = `${apiUrl}/message/sendText/${instanceName}`;
+    console.log('🚀 URL completa da requisição:', fullUrl);
     console.log('🚀 Fazendo requisição para Evolution API...');
 
-    const response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'apikey': apiKey,
@@ -44,17 +46,35 @@ async function sendWhatsAppMessage(
     console.log('📡 Status da resposta:', response.status);
     
     if (response.ok) {
-      const responseData = await response.json();
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (jsonError) {
+        console.error('❌ Erro ao fazer parse do JSON da resposta:', jsonError);
+        const responseText = await response.text();
+        console.log('📄 Resposta como texto:', responseText);
+        return true; // Consider it successful if we got a 200 status
+      }
       console.log('✅ Resposta da API:', responseData);
       return true;
     } else {
-      const errorData = await response.json();
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch (jsonError) {
+        console.error('❌ Erro ao fazer parse do JSON do erro:', jsonError);
+        const errorText = await response.text();
+        console.error('📄 Erro como texto:', errorText);
+        return false;
+      }
       console.error('❌ Erro da Evolution API:', errorData);
       return false;
     }
 
   } catch (error) {
     console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
+    console.error('❌ Detalhes do erro:', error.message);
+    console.error('❌ Stack trace:', error.stack);
     return false;
   }
 }
