@@ -372,7 +372,8 @@ export function ClientGallery() {
                   <h3 className="text-lg font-bold text-purple-900 dark:text-purple-200 mb-4">
                     Como Selecionar Suas Fotos
                   </h3>
-                  <div className="space-y-3 text-sm text-purple-700 dark:text-purple-300">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
+                    <div className="space-y-3 text-sm text-purple-700 dark:text-purple-300">
                     <div className="flex items-start space-x-3">
                       <span className="w-6 h-6 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</span>
                       <span className="leading-relaxed">Toque nas fotos para selecioná-las ou desmarcá-las</span>
@@ -385,6 +386,8 @@ export function ClientGallery() {
                       <span className="w-6 h-6 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
                       <span className="leading-relaxed">Selecione pelo menos {minimumPhotos} fotos para continuar</span>
                     </div>
+                    </div>
+                    <div className="space-y-3 text-sm text-purple-700 dark:text-purple-300">
                     <div className="flex items-start space-x-3">
                       <span className="w-6 h-6 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">4</span>
                       <span className="leading-relaxed">Toque em "Confirmar" quando terminar sua seleção</span>
@@ -392,6 +395,7 @@ export function ClientGallery() {
                     <div className="flex items-start space-x-3">
                       <span className="w-6 h-6 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">5</span>
                       <span className="leading-relaxed">Use o ícone 💬 para adicionar comentários com instruções de ajustes específicos</span>
+                    </div>
                     </div>
                   </div>
                 </div>
