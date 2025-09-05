@@ -47,6 +47,16 @@ export function BookingForm() {
     setFormData(prev => ({ ...prev, scheduledDate: date }));
     
     if (settings && date) {
+      // Check if date is in the future
+      const appointmentDate = new Date(date);
+      const now = new Date();
+      
+      if (appointmentDate <= now) {
+        alert('Por favor, selecione uma data e horário futuros.');
+        setFormData(prev => ({ ...prev, scheduledDate: '' }));
+        return;
+      }
+
       setIsCheckingAvailability(true);
       const calculatedPrice = calculatePrice(
         date,
@@ -58,7 +68,7 @@ export function BookingForm() {
 
       const isAvailable = await checkAvailability(date);
       if (!isAvailable) {
-        alert('Horário não disponível. Por favor, escolha outro.');
+        alert('Horário não disponível. Lembre-se: cada sessão dura 1h com intervalo de 1h entre sessões. Por favor, escolha outro horário.');
         setFormData(prev => ({ ...prev, scheduledDate: '' }));
       }
       setIsCheckingAvailability(false);

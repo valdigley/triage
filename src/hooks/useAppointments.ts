@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Appointment, BookingFormData } from '../types';
+import { isDateTimeAvailable } from '../utils/pricing';
 import { useNotifications } from './useNotifications';
 
 export function useAppointments() {
@@ -126,14 +127,31 @@ export function useAppointments() {
 
   const checkAvailability = async (date: string): Promise<boolean> => {
     try {
+      // First check if date is in the future
+      const appointmentDate = new Date(date);
+      const now = new Date();
+      if (appointmentDate <= now) {
+        return false;
+      }
+
+      // Get all existing appointments to check for conflicts
       const { data, error } = await supabase
         .from('appointments')
-        .select('id')
-        .eq('scheduled_date', date)
+        .select('scheduled_date')
         .in('status', ['pending', 'confirmed']);
 
       if (error) throw error;
-      return data.length === 0;
+
+      // Get settings for commercial hours
+      const { data: settings } = await supabase
+        .from('settings')
+        .select('commercial_hours')
+        .single();
+
+      if (!settings) return false;
+
+      // Use the utility function to check availability
+      return isDateTimeAvailable(date, data, settings.commercial_hours);
     } catch (error) {
       console.error('Erro ao verificar disponibilidade:', error);
       return false; // Assume not available if can't check

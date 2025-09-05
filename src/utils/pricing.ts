@@ -44,10 +44,14 @@ export function isDateTimeAvailable(
   // Check if date is in the future
   if (appointmentDate <= now) return false;
 
-  // Check if there's already an appointment at this exact time
-  const hasConflict = existingAppointments.some(apt => 
-    new Date(apt.scheduled_date).getTime() === appointmentDate.getTime()
-  );
+  // Check for conflicts: each session lasts 1h with 1h interval between sessions
+  // So we need to check if there's any appointment within 2 hours (1h session + 1h interval)
+  const hasConflict = existingAppointments.some(apt => {
+    const existingDate = new Date(apt.scheduled_date);
+    const timeDiff = Math.abs(appointmentDate.getTime() - existingDate.getTime());
+    const twoHours = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    return timeDiff < twoHours;
+  });
 
   if (hasConflict) return false;
 
@@ -57,7 +61,14 @@ export function isDateTimeAvailable(
   const dayName = dayNames[dayOfWeek];
   const daySchedule = commercialHours[dayName];
 
-  return daySchedule.enabled;
+  // Check if day is enabled
+  if (!daySchedule.enabled) return false;
+
+  // Check if time is within commercial hours
+  const appointmentTime = appointmentDate.toTimeString().slice(0, 5);
+  const isWithinHours = appointmentTime >= daySchedule.start && appointmentTime <= daySchedule.end;
+
+  return isWithinHours;
 }
 
 export function formatCurrency(amount: number): string {
