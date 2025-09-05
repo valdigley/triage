@@ -121,8 +121,8 @@ export function SettingsView() {
     }
 
     // Validate file size (max 1MB)
-    if (file.size > 1024 * 1024) {
-      alert('A marca d\'água deve ter no máximo 1MB.');
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A marca d\'água deve ter no máximo 5MB.');
       return;
     }
 
@@ -612,6 +612,7 @@ export function SettingsView() {
                         <span>{uploadingWatermark ? 'Enviando...' : 'Enviar PNG'}</span>
                       </button>
                       <p className="text-xs text-gray-500 mt-1">PNG com transparência, máximo 1MB</p>
+                      <p className="text-xs text-gray-500 mt-1">PNG com transparência, máximo 5MB</p>
                     </div>
                   </div>
                 </div>
