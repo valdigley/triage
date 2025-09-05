@@ -166,7 +166,7 @@ export function ClientGallery() {
   };
 
   const createExtraPhotosPayment = async () => {
-    if (!gallery || selectedPhotos.length <= 0) return;
+    if (!gallery || extraPhotos <= 0) return;
 
     try {
       setShowCart(false);
@@ -310,7 +310,7 @@ export function ClientGallery() {
         setShowCode(true);
         
         // Se há fotos extras, mostrar carrinho
-        if (selectedPhotos.length > 0) {
+        if (extraPhotos > 0) {
           setShowCart(true);
         }
         
@@ -646,19 +646,14 @@ export function ClientGallery() {
               </button>
               
               {/* Photo Name */}
-                  <div className="text-xl lg:text-2xl font-bold text-blue-600 dark:text-blue-400">{minimumPhotos}</div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Incluídas</div>
-              </div>
-
-                  <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">{extraPhotos}</div>
-                  <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Total</div>
+              {photoComments[lightboxPhoto.id] && (
                 <div className="absolute top-16 sm:top-20 lg:top-28 left-2 sm:left-4 lg:left-8 bg-blue-600 bg-opacity-95 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 rounded-xl z-20 max-w-[250px] sm:max-w-[320px] lg:max-w-[500px] backdrop-blur-sm shadow-2xl">
                   <div className="flex items-start space-x-2">
                     <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 mt-0.5 flex-shrink-0" />
-              {selectedPhotos.length > 0 && (
+                    <div>
                       <div className="text-sm sm:text-base lg:text-lg font-medium mb-1 sm:mb-2">Instruções:</div>
                       <div className="text-sm sm:text-base lg:text-lg leading-relaxed">{photoComments[lightboxPhoto.id]}</div>
-                    Custo total: {formatCurrency(extraCost)}
+                    </div>
                   </div>
                 </div>
               )}
@@ -835,6 +830,7 @@ export function ClientGallery() {
                     <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
                     <span>Para receber as {extraPhotos} fotos extras, é necessário efetuar o pagamento adicional</span>
                   </div>
+                </div>
                 {/* Botões de Ação */}
                 <div className="space-y-3">
                   <button
@@ -853,10 +849,9 @@ export function ClientGallery() {
                     Fechar
                   </button>
                 </div>
-                </div>
                 {/* Nota */}
                 <div className="text-xs text-gray-500 dark:text-gray-400 text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  💡 <strong>Importante:</strong> Todas as {selectedPhotos.length} fotos selecionadas serão entregues após a confirmação do pagamento.
+                  💡 <strong>Importante:</strong> Você receberá as {minimumPhotos} fotos incluídas independentemente do pagamento das extras. As fotos extras serão entregues após a confirmação do pagamento.
                 </div>
               </div>
             </div>
