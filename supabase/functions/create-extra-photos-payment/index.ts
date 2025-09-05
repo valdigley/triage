@@ -90,8 +90,7 @@ Deno.serve(async (req: Request) => {
         phone: {
           area_code: "11",
           number: "999999999"
-        },
-        registration_date: "2020-01-01T00:00:00.000-03:00"
+        }
       }
     };
 
