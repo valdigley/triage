@@ -234,10 +234,6 @@ export function ClientGallery() {
               <div className="text-white">
                 <h1 className="text-4xl md:text-5xl font-bold mb-2">{gallery.name}</h1>
                 <div className="flex items-center gap-4 text-lg opacity-90">
-                  <span>{gallery.appointment?.client?.name || 'Cliente'}</span>
-                  <span>•</span>
-                  <span>{photos.length} fotos</span>
-                  <span>•</span>
                   <span>{new Date(gallery.created_at).toLocaleDateString('pt-BR')}</span>
                   {daysUntilExpiration !== null && (
                     <>
