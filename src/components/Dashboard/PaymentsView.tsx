@@ -38,7 +38,7 @@ export function PaymentsView() {
     }
   };
 
-  const handleSendPaymentLink = async (payment: Payment) => {
+  const handleSendPaymentRequest = async (payment: Payment) => {
     if (!payment.appointment?.client) {
       alert('Dados do cliente não encontrados');
       return;
@@ -46,7 +46,7 @@ export function PaymentsView() {
 
     setSendingPaymentRequest(payment.id);
     try {
-      // Create new payment link via MercadoPago
+      // Create new PIX payment via MercadoPago
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-link`, {
         method: 'POST',
         headers: {
@@ -67,23 +67,23 @@ export function PaymentsView() {
       const result = await response.json();
       
       if (result.success) {
-        // Send payment link via WhatsApp
+        // Send PIX code via WhatsApp
         const paymentTypeLabel = payment.payment_type === 'initial' ? 'Sessão Fotográfica' : 'Fotos Extras';
         const formattedAmount = new Intl.NumberFormat('pt-BR', { 
           style: 'currency', 
           currency: 'BRL' 
         }).format(payment.amount);
         
-        const message = `💳 *Link de Pagamento - ${paymentTypeLabel}*\n\n` +
+        const message = `💳 *PIX para Pagamento - ${paymentTypeLabel}*\n\n` +
                        `Olá ${payment.appointment.client.name}!\n\n` +
-                       `Segue o link para efetuar o pagamento:\n\n` +
+                       `Segue o código PIX para pagamento:\n\n` +
                        `💰 *Valor:* ${formattedAmount}\n\n` +
-                       `🔗 *Link de Pagamento:*\n${result.payment_url}\n\n` +
+                       `📱 *Código PIX:*\n${result.qr_code || 'Código não disponível'}\n\n` +
                        `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
                        `💡 *Como pagar:*\n` +
-                       `• Clique no link acima\n` +
-                       `• Escolha PIX ou cartão de crédito\n` +
-                       `• Complete o pagamento com segurança\n` +
+                       `• Copie o código PIX acima\n` +
+                       `• Abra seu app bancário\n` +
+                       `• Cole o código na opção PIX\n` +
                        `• Receba confirmação automática\n\n` +
                        `✅ *Após o pagamento:*\n` +
                        `• Você receberá confirmação via WhatsApp\n` +
@@ -94,22 +94,22 @@ export function PaymentsView() {
         const whatsappSuccess = await sendMessage(payment.appointment.client.phone, message);
         
         if (whatsappSuccess) {
-          alert('✅ Link de pagamento gerado e enviado via WhatsApp com sucesso!');
+          alert('✅ PIX gerado e enviado via WhatsApp com sucesso!');
         } else {
-          // Show link for manual sending if WhatsApp fails
-          const shouldCopy = confirm(`Link de pagamento gerado, mas falha no WhatsApp.\n\nDeseja copiar o link para enviar manualmente?\n\n${result.payment_url}`);
+          // Show PIX code for manual sending if WhatsApp fails
+          const shouldCopy = confirm(`PIX gerado, mas falha no WhatsApp.\n\nDeseja copiar o código PIX para enviar manualmente?\n\n${result.qr_code || 'Código não disponível'}`);
           if (shouldCopy) {
-            navigator.clipboard.writeText(result.payment_url);
-            alert('Link copiado para a área de transferência!');
+            navigator.clipboard.writeText(result.qr_code || '');
+            alert('Código PIX copiado para a área de transferência!');
           }
         }
       } else {
-        throw new Error(result.error || 'Erro ao gerar link de pagamento');
+        throw new Error(result.error || 'Erro ao gerar PIX');
       }
 
     } catch (error) {
-      console.error('Erro ao gerar link de pagamento:', error);
-      alert(`Erro ao gerar link de pagamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      console.error('Erro ao gerar PIX:', error);
+      alert(`Erro ao gerar PIX: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setSendingPaymentRequest(null);
     }
@@ -272,10 +272,10 @@ export function PaymentsView() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {payment.status === 'pending' && payment.appointment?.client && (
                       <button
-                        onClick={() => handleSendPaymentLink(payment)}
+                        onClick={() => handleSendPaymentRequest(payment)}
                         disabled={sendingPaymentRequest === payment.id}
                         className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                        title="Gerar e enviar link de pagamento via WhatsApp"
+                        title="Gerar e enviar PIX via WhatsApp"
                       >
                         {sendingPaymentRequest === payment.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -348,7 +348,7 @@ export function PaymentsView() {
             {payment.status === 'pending' && payment.appointment?.client && (
               <div className="mb-3">
                 <button
-                  onClick={() => handleSendPaymentLink(payment)}
+                  onClick={() => handleSendPaymentRequest(payment)}
                   disabled={sendingPaymentRequest === payment.id}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
                 >
@@ -360,7 +360,7 @@ export function PaymentsView() {
                   ) : (
                     <>
                       <DollarSign className="h-4 w-4" />
-                      <span>Enviar Link de Pagamento</span>
+                      <span>Gerar e Enviar PIX</span>
                     </>
                   )}
                 </button>
