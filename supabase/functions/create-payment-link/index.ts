@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
         pending: `${Deno.env.get('SUPABASE_URL')}/functions/v1/payment-pending`
       },
       auto_return: "approved",
-      external_reference: paymentType === 'extra_photos' ? `${appointmentId}-extra-${paymentId}` : appointmentId,
+      external_reference: paymentType === 'extra_photos' ? `${appointmentId}-extra-${Date.now()}` : appointmentId,
       notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercadopago-webhook`,
       expires: true,
       expiration_date_from: new Date().toISOString(),
@@ -115,7 +115,12 @@ Deno.serve(async (req: Request) => {
         excluded_payment_types: [],
         installments: 12
       },
-      statement_descriptor: "ESTUDIO FOTO"
+      statement_descriptor: "ESTUDIO FOTO",
+      metadata: {
+        appointment_id: appointmentId,
+        payment_type: paymentType,
+        client_name: clientName
+      }
     };
 
     console.log('Creating payment preference:', JSON.stringify(preferenceData, null, 2));
