@@ -44,7 +44,6 @@ interface PhotoUploadProps {
   onUploadComplete: () => void;
   onUploadProgress?: (progress: number) => void;
   gallery?: any; // Gallery data with appointment info
-  gallery?: any; // Gallery data with appointment info
 }
 
 interface UploadFile {
@@ -371,7 +370,9 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
         studio_address: settings.studio_address || '',
         studio_maps_url: settings.studio_maps_url || '',
         price_per_photo: formatCurrency(settings.price_commercial_hour || 30),
-        minimum_photos: (gallery.appointment.minimum_photos || 5).toString()
+        minimum_photos: (gallery.appointment.minimum_photos || 5).toString(),
+        studio_name: settings.studio_name || '',
+        studio_phone: settings.studio_phone || ''
       };
 
       // Get gallery ready template

@@ -62,7 +62,10 @@ export async function scheduleNotifications(appointmentId: string, supabase: any
       studio_maps_url: settings.studio_maps_url || '',
       delivery_days: (settings.delivery_days || 7).toString(),
       gallery_link: '', // Will be filled when gallery is created
-      price_per_photo: formatCurrency(settings.price_commercial_hour || 30)
+      price_per_photo: formatCurrency(settings.price_commercial_hour || 30),
+      minimum_photos: (appointment.minimum_photos || 5).toString(),
+      studio_name: settings.studio_name || '',
+      studio_phone: settings.studio_phone || ''
     };
 
     // Schedule reminder 1 day before

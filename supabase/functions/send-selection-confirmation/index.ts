@@ -327,7 +327,9 @@ Deno.serve(async (req: Request) => {
       extra_photos: extraPhotos.toString(),
       extra_cost: formattedExtraCost,
       price_per_photo: formattedPricePerPhoto,
-      delivery_days: (deliveryDays || 7).toString()
+      delivery_days: (deliveryDays || 7).toString(),
+      studio_name: 'Estúdio', // Fallback since settings not available in this context
+      studio_phone: '' // Fallback since settings not available in this context
     };
 
     // Process template by replacing variables

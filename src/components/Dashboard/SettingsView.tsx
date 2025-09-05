@@ -809,7 +809,7 @@ export function SettingsView() {
                   />
                   
                   <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {"Variáveis disponíveis: {{client_name}}, {{amount}}, {{session_type}}, {{appointment_date}}, {{appointment_time}}, {{studio_address}}, {{delivery_days}}"}
+                    {"Variáveis disponíveis: {{client_name}}, {{amount}}, {{session_type}}, {{appointment_date}}, {{appointment_time}}, {{studio_address}}, {{studio_maps_url}}, {{delivery_days}}, {{price_per_photo}}, {{minimum_photos}}, {{selected_count}}, {{extra_photos}}, {{extra_cost}}, {{gallery_link}}, {{studio_name}}, {{studio_phone}}"}
                   </div>
                 </div>
               ))}
