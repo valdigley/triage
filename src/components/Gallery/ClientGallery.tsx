@@ -385,10 +385,10 @@ export function ClientGallery() {
     );
   }
 
-  const minimumPhotos = gallery.appointment?.minimum_photos || 5;
-  const extraPhotos = selectedPhotos.length; // Contar desde a primeira foto
+  const minimumPhotos = 0; // Não há fotos incluídas - todas são pagas
+  const totalPhotos = selectedPhotos.length; // Contar desde a primeira foto
   const pricePerPhoto = settings?.price_commercial_hour || 30; // Use system price or fallback to 30
-  const extraCost = extraPhotos * pricePerPhoto;
+  const totalCost = totalPhotos * pricePerPhoto;
   const isExpired = new Date() > new Date(gallery.link_expires_at);
 
   return (
@@ -452,10 +452,10 @@ export function ClientGallery() {
               </div>
             </div>
             
-            {extraPhotos > 0 && (
+            {totalPhotos > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 text-center">
                 <div className="text-xs lg:text-sm text-orange-600 dark:text-orange-400 font-medium">
-                  Custo adicional: {formatCurrency(extraCost)}
+                  Custo total: {formatCurrency(totalCost)}
                 </div>
               </div>
             )}
@@ -652,7 +652,7 @@ export function ClientGallery() {
               </div>
 
               <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">{extraPhotos}</div>
+                <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">{totalPhotos}</div>
                 <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Total</div>
               </div>
               

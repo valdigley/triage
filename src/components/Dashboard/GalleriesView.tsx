@@ -202,7 +202,7 @@ export function GalleriesView() {
         .from('appointments')
         .insert([{
           client_id: clientId,
-          session_type: 'tematico',
+          session_type: newGallery.sessionType, // Use selected session type
           session_details: { theme: 'Galeria Manual' },
           scheduled_date: new Date().toISOString(),
           total_amount: 0,
