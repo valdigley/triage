@@ -106,6 +106,91 @@ export function DashboardOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Session Types Chart */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white">Tipos de Sessão</h2>
+            <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+          </div>
+          
+          {(() => {
+            // Calcular dados para o gráfico de pizza
+            const sessionTypeCounts = appointments
+              .filter(apt => apt.status === 'confirmed' || apt.status === 'completed')
+              .reduce((acc, apt) => {
+                const type = apt.session_type;
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>);
+
+            const chartData = Object.entries(sessionTypeCounts).map(([type, count]) => ({
+              name: sessionTypeLabels[type as keyof typeof sessionTypeLabels] || type,
+              value: count,
+              icon: getSessionIcon(type as keyof typeof sessionTypeLabels)
+            }));
+
+            const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+
+            if (chartData.length === 0) {
+              return (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-6 sm:py-8 text-sm sm:text-base">
+                  Nenhuma sessão confirmada ainda
+                </p>
+              );
+            }
+
+            return (
+              <div className="space-y-4">
+                <div className="h-48 sm:h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={chartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={30}
+                        outerRadius={60}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: number) => [`${value} sessões`, 'Total']}
+                        labelStyle={{ color: '#374151' }}
+                        contentStyle={{ 
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px'
+                        }}
+                      />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legend */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {chartData.map((entry, index) => (
+                    <div key={entry.name} className="flex items-center space-x-2">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: colors[index % colors.length] }}
+                      />
+                      <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center space-x-1">
+                        <span>{entry.icon}</span>
+                        <span>{entry.name}</span>
+                        <span className="font-medium">({entry.value})</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
         {/* Today's Appointments */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
