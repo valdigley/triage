@@ -3,23 +3,19 @@ import { Camera, Upload, Eye, Share2, MessageCircle, Clock, Check, AlertTriangle
 import { supabase } from '../../lib/supabase';
 import { formatCurrency } from '../../utils/pricing';
 import { useGalleries } from '../../hooks/useGalleries';
-import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useClients } from '../../hooks/useClients';
 import { PhotoUpload } from '../Gallery/PhotoUpload';
 import { Gallery, Photo } from '../../types';
-import { sessionTypeLabels } from '../../utils/sessionTypes';
 
 export function GalleriesView() {
   const { galleries, loading, updateGalleryStatus, createGallery, deleteGallery } = useGalleries();
-  const { getActiveSessionTypes } = useSessionTypes();
   const { sendGalleryLink } = useWhatsApp();
   const { clients } = useClients();
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [newGallerySessionType, setNewGallerySessionType] = useState('');
   const [deletingPhotos, setDeletingPhotos] = useState<Set<string>>(new Set());
   const [deletingGallery, setDeletingGallery] = useState<string | null>(null);
   const [showCreateGallery, setShowCreateGallery] = useState(false);
@@ -34,8 +30,6 @@ export function GalleriesView() {
   });
   const [creating, setCreating] = useState(false);
   const [createStep, setCreateStep] = useState(1); // 1: Select Client, 2: Gallery Details
-  const activeSessionTypes = getActiveSessionTypes();
-
 
   const fetchPhotos = async (galleryId: string) => {
     try {
@@ -202,7 +196,7 @@ export function GalleriesView() {
         .from('appointments')
         .insert([{
           client_id: clientId,
-          session_type: newGallery.sessionType, // Use selected session type
+          session_type: 'tematico',
           session_details: { theme: 'Galeria Manual' },
           scheduled_date: new Date().toISOString(),
           total_amount: 0,
@@ -482,10 +476,7 @@ export function GalleriesView() {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                    <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
-                      {gallery.name} - {gallery.appointment?.session_type ? 
-                        sessionTypeLabels[gallery.appointment.session_type] || gallery.appointment.session_type 
-                        : 'Tipo não definido'
-                      }
+                      {gallery.name}
                     </h3>
                    <p className="text-sm text-gray-600 dark:text-gray-300">
                       {gallery.appointment?.client?.name || 'N/A'}
@@ -708,10 +699,7 @@ export function GalleriesView() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white">
-                  {gallery.name} - {gallery.appointment?.session_type ? 
-                    sessionTypeLabels[gallery.appointment.session_type] || gallery.appointment.session_type 
-                    : 'Tipo não definido'
-                  }
+                  Fotos da Galeria ({photos.length})
                 </h3>
                 
                 {selectedGallery.photos_selected && selectedGallery.photos_selected.length > 0 && (

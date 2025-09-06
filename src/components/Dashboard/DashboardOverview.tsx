@@ -2,20 +2,12 @@ import React from 'react';
 import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useClients } from '../../hooks/useClients';
-import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { formatCurrency } from '../../utils/pricing';
-import { sessionTypeLabels } from '../../utils/sessionTypes';
+import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
 
 export function DashboardOverview() {
   const { appointments } = useAppointments();
   const { clients } = useClients();
-  const { sessionTypes } = useSessionTypes();
-
-  // Função para obter ícone do tipo de sessão do banco de dados
-  const getSessionIcon = (sessionTypeName: string): string => {
-    const sessionType = sessionTypes.find(st => st.name === sessionTypeName);
-    return sessionType?.icon || '📸'; // Fallback para câmera se não encontrar
-  };
 
   const today = new Date();
   const todayAppointments = appointments.filter(apt => {
