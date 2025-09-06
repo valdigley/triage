@@ -14,6 +14,7 @@ export function useSessionTypes() {
   const fetchSessionTypes = async () => {
     try {
       setLoading(true);
+      setError(null);
       const { data, error } = await supabase
         .from('session_types')
         .select('*')
@@ -24,6 +25,42 @@ export function useSessionTypes() {
     } catch (err) {
       console.error('Erro ao buscar tipos de sessão:', err);
       setError(err instanceof Error ? err.message : 'Falha ao buscar tipos de sessão');
+      // Em caso de erro, usar dados padrão para não quebrar a aplicação
+      setSessionTypes([
+        {
+          id: 'default-1',
+          name: 'aniversario',
+          label: 'Aniversário',
+          description: 'Celebração de aniversário',
+          icon: '🎂',
+          is_active: true,
+          sort_order: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: 'default-2',
+          name: 'gestante',
+          label: 'Gestante',
+          description: 'Ensaio gestante',
+          icon: '🤱',
+          is_active: true,
+          sort_order: 1,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: 'default-3',
+          name: 'formatura',
+          label: 'Formatura',
+          description: 'Sessão de formatura',
+          icon: '🎓',
+          is_active: true,
+          sort_order: 2,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ]);
     } finally {
       setLoading(false);
     }
