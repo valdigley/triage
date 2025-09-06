@@ -14,69 +14,16 @@ export function useSessionTypes() {
   const fetchSessionTypes = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      console.log('Fetching session types from Supabase...');
-      
       const { data, error } = await supabase
         .from('session_types')
         .select('*')
         .order('sort_order', { ascending: true });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-      
-      console.log('Session types fetched successfully:', data?.length || 0, 'types');
+      if (error) throw error;
       setSessionTypes(data || []);
     } catch (err) {
       console.error('Erro ao buscar tipos de sessão:', err);
-      
-      // Check if it's a network error
-      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-        console.error('Network error detected. Using fallback session types.');
-        setError('Problema de conectividade. Usando tipos padrão.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Falha ao buscar tipos de sessão');
-      }
-      
-      // Em caso de erro, usar dados padrão para não quebrar a aplicação
-      setSessionTypes([
-        {
-          id: 'default-1',
-          name: 'aniversario',
-          label: 'Aniversário',
-          description: 'Celebração de aniversário',
-          icon: '🎂',
-          is_active: true,
-          sort_order: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 'default-2',
-          name: 'gestante',
-          label: 'Gestante',
-          description: 'Ensaio gestante',
-          icon: '🤱',
-          is_active: true,
-          sort_order: 1,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 'default-3',
-          name: 'formatura',
-          label: 'Formatura',
-          description: 'Sessão de formatura',
-          icon: '🎓',
-          is_active: true,
-          sort_order: 2,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ]);
+      setError(err instanceof Error ? err.message : 'Falha ao buscar tipos de sessão');
     } finally {
       setLoading(false);
     }
