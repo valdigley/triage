@@ -564,17 +564,17 @@ export function ClientGallery() {
               })}
             </div>
             
-            {selectedPhotos.length === 0 && !gallery.selection_completed && (
+            {selectedPhotos.length < minimumPhotos && !gallery.selection_completed && (
               <div className="mt-6 sm:mt-8 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-center">
                 <div className="flex items-center justify-center space-x-2 mb-2">
                   <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                   <span className="text-red-700 dark:text-red-300 font-bold">Atenção!</span>
                 </div>
                 <p className="text-red-700 dark:text-red-300 font-medium text-base">
-                  Por favor, selecione pelo menos 1 foto para continuar
+                  Por favor, selecione pelo menos {minimumPhotos} fotos para continuar
                 </p>
                 <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                  Você ainda não selecionou nenhuma foto
+                  Você selecionou {selectedPhotos.length} de {minimumPhotos} fotos necessárias
                 </p>
               </div>
             )}
@@ -1001,8 +1001,7 @@ export function ClientGallery() {
 
                     <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                       <p className="text-xs sm:text-sm text-green-800 dark:text-green-200">
-                        <strong>✅ Importante:</strong> Após a confirmação do pagamento PIX, 
-                        você receberá todas as {selectedPhotos.length} fotos selecionadas editadas.
+                        <strong>✅ Importante:</strong> Após a confirmação do pagamento PIX, você receberá todas as {selectedPhotos.length} fotos selecionadas editadas.
                       </p>
                       {paymentData.expires_at && (
                         <p className="text-xs sm:text-sm text-orange-600 dark:text-orange-400 mt-1">
