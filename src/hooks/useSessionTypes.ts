@@ -15,16 +15,32 @@ export function useSessionTypes() {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('Fetching session types from Supabase...');
+      
       const { data, error } = await supabase
         .from('session_types')
         .select('*')
         .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Session types fetched successfully:', data?.length || 0, 'types');
       setSessionTypes(data || []);
     } catch (err) {
       console.error('Erro ao buscar tipos de sessão:', err);
-      setError(err instanceof Error ? err.message : 'Falha ao buscar tipos de sessão');
+      
+      // Check if it's a network error
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        console.error('Network error detected. Using fallback session types.');
+        setError('Problema de conectividade. Usando tipos padrão.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Falha ao buscar tipos de sessão');
+      }
+      
       // Em caso de erro, usar dados padrão para não quebrar a aplicação
       setSessionTypes([
         {
