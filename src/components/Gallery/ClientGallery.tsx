@@ -564,17 +564,17 @@ export function ClientGallery() {
               })}
             </div>
             
-            {selectedPhotos.length < minimumPhotos && !gallery.selection_completed && (
+            {selectedPhotos.length === 0 && !gallery.selection_completed && (
               <div className="mt-6 sm:mt-8 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-center">
                 <div className="flex items-center justify-center space-x-2 mb-2">
                   <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                   <span className="text-red-700 dark:text-red-300 font-bold">Atenção!</span>
                 </div>
                 <p className="text-red-700 dark:text-red-300 font-medium text-base">
-                  Por favor, selecione pelo menos {minimumPhotos} fotos para continuar
+                  Por favor, selecione pelo menos 1 foto para continuar
                 </p>
                 <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                  Você selecionou {selectedPhotos.length} de {minimumPhotos} fotos necessárias
+                  Você ainda não selecionou nenhuma foto
                 </p>
               </div>
             )}
