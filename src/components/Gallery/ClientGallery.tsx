@@ -558,15 +558,15 @@ export function ClientGallery() {
                     photo={photo}
                     isSelected={isSelected}
                     canSelect={canSelect}
-                    onSelect={() => togglePhotoSelection(photo.id)}
+                    onToggleSelection={() => togglePhotoSelection(photo.id)}
                     onViewFullSize={() => openLightbox(photo)}
                     watermarkSettings={watermarkSettings}
-                    showCommentButton={true}
-                    onComment={() => {
+                    canComment={true}
+                    onAddComment={() => {
                       setShowCommentInput(photo.id);
                       setTempComment(photoComments[photo.id] || '');
                     }}
-                    comment={photoComments[photo.id]}
+                    hasComment={!!photoComments[photo.id]}
                   />
                 );
               })}
