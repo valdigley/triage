@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
-import { useAppointments } from '../../hooks/useAppointments';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useClients } from '../../hooks/useClients';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
