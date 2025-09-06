@@ -207,8 +207,8 @@ export function GalleriesView() {
           scheduled_date: new Date().toISOString(),
           total_amount: 0,
           minimum_photos: 5,
-          status: 'confirmed',
-          payment_status: 'approved',
+          status: 'pending',
+          payment_status: 'pending',
           terms_accepted: true
         }])
         .select()

@@ -390,6 +390,15 @@ export function ClientGallery() {
   const pricePerPhoto = settings?.price_commercial_hour || 30; // Use system price or fallback to 30
   const totalCost = totalPhotos * pricePerPhoto;
   const isExpired = new Date() > new Date(gallery.link_expires_at);
+  
+  // Verificar se o pagamento inicial foi aprovado
+  const isInitialPaymentApproved = gallery.appointment?.payment_status === 'approved';
+  
+  // Se pagamento inicial não foi aprovado, todas as fotos precisam ser pagas
+  // Se foi aprovado, usar o modelo antigo (fotos incluídas + extras)
+  const effectiveMinimumPhotos = isInitialPaymentApproved ? (gallery.appointment?.minimum_photos || 5) : 0;
+  const extraPhotos = Math.max(0, selectedPhotos.length - effectiveMinimumPhotos);
+  const extraCost = extraPhotos * pricePerPhoto;
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 overflow-x-hidden">
@@ -443,19 +452,19 @@ export function ClientGallery() {
                 <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Selecionadas</div>
               </div>
               <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                <div className="text-xl lg:text-2xl font-bold text-blue-600 dark:text-blue-400">{minimumPhotos}</div>
-                <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Mínimo</div>
+                <div className="text-xl lg:text-2xl font-bold text-blue-600 dark:text-blue-400">{effectiveMinimumPhotos}</div>
+                <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{isInitialPaymentApproved ? 'Incluídas' : 'Mínimo'}</div>
               </div>
               <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
-                <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">+{extraPhotos}</div>
-                <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Extras</div>
+                <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">{isInitialPaymentApproved ? `+${extraPhotos}` : totalPhotos}</div>
+                <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{isInitialPaymentApproved ? 'Extras' : 'A Pagar'}</div>
               </div>
             </div>
             
-            {totalPhotos > 0 && (
+            {selectedPhotos.length > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 text-center">
                 <div className="text-xs lg:text-sm text-orange-600 dark:text-orange-400 font-medium">
-                  Custo total: {formatCurrency(totalCost)}
+                  {isInitialPaymentApproved ? `Custo extras: ${formatCurrency(extraCost)}` : `Custo total: ${formatCurrency(totalCost)}`}
                 </div>
               </div>
             )}
@@ -502,7 +511,7 @@ export function ClientGallery() {
                     </div>
                     <div className="flex items-start space-x-3">
                       <span className="w-6 h-6 bg-purple-200 dark:bg-purple-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
-                      <span className="leading-relaxed">Selecione pelo menos {minimumPhotos} fotos para continuar</span>
+                      <span className="leading-relaxed">Selecione pelo menos {effectiveMinimumPhotos} fotos para continuar</span>
                     </div>
                     </div>
                     <div className="space-y-3 text-sm text-purple-700 dark:text-purple-300">
@@ -571,10 +580,10 @@ export function ClientGallery() {
                   <span className="text-red-700 dark:text-red-300 font-bold">Atenção!</span>
                 </div>
                 <p className="text-red-700 dark:text-red-300 font-medium text-base">
-                  Por favor, selecione pelo menos {minimumPhotos} fotos para continuar
+                  Por favor, selecione pelo menos {effectiveMinimumPhotos} fotos para continuar
                 </p>
                 <p className="text-red-600 dark:text-red-400 text-sm mt-1">
-                  Você selecionou {selectedPhotos.length} de {minimumPhotos} fotos necessárias
+                  Você selecionou {selectedPhotos.length} de {effectiveMinimumPhotos} fotos necessárias
                 </p>
               </div>
             )}
@@ -586,7 +595,7 @@ export function ClientGallery() {
           <div className="mt-8 sm:mt-12 flex justify-center">
             <button
               onClick={handleSubmitSelection}
-              disabled={selectedPhotos.length < minimumPhotos || submitting}
+              disabled={selectedPhotos.length < effectiveMinimumPhotos || submitting}
               className="w-full sm:w-auto bg-purple-600 text-white px-8 py-4 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 text-lg font-medium shadow-lg"
             >
               {submitting ? (
