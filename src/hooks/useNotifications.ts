@@ -166,8 +166,6 @@ export function useNotifications() {
     try {
       console.log('📋 Agendando todas as notificações para:', appointment.client?.name);
       
-      const results: boolean[] = [];
-      
       // Buscar configurações
       const { data: settings } = await supabase
         .from('settings')
