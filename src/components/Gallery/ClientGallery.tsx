@@ -597,3 +597,22 @@ export function ClientGallery() {
               <div className="mt-6 sm:mt-8 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-center">
                 <div className="flex items-center justify-center space-x-2 mb-2">
                   <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-red-500" />
+                  <span className="text-red-800 dark:text-red-200 font-medium">Pagamento Expirado</span>
+                </div>
+                <p className="text-red-600 dark:text-red-400 text-sm sm:text-base">
+                  O tempo para pagamento expirou. Clique em "Tentar Novamente" para gerar um novo código de pagamento.
+                </p>
+                <button
+                  onClick={resetPayment}
+                  className="mt-3 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Tentar Novamente
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
