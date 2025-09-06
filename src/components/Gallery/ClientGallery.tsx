@@ -559,7 +559,7 @@ export function ClientGallery() {
                     isSelected={isSelected}
                     canSelect={canSelect}
                     onSelect={() => togglePhotoSelection(photo.id)}
-                    onClick={() => openLightbox(photo)}
+                    onViewFullSize={() => openLightbox(photo)}
                     watermarkSettings={watermarkSettings}
                     showCommentButton={true}
                     onComment={() => {
