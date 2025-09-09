@@ -1,3 +1,34 @@
+import { VSLayout, VSHeader, VSThemeToggle } from './valdigley-components';
+
+function App() {
+  return (
+    <div className="vs-theme-triagem">
+      <VSLayout
+        header={
+          <VSHeader
+            logo={{
+              title: "Triagem",
+              subtitle: "By Valdigley Santos",
+              icon: "📸",
+              logoUrl: settings?.studio_logo_url // Usar logo do banco se disponível
+            }}
+            actions={
+              <div className="vs-flex vs-gap-3">
+                <VSThemeToggle />
+                <a href="/agendamento" className="vs-btn vs-btn-purple">
+                  Novo Agendamento
+                </a>
+              </div>
+            }
+            theme="triagem"
+          />
+        }
+      >
+        {/* Conteúdo atual do dashboard */}
+      </VSLayout>
+    </div>
+  );
+}
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
