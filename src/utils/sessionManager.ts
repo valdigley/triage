@@ -145,7 +145,9 @@ export async function cleanupExpiredSessions(): Promise<number> {
     if (error) throw error;
 
     const cleanedCount = data?.length || 0;
-    console.log(`🧹 ${cleanedCount} sessões expiradas limpas`);
+    if (cleanedCount > 0) {
+      console.log(`🧹 ${cleanedCount} sessões expiradas limpas`);
+    }
     return cleanedCount;
 
   } catch (error) {
@@ -156,10 +158,40 @@ export async function cleanupExpiredSessions(): Promise<number> {
 
 /**
  * Função para gerar URL de redirecionamento com token de sessão
- * Para ser usada pelo site principal
+ * Para ser usada pelo site principal - FUNCIONA ENTRE DOMÍNIOS DIFERENTES
  */
-export function generateTriageUrl(sessionToken: string, baseUrl: string = window.location.origin): string {
+export function generateSystemUrl(sessionToken: string, systemUrl: string): string {
+  const url = new URL(systemUrl);
+  url.searchParams.set('session_token', sessionToken);
+  return url.toString();
+}
+
+/**
+ * Função específica para o sistema de triagem (compatibilidade)
+ */
+export function generateTriageUrl(sessionToken: string, baseUrl: string = 'https://triagem.fotografo.site/'): string {
   const url = new URL(baseUrl);
   url.searchParams.set('session_token', sessionToken);
   return url.toString();
+}
+
+/**
+ * Função para verificar se há sessões ativas de um usuário específico
+ * Útil para o site principal verificar se pode fazer redirecionamento direto
+ */
+export async function hasActiveSession(userId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('user_sessions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .gt('expires_at', new Date().toISOString())
+      .limit(1);
+    if (error) throw error;
+    return (data?.length || 0) > 0;
+  } catch (error) {
+    console.error('❌ Erro ao verificar sessões ativas:', error);
+    return false;
+  }
 }

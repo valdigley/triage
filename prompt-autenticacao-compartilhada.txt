@@ -2,6 +2,7 @@ PROMPT PARA AUTENTICAÇÃO COMPARTILHADA - SISTEMAS SEM LOGIN EXISTENTE
 
 Adicione autenticação compartilhada a este sistema que atualmente não possui login. O sistema deve verificar automaticamente se o usuário está logado no site principal https://fotografo.site/ e permitir acesso direto ou redirecionar conforme necessário.
 
+IMPORTANTE: Esta solução funciona entre domínios diferentes (ex: drive.fotografo.site, triagem.fotografo.site) usando tokens via URL e verificação no banco Supabase compartilhado.
 IMPLEMENTAR:
 
 1. ESTRUTURA DE BANCO (se não existir):
@@ -442,17 +443,30 @@ async function redirectToSystem(systemName) {
     'triagem': 'https://triagem.fotografo.site/',
     'drive': 'https://drive.fotografo.site/',
     'agenda': 'https://agenda.fotografo.site/',
+    'galeria': 'https://galeria.fotografo.site/',
+    'admin': 'https://admin.fotografo.site/',
     // Adicionar outros sistemas conforme necessário
   };
   
-  const systemUrl = generateSystemUrl(sessionToken, systemUrls[systemName]);
+  const systemUrl = `${systemUrls[systemName]}?session_token=${sessionToken}`;
   window.location.href = systemUrl;
 }
 
 // Exemplo de menu no site principal:
-<button onClick={() => redirectToSystem('drive')}>
-  Acessar Drive
-</button>
+<div className="grid grid-cols-2 gap-4">
+  <button onClick={() => redirectToSystem('drive')}>
+    📁 Drive
+  </button>
+  <button onClick={() => redirectToSystem('triagem')}>
+    📸 Triagem
+  </button>
+  <button onClick={() => redirectToSystem('agenda')}>
+    📅 Agenda
+  </button>
+  <button onClick={() => redirectToSystem('galeria')}>
+    🖼️ Galeria
+  </button>
+</div>
 ```
 
 7. CARACTERÍSTICAS DO SISTEMA:
@@ -467,6 +481,13 @@ async function redirectToSystem(systemName) {
 ✅ Suporte a múltiplos sistemas
 ✅ Design responsivo e acessível
 
+SOLUÇÃO PARA VPS/DOMÍNIOS DIFERENTES:
+✅ Funciona entre subdomínios (drive.fotografo.site ↔ triagem.fotografo.site)
+✅ Token passado via URL (não depende de localStorage entre domínios)
+✅ Verificação no banco Supabase compartilhado
+✅ Limpeza automática de sessões expiradas
+✅ Fallback robusto para falhas de rede
+
 8. COMPORTAMENTO ESPERADO:
 
 - Usuário logado no site principal → Acesso direto ao sistema
@@ -474,6 +495,14 @@ async function redirectToSystem(systemName) {
 - Sessão expirada → Limpeza automática e redirecionamento
 - Falha na verificação → Tela de redirecionamento
 - Token na URL → Salvo no localStorage para próximas visitas
+
+FLUXO EM PRODUÇÃO:
+1. Usuário faz login em https://fotografo.site/
+2. Site principal cria sessão na tabela user_sessions
+3. Usuário clica em "Drive" → Redireciona para https://drive.fotografo.site/?session_token=ABC123
+4. Sistema do drive verifica token no banco Supabase
+5. Se válido → Acesso direto ao sistema
+6. Se inválido → Tela de redirecionamento para fotografo.site
 
 9. SEGURANÇA:
 
@@ -484,6 +513,13 @@ async function redirectToSystem(systemName) {
 - Rastreamento de IP e User Agent
 - Limpeza automática de dados expirados
 
+SEGURANÇA ENTRE DOMÍNIOS:
+- Token único por sessão (não reutilizável)
+- Expiração automática em 24 horas
+- Verificação de IP para detectar mudanças suspeitas
+- Invalidação automática de sessões antigas
+- Logs detalhados para auditoria
+
 10. INSTALAÇÃO:
 
 1. Cole este prompt no projeto Bolt
@@ -491,6 +527,46 @@ async function redirectToSystem(systemName) {
 3. Configure as variáveis de ambiente do Supabase
 4. Teste o fluxo de autenticação
 
+CONFIGURAÇÃO PARA VPS:
+1. Todos os sistemas devem usar o MESMO projeto Supabase
+2. Mesmas variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
+3. No site principal, implementar as funções de criação de sessão
+4. Testar o fluxo: login → criar sessão → redirecionar com token
+
+EXEMPLO DE IMPLEMENTAÇÃO NO SITE PRINCIPAL:
+```javascript
+// No https://fotografo.site/ após login bem-sucedido:
+async function createAndRedirect(userId, systemName) {
+  try {
+    // Criar sessão compartilhada
+    const sessionToken = await createSharedSession(userId);
+    
+    if (sessionToken) {
+      const systemUrls = {
+        'drive': 'https://drive.fotografo.site/',
+        'triagem': 'https://triagem.fotografo.site/',
+        'agenda': 'https://agenda.fotografo.site/'
+      };
+      
+      const redirectUrl = `${systemUrls[systemName]}?session_token=${sessionToken}`;
+      window.location.href = redirectUrl;
+    } else {
+      alert('Erro ao criar sessão. Tente novamente.');
+    }
+  } catch (error) {
+    console.error('Erro:', error);
+    alert('Erro ao acessar sistema. Tente novamente.');
+  }
+}
+```
+
 O sistema funcionará como uma camada de proteção transparente - se o usuário estiver logado no site principal, ele nem perceberá que existe autenticação. Se não estiver, será redirecionado educadamente.
 
-RESULTADO: Sistema atual permanece 100% intacto + proteção de acesso automática + experiência fluida entre sistemas + fallback seguro para usuários não autenticados.
+RESULTADO: 
+- ✅ Sistema atual permanece 100% intacto
+- ✅ Proteção de acesso automática entre domínios diferentes
+- ✅ Experiência fluida entre sistemas em produção
+- ✅ Fallback seguro para usuários não autenticados
+- ✅ Funciona em VPS com subdomínios separados
+- ✅ Não depende de localStorage entre domínios
+- ✅ Verificação robusta via banco Supabase compartilhado

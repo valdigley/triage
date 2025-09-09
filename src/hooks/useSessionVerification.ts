@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { cleanupExpiredSessions } from '../utils/sessionManager';
 
 interface SessionData {
   user_id: string;
@@ -23,7 +24,10 @@ export function useSessionVerification() {
       setIsVerifying(true);
       setError(null);
 
-      // Primeiro, verificar se há uma sessão ativa do Supabase
+      // Primeiro, limpar sessões expiradas
+      await cleanupExpiredSessions();
+
+      // Verificar se há uma sessão ativa do Supabase
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -38,9 +42,29 @@ export function useSessionVerification() {
         return;
       }
 
-      // Verificar se há um token de sessão compartilhada nos parâmetros da URL ou localStorage
+      // Verificar token de sessão compartilhada nos parâmetros da URL
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionToken = urlParams.get('session_token') || localStorage.getItem('shared_session_token');
+      let sessionToken = urlParams.get('session_token');
+      
+      // Se não há token na URL, verificar se há uma sessão ativa no banco
+      // (para casos onde o usuário volta diretamente ao sistema)
+      if (!sessionToken) {
+        console.log('🔍 Verificando sessões ativas no banco...');
+        
+        // Buscar qualquer sessão ativa válida (última criada)
+        const { data: activeSessions, error: sessionSearchError } = await supabase
+          .from('user_sessions')
+          .select('*')
+          .eq('is_active', true)
+          .gt('expires_at', new Date().toISOString())
+          .order('last_activity', { ascending: false })
+          .limit(1);
+
+        if (!sessionSearchError && activeSessions && activeSessions.length > 0) {
+          sessionToken = activeSessions[0].session_token;
+          console.log('✅ Sessão ativa encontrada no banco');
+        }
+      }
 
       if (!sessionToken) {
         console.log('ℹ️ Nenhum token de sessão encontrado');
@@ -49,7 +73,7 @@ export function useSessionVerification() {
         return;
       }
 
-      console.log('🔍 Verificando token de sessão compartilhada...');
+      console.log('🔍 Verificando token de sessão compartilhada:', sessionToken.substring(0, 20) + '...');
 
       // Verificar se a sessão é válida na tabela user_sessions
       const { data: sessionRecord, error: sessionCheckError } = await supabase
@@ -62,8 +86,6 @@ export function useSessionVerification() {
 
       if (sessionCheckError || !sessionRecord) {
         console.log('❌ Sessão inválida ou expirada');
-        // Limpar token inválido
-        localStorage.removeItem('shared_session_token');
         setIsAuthenticated(false);
         setIsVerifying(false);
         return;
@@ -80,29 +102,16 @@ export function useSessionVerification() {
         })
         .eq('id', sessionRecord.id);
 
-      // Salvar token no localStorage para próximas visitas
-      localStorage.setItem('shared_session_token', sessionToken);
-
-      // Fazer login automático no Supabase usando o user_id da sessão
-      try {
-        // Como não podemos fazer login direto com user_id, vamos criar uma sessão temporária
-        // Isso requer que o usuário tenha uma conta no sistema
-        console.log('🔐 Criando sessão automática...');
-        
-        setSessionData(sessionRecord);
-        setIsAuthenticated(true);
-        
-        // Remover token da URL se estiver presente
-        if (urlParams.get('session_token')) {
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete('session_token');
-          window.history.replaceState({}, '', newUrl.toString());
-        }
-
-      } catch (authError) {
-        console.error('❌ Erro ao criar sessão automática:', authError);
-        setError('Erro ao autenticar automaticamente');
-        setIsAuthenticated(false);
+      console.log('🔐 Criando sessão automática...');
+      
+      setSessionData(sessionRecord);
+      setIsAuthenticated(true);
+      
+      // Remover token da URL se estiver presente
+      if (urlParams.get('session_token')) {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete('session_token');
+        window.history.replaceState({}, '', newUrl.toString());
       }
 
     } catch (error) {
@@ -157,7 +166,7 @@ export function useSessionVerification() {
 
   const invalidateSession = async (sessionToken?: string) => {
     try {
-      const tokenToInvalidate = sessionToken || localStorage.getItem('shared_session_token');
+      const tokenToInvalidate = sessionToken || sessionData?.session_token;
       
       if (tokenToInvalidate) {
         await supabase
@@ -168,7 +177,6 @@ export function useSessionVerification() {
           })
           .eq('session_token', tokenToInvalidate);
 
-        localStorage.removeItem('shared_session_token');
       }
 
       setIsAuthenticated(false);

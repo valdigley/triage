@@ -55,7 +55,7 @@ export function SessionRedirect() {
               Acesso Restrito
             </h2>
             <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-              Para acessar o sistema de triagem, você precisa estar logado no site principal.
+              Para acessar este sistema, você precisa estar logado no site principal.
             </p>
           </div>
 
@@ -65,8 +65,8 @@ export function SessionRedirect() {
             </h3>
             <ol className="text-xs text-blue-700 dark:text-blue-300 text-left space-y-1">
               <li>1. Faça login em fotografo.site</li>
-              <li>2. Acesse o menu de sistemas</li>
-              <li>3. Clique em "Triagem"</li>
+              <li>2. Acesse o menu "Sistemas"</li>
+              <li>3. Clique no sistema desejado</li>
               <li>4. Você será redirecionado automaticamente</li>
             </ol>
           </div>
