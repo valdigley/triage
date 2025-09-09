@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Camera, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../hooks/useSettings';
-import { useSessionVerification } from '../../hooks/useSessionVerification';
 
 function LoginLogo() {
   const { settings } = useSettings();
@@ -38,7 +37,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { createSharedSession } = useSessionVerification();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,18 +50,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       });
 
       if (error) throw error;
-      
-      // Criar sessão compartilhada após login bem-sucedido
-      if (data.user) {
-        try {
-          const sessionToken = await createSharedSession(data.user.id);
-          if (sessionToken) {
-            console.log('✅ Sessão compartilhada criada para futuras visitas');
-          }
-        } catch (sessionError) {
-          console.warn('⚠️ Erro ao criar sessão compartilhada (não crítico):', sessionError);
-        }
-      }
       
       onLogin();
     } catch (err) {
