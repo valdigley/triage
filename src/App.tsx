@@ -53,7 +53,6 @@ function App() {
       setIsAuthenticated(false);
     }
   };
-  };
 
   if (loading) {
     return (
