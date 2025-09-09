@@ -122,7 +122,7 @@ export function Sidebar({ currentView, onViewChange, onLogout, isOpen, onToggle 
         {/* Logout */}
         <button
           onClick={onLogout}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-colors"
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-colors font-medium"
         >
           <LogOut className="h-5 w-5" />
           <span>Sair</span>

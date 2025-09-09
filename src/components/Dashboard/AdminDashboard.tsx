@@ -66,7 +66,15 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
             </button>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Studio Manager</h1>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Triagem</h1>
-            <div className="w-10" /> {/* Spacer */}
+            <button
+              onClick={onLogout}
+              className="p-2 rounded-md text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
+              title="Sair"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
           </div>
         </div>
         
