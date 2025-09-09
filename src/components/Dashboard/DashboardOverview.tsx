@@ -50,6 +50,7 @@ export function DashboardOverview() {
 import React from 'react';
 import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { VSStatCard, VSPageHeader } from '../../valdigley-components';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useClients } from '../../hooks/useClients';
 import { formatCurrency } from '../../utils/pricing';
