@@ -169,7 +169,7 @@ export function generateSystemUrl(sessionToken: string, systemUrl: string): stri
 /**
  * Função específica para o sistema de triagem (compatibilidade)
  */
-export function generateTriageUrl(sessionToken: string, baseUrl: string = 'https://triagem.fotografo.site/'): string {
+export function generateTriageUrl(sessionToken: string, baseUrl: string = 'https://triagem.fotografo.site'): string {
   const url = new URL(baseUrl);
   url.searchParams.set('session_token', sessionToken);
   return url.toString();
