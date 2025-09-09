@@ -404,6 +404,29 @@ export function generateSystemUrl(sessionToken: string, systemUrl: string): stri
   return url.toString();
 }
 
+/**
+ * Função genérica para qualquer sistema
+ */
+export function generateSystemUrl(sessionToken: string, systemName: string): string {
+  const systemUrls = {
+    'triagem': 'https://triagem.fotografo.site/',
+    'contrato': 'https://contrato.fotografo.site/',
+    'drive': 'https://drive.fotografo.site/',
+    'formatura': 'https://formatura.fotografo.site/',
+    'dremedio': 'https://dremedio.shop/'
+  };
+  
+  const baseUrl = systemUrls[systemName];
+  if (!baseUrl) {
+    console.error('Sistema não encontrado:', systemName);
+    return null;
+  }
+  
+  const url = new URL(baseUrl);
+  url.searchParams.set('session_token', sessionToken);
+  return url.toString();
+}
+
 export async function cleanupExpiredSessions(): Promise<number> {
   try {
     const { data, error } = await supabase
@@ -439,32 +462,26 @@ import { createSharedSession, generateSystemUrl } from './utils/sessionManager';
 async function redirectToSystem(systemName) {
   const sessionToken = await createSharedSession(user.id);
   
-  const systemUrls = {
-    'triagem': 'https://triagem.fotografo.site/',
-    'drive': 'https://drive.fotografo.site/',
-    'agenda': 'https://agenda.fotografo.site/',
-    'galeria': 'https://galeria.fotografo.site/',
-    'admin': 'https://admin.fotografo.site/',
-    // Adicionar outros sistemas conforme necessário
-  };
-  
-  const systemUrl = `${systemUrls[systemName]}?session_token=${sessionToken}`;
+  const systemUrl = generateSystemUrl(sessionToken, systemName);
   window.location.href = systemUrl;
 }
 
 // Exemplo de menu no site principal:
 <div className="grid grid-cols-2 gap-4">
-  <button onClick={() => redirectToSystem('drive')}>
-    📁 Drive
-  </button>
   <button onClick={() => redirectToSystem('triagem')}>
     📸 Triagem
   </button>
-  <button onClick={() => redirectToSystem('agenda')}>
-    📅 Agenda
+  <button onClick={() => redirectToSystem('contrato')}>
+    📋 Contratos
   </button>
-  <button onClick={() => redirectToSystem('galeria')}>
-    🖼️ Galeria
+  <button onClick={() => redirectToSystem('drive')}>
+    📁 Drive
+  </button>
+  <button onClick={() => redirectToSystem('formatura')}>
+    🎓 Formatura
+  </button>
+  <button onClick={() => redirectToSystem('dremedio')}>
+    💊 Dr. Remédio
   </button>
 </div>
 ```
@@ -499,8 +516,8 @@ SOLUÇÃO PARA VPS/DOMÍNIOS DIFERENTES:
 FLUXO EM PRODUÇÃO:
 1. Usuário faz login em https://fotografo.site/
 2. Site principal cria sessão na tabela user_sessions
-3. Usuário clica em "Drive" → Redireciona para https://drive.fotografo.site/?session_token=ABC123
-4. Sistema do drive verifica token no banco Supabase
+3. Usuário clica em qualquer sistema → Redireciona para URL com token
+4. Sistema de destino verifica token no banco Supabase compartilhado
 5. Se válido → Acesso direto ao sistema
 6. Se inválido → Tela de redirecionamento para fotografo.site
 
@@ -530,7 +547,7 @@ SEGURANÇA ENTRE DOMÍNIOS:
 CONFIGURAÇÃO PARA VPS:
 1. Todos os sistemas devem usar o MESMO projeto Supabase
 2. Mesmas variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
-3. No site principal, implementar as funções de criação de sessão
+3. No site principal (fotografo.site), implementar as funções de criação de sessão
 4. Testar o fluxo: login → criar sessão → redirecionar com token
 
 EXEMPLO DE IMPLEMENTAÇÃO NO SITE PRINCIPAL:
@@ -542,13 +559,7 @@ async function createAndRedirect(userId, systemName) {
     const sessionToken = await createSharedSession(userId);
     
     if (sessionToken) {
-      const systemUrls = {
-        'drive': 'https://drive.fotografo.site/',
-        'triagem': 'https://triagem.fotografo.site/',
-        'agenda': 'https://agenda.fotografo.site/'
-      };
-      
-      const redirectUrl = `${systemUrls[systemName]}?session_token=${sessionToken}`;
+      const redirectUrl = generateSystemUrl(sessionToken, systemName);
       window.location.href = redirectUrl;
     } else {
       alert('Erro ao criar sessão. Tente novamente.');
@@ -558,6 +569,19 @@ async function createAndRedirect(userId, systemName) {
     alert('Erro ao acessar sistema. Tente novamente.');
   }
 }
+
+// Exemplo de menu completo:
+const systems = [
+  { id: 'triagem', name: 'Triagem', icon: '📸' },
+  { id: 'contrato', name: 'Contratos', icon: '📋' },
+  { id: 'drive', name: 'Drive', icon: '📁' },
+  { id: 'formatura', name: 'Formatura', icon: '🎓' },
+  { id: 'dremedio', name: 'Dr. Remédio', icon: '💊' }
+];
+
+systems.forEach(system => {
+  // Criar botões que chamam createAndRedirect(user.id, system.id)
+});
 ```
 
 O sistema funcionará como uma camada de proteção transparente - se o usuário estiver logado no site principal, ele nem perceberá que existe autenticação. Se não estiver, será redirecionado educadamente.

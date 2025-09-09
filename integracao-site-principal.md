@@ -72,12 +72,11 @@ export async function createSharedSession(userId) {
  */
 export function generateSystemUrl(sessionToken, systemName) {
   const systemUrls = {
-    'drive': 'https://drive.fotografo.site/',
     'triagem': 'https://triagem.fotografo.site/',
-    'agenda': 'https://agenda.fotografo.site/',
-    'galeria': 'https://galeria.fotografo.site/',
-    'admin': 'https://admin.fotografo.site/',
-    // Adicionar outros sistemas conforme necessário
+    'contrato': 'https://contrato.fotografo.site/',
+    'drive': 'https://drive.fotografo.site/',
+    'formatura': 'https://formatura.fotografo.site/',
+    'dremedio': 'https://dremedio.shop/'
   };
   
   const baseUrl = systemUrls[systemName];
@@ -178,11 +177,11 @@ import { redirectToSystem } from '../utils/sessionManager';
 
 function SystemsMenu({ user }) {
   const systems = [
-    { id: 'drive', name: 'Drive', icon: '📁', description: 'Gerenciar arquivos' },
     { id: 'triagem', name: 'Triagem', icon: '📸', description: 'Seleção de fotos' },
-    { id: 'agenda', name: 'Agenda', icon: '📅', description: 'Agendamentos' },
-    { id: 'galeria', name: 'Galeria', icon: '🖼️', description: 'Portfólio' },
-    { id: 'admin', name: 'Admin', icon: '⚙️', description: 'Configurações' }
+    { id: 'contrato', name: 'Contratos', icon: '📋', description: 'Gestão de contratos' },
+    { id: 'drive', name: 'Drive', icon: '📁', description: 'Gerenciar arquivos' },
+    { id: 'formatura', name: 'Formatura', icon: '🎓', description: 'Sessões de formatura' },
+    { id: 'dremedio', name: 'Dr. Remédio', icon: '💊', description: 'Sistema farmacêutico' }
   ];
 
   const handleSystemAccess = async (systemName) => {
@@ -217,7 +216,7 @@ function SystemsMenu({ user }) {
 **Importante:** Todos os sistemas devem usar o **mesmo projeto Supabase**:
 
 ```javascript
-// Mesmo em todos os sistemas (.env):
+// Mesmo em TODOS os 6 sistemas (.env):
 VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-anonima
 ```
@@ -226,9 +225,9 @@ VITE_SUPABASE_ANON_KEY=sua-chave-anonima
 
 1. **Usuário faz login** em https://fotografo.site/
 2. **Sistema cria sessão** na tabela `user_sessions`
-3. **Usuário clica em "Drive"** → Redireciona para https://drive.fotografo.site/?session_token=ABC123
-4. **Sistema do drive verifica** token no banco Supabase
-5. **Se válido** → Acesso direto ao drive
+3. **Usuário clica em qualquer sistema** → Redireciona para URL com token
+4. **Sistema de destino verifica** token no banco Supabase
+5. **Se válido** → Acesso direto ao sistema
 6. **Se inválido** → Tela de redirecionamento
 
 ## 6. Teste Local
@@ -236,11 +235,11 @@ VITE_SUPABASE_ANON_KEY=sua-chave-anonima
 Para testar localmente:
 
 ```javascript
-// No console do navegador em https://fotografo.site/:
+// No console do navegador em https://fotografo.site/ (após implementar):
 const token = await createSharedSession('user-id-teste');
 console.log('Token criado:', token);
 
-// Depois acesse: http://localhost:5173/?session_token=TOKEN_GERADO
+// Depois acesse qualquer sistema: http://localhost:5173/?session_token=TOKEN_GERADO
 ```
 
 ## 7. Logs para Debug
@@ -255,8 +254,16 @@ O sistema inclui logs detalhados:
 
 1. ✅ Adicionar `utils/sessionManager.js`
 2. ✅ Modificar função de login para criar sessão
-3. ✅ Adicionar menu de sistemas
+3. ✅ Adicionar menu com todos os 6 sistemas
 4. ✅ Usar mesmas credenciais Supabase
 5. ✅ Testar fluxo completo
 
-**Resultado:** Usuário logado no site principal → Acesso direto a qualquer sistema sem nova tela de login!
+**Resultado:** Usuário logado no site principal → Acesso direto a qualquer um dos 6 sistemas sem nova tela de login!
+
+## Sistemas Suportados:
+- 📸 **triagem.fotografo.site** - Seleção de fotos
+- 📋 **contrato.fotografo.site** - Gestão de contratos  
+- 📁 **drive.fotografo.site** - Gerenciamento de arquivos
+- 🎓 **formatura.fotografo.site** - Sessões de formatura
+- 💊 **dremedio.shop** - Sistema farmacêutico
+- 🏠 **fotografo.site** - Site principal (hub central)
