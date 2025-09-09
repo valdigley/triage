@@ -11,7 +11,7 @@ import { PaymentsView } from './components/Dashboard/PaymentsView';
 import { SettingsView } from './components/Dashboard/SettingsView';
 import { ClientGallery } from './components/Gallery/ClientGallery';
 import { LoginForm } from './components/Auth/LoginForm';
-import VSComponents from './valdigley-unified-components';
+import VSComponents from '../valdigley-unified-components.tsx';
 import { useSettings } from './hooks/useSettings';
 
 const { TriagemTemplate } = VSComponents;
