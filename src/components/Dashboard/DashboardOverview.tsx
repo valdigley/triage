@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import VSComponents from '../../valdigley-unified-components.tsx';
+import VSComponents from '../../../valdigley-unified-components.tsx';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useClients } from '../../hooks/useClients';
 import { formatCurrency } from '../../utils/pricing';
