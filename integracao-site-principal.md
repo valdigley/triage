@@ -75,8 +75,7 @@ export function generateSystemUrl(sessionToken, systemName) {
     'triagem': 'https://triagem.fotografo.site',
     'contrato': 'https://contrato.fotografo.site',
     'drive': 'https://drive.fotografo.site',
-    'formatura': 'https://formatura.fotografo.site',
-    'dremedio': 'https://dremedio.shop'
+    'formatura': 'https://formatura.fotografo.site'
   };
   
   const baseUrl = systemUrls[systemName];
@@ -180,8 +179,7 @@ function SystemsMenu({ user }) {
     { id: 'triagem', name: 'Triagem', icon: '📸', description: 'Seleção de fotos' },
     { id: 'contrato', name: 'Contratos', icon: '📋', description: 'Gestão de contratos' },
     { id: 'drive', name: 'Drive', icon: '📁', description: 'Gerenciar arquivos' },
-    { id: 'formatura', name: 'Formatura', icon: '🎓', description: 'Sessões de formatura' },
-    { id: 'dremedio', name: 'Dr. Remédio', icon: '💊', description: 'Sistema farmacêutico' }
+    { id: 'formatura', name: 'Formatura', icon: '🎓', description: 'Sessões de formatura' }
   ];
 
   const handleSystemAccess = async (systemName) => {
@@ -265,5 +263,4 @@ O sistema inclui logs detalhados:
 - 📋 **contrato.fotografo.site** - Gestão de contratos  
 - 📁 **drive.fotografo.site** - Gerenciamento de arquivos
 - 🎓 **formatura.fotografo.site** - Sessões de formatura
-- 💊 **dremedio.shop** - Sistema farmacêutico
 - 🏠 **fotografo.site** - Site principal (hub central)
