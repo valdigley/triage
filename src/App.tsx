@@ -39,8 +39,20 @@ function App() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsAuthenticated(false);
+    try {
+      // Check if there's an active session before attempting logout
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        await supabase.auth.signOut();
+      }
+    } catch (error) {
+      console.warn('Logout error:', error);
+    } finally {
+      // Always set authenticated to false regardless of logout success
+      setIsAuthenticated(false);
+    }
+  };
   };
 
   if (loading) {
