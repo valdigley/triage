@@ -412,8 +412,7 @@ export function generateSystemUrl(sessionToken: string, systemName: string): str
     'triagem': 'https://triagem.fotografo.site',
     'contrato': 'https://contrato.fotografo.site',
     'drive': 'https://drive.fotografo.site',
-    'formatura': 'https://formatura.fotografo.site',
-    'dremedio': 'https://dremedio.shop'
+    'formatura': 'https://formatura.fotografo.site'
   };
   
   const baseUrl = systemUrls[systemName];
@@ -479,9 +478,6 @@ async function redirectToSystem(systemName) {
   </button>
   <button onClick={() => redirectToSystem('formatura')}>
     🎓 Formatura
-  </button>
-  <button onClick={() => redirectToSystem('dremedio')}>
-    💊 Dr. Remédio
   </button>
 </div>
 ```
@@ -575,8 +571,7 @@ const systems = [
   { id: 'triagem', name: 'Triagem', icon: '📸' },
   { id: 'contrato', name: 'Contratos', icon: '📋' },
   { id: 'drive', name: 'Drive', icon: '📁' },
-  { id: 'formatura', name: 'Formatura', icon: '🎓' },
-  { id: 'dremedio', name: 'Dr. Remédio', icon: '💊' }
+  { id: 'formatura', name: 'Formatura', icon: '🎓' }
 ];
 
 systems.forEach(system => {
@@ -585,6 +580,13 @@ systems.forEach(system => {
 ```
 
 O sistema funcionará como uma camada de proteção transparente - se o usuário estiver logado no site principal, ele nem perceberá que existe autenticação. Se não estiver, será redirecionado educadamente.
+
+SISTEMAS SUPORTADOS:
+- 📸 **triagem.fotografo.site** - Seleção de fotos
+- 📋 **contrato.fotografo.site** - Gestão de contratos  
+- 📁 **drive.fotografo.site** - Gerenciamento de arquivos
+- 🎓 **formatura.fotografo.site** - Sessões de formatura
+- 🏠 **fotografo.site** - Site principal (hub central)
 
 RESULTADO: 
 - ✅ Sistema atual permanece 100% intacto
