@@ -72,11 +72,11 @@ export async function createSharedSession(userId) {
  */
 export function generateSystemUrl(sessionToken, systemName) {
   const systemUrls = {
-    'triagem': 'https://triagem.fotografo.site/',
-    'contrato': 'https://contrato.fotografo.site/',
-    'drive': 'https://drive.fotografo.site/',
-    'formatura': 'https://formatura.fotografo.site/',
-    'dremedio': 'https://dremedio.shop/'
+    'triagem': 'https://triagem.fotografo.site',
+    'contrato': 'https://contrato.fotografo.site',
+    'drive': 'https://drive.fotografo.site',
+    'formatura': 'https://formatura.fotografo.site',
+    'dremedio': 'https://dremedio.shop'
   };
   
   const baseUrl = systemUrls[systemName];
