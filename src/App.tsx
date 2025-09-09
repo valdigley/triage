@@ -3,13 +3,25 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { supabase } from './lib/supabase';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { BookingForm } from './components/Booking/BookingForm';
-import { AdminDashboard } from './components/Dashboard/AdminDashboard';
+import { DashboardOverview } from './components/Dashboard/DashboardOverview';
+import { AppointmentsView } from './components/Dashboard/AppointmentsView';
+import { GalleriesView } from './components/Dashboard/GalleriesView';
+import { ClientsView } from './components/Dashboard/ClientsView';
+import { PaymentsView } from './components/Dashboard/PaymentsView';
+import { SettingsView } from './components/Dashboard/SettingsView';
 import { ClientGallery } from './components/Gallery/ClientGallery';
 import { LoginForm } from './components/Auth/LoginForm';
+import VSComponents from './valdigley-unified-components';
+import { useSettings } from './hooks/useSettings';
+
+const { TriagemTemplate } = VSComponents;
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { settings } = useSettings();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -54,6 +66,25 @@ function App() {
     }
   };
 
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <DashboardOverview />;
+      case 'appointments':
+        return <AppointmentsView />;
+      case 'galleries':
+        return <GalleriesView />;
+      case 'clients':
+        return <ClientsView />;
+      case 'payments':
+        return <PaymentsView />;
+      case 'settings':
+        return <SettingsView />;
+      default:
+        return <DashboardOverview />;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -75,7 +106,16 @@ function App() {
           path="/" 
           element={
             isAuthenticated ? (
-              <AdminDashboard onLogout={handleLogout} />
+              <TriagemTemplate
+                logoUrl={settings?.studio_logo_url}
+                currentView={currentView}
+                onViewChange={setCurrentView}
+                onLogout={handleLogout}
+                sidebarOpen={sidebarOpen}
+                onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
+              >
+                {renderCurrentView()}
+              </TriagemTemplate>
             ) : (
               <LoginForm onLogin={handleLogin} />
             )

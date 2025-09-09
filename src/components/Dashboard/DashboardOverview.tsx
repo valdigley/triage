@@ -1,11 +1,13 @@
 import React from 'react';
 import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import VSComponents from '../../valdigley-components';
+import VSComponents from '../../valdigley-unified-components';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useClients } from '../../hooks/useClients';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
+
+const { VSPageHeader, VSStatCard } = VSComponents;
 
 export function DashboardOverview() {
   const { appointments } = useAppointments();
@@ -62,48 +64,52 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <a
-              href="/agendamento"
-              className="bg-purple-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
-            >
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline">Novo Agendamento</span>
-              <span className="sm:hidden">Novo</span>
-            </a>
-          </div>
-        </div>
-        <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm sm:text-base">
-          {new Date().toLocaleDateString('pt-BR', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })}
-        </p>
-      </div>
+      <VSPageHeader 
+        title="Dashboard"
+        subtitle={new Date().toLocaleDateString('pt-BR', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}
+        actions={
+          <a
+            href="/agendamento"
+            className="vs-btn vs-btn-primary"
+          >
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline">Novo Agendamento</span>
+            <span className="sm:hidden">Novo</span>
+          </a>
+        }
+      />
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 sm:p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
-                  <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white mt-1 sm:mt-2">{stat.value}</p>
-                </div>
-                <div className={`${stat.bg} ${stat.color} p-2 sm:p-3 rounded-lg`}>
-                  <Icon className="h-4 w-4 sm:h-6 sm:w-6" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="vs-stats-grid">
+        <VSStatCard
+          title="Sessões Hoje"
+          value={todayAppointments.length}
+          icon={<Calendar className="h-6 w-6" />}
+          color="blue"
+        />
+        <VSStatCard
+          title="Total de Clientes"
+          value={clients.length}
+          icon={<Users className="h-6 w-6" />}
+          color="green"
+        />
+        <VSStatCard
+          title="Faturamento"
+          value={formatCurrency(totalRevenue)}
+          icon={<DollarSign className="h-6 w-6" />}
+          color="purple"
+        />
+        <VSStatCard
+          title="Pendências"
+          value={formatCurrency(pendingPayments)}
+          icon={<Clock className="h-6 w-6" />}
+          color="orange"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
