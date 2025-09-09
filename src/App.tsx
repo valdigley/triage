@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { Sidebar } from './components/Layout/Sidebar';
 import { BookingForm } from './components/Booking/BookingForm';
 import { DashboardOverview } from './components/Dashboard/DashboardOverview';
 import { AppointmentsView } from './components/Dashboard/AppointmentsView';
@@ -11,17 +12,12 @@ import { PaymentsView } from './components/Dashboard/PaymentsView';
 import { SettingsView } from './components/Dashboard/SettingsView';
 import { ClientGallery } from './components/Gallery/ClientGallery';
 import { LoginForm } from './components/Auth/LoginForm';
-import VSComponents from '../valdigley-unified-components.tsx';
-import { useSettings } from './hooks/useSettings';
-
-const { TriagemTemplate } = VSComponents;
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { settings } = useSettings();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -100,34 +96,47 @@ function App() {
 
   return (
     <ThemeProvider>
-    <Router>
-      <Routes>
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? (
-              <TriagemTemplate
-                logoUrl={settings?.studio_logo_url}
-                currentView={currentView}
-                onViewChange={setCurrentView}
-                onLogout={handleLogout}
-                sidebarOpen={sidebarOpen}
-                onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
-              >
-                {renderCurrentView()}
-              </TriagemTemplate>
-            ) : (
-              <LoginForm onLogin={handleLogin} />
-            )
-          } 
-        />
-        <Route path="/agendamento" element={<BookingForm />} />
-        <Route path="/gallery/:token" element={<ClientGallery />} />
-        
-        {/* Redirect unknown routes */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+      <Router>
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              isAuthenticated ? (
+                <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+                  <Sidebar
+                    currentView={currentView}
+                    onViewChange={setCurrentView}
+                    onLogout={handleLogout}
+                    isOpen={sidebarOpen}
+                    onToggle={() => setSidebarOpen(!sidebarOpen)}
+                  />
+                  
+                  {/* Mobile overlay */}
+                  {sidebarOpen && (
+                    <div 
+                      className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                      onClick={() => setSidebarOpen(false)}
+                    />
+                  )}
+                  
+                  <main className="flex-1 overflow-y-auto">
+                    <div className="p-4 sm:p-6 lg:p-8">
+                      {renderCurrentView()}
+                    </div>
+                  </main>
+                </div>
+              ) : (
+                <LoginForm onLogin={handleLogin} />
+              )
+            } 
+          />
+          <Route path="/agendamento" element={<BookingForm />} />
+          <Route path="/gallery/:token" element={<ClientGallery />} />
+          
+          {/* Redirect unknown routes */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
     </ThemeProvider>
   );
 }

@@ -1,13 +1,11 @@
 import React from 'react';
 import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import VSComponents from '../../../valdigley-unified-components.tsx';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useClients } from '../../hooks/useClients';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
 
-const { VSPageHeader, VSStatCard } = VSComponents;
 
 export function DashboardOverview() {
   const { appointments } = useAppointments();
@@ -64,52 +62,50 @@ export function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      <VSPageHeader 
-        title="Dashboard"
-        subtitle={new Date().toLocaleDateString('pt-BR', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })}
-        actions={
-          <a
-            href="/agendamento"
-            className="vs-btn vs-btn-primary"
-          >
-            <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Novo Agendamento</span>
-            <span className="sm:hidden">Novo</span>
-          </a>
-        }
-      />
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 space-y-4 sm:space-y-0">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
+            {new Date().toLocaleDateString('pt-BR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </p>
+        </div>
+        <a
+          href="/agendamento"
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+        >
+          <Calendar className="h-4 w-4" />
+          <span className="hidden sm:inline">Novo Agendamento</span>
+          <span className="sm:hidden">Novo</span>
+        </a>
+      </div>
 
-      {/* Stats Grid */}
-      <div className="vs-stats-grid">
-        <VSStatCard
-          title="Sessões Hoje"
-          value={todayAppointments.length}
-          icon={<Calendar className="h-6 w-6" />}
-          color="blue"
-        />
-        <VSStatCard
-          title="Total de Clientes"
-          value={clients.length}
-          icon={<Users className="h-6 w-6" />}
-          color="green"
-        />
-        <VSStatCard
-          title="Faturamento"
-          value={formatCurrency(totalRevenue)}
-          icon={<DollarSign className="h-6 w-6" />}
-          color="purple"
-        />
-        <VSStatCard
-          title="Pendências"
-          value={formatCurrency(pendingPayments)}
-          icon={<Clock className="h-6 w-6" />}
-          color="orange"
-        />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                    {stat.title}
+                  </p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className={`p-2 sm:p-3 rounded-lg ${stat.bg}`}>
+                  <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${stat.color}`} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
