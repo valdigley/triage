@@ -217,7 +217,9 @@ export function useNotifications() {
         studio_name: settings.studio_name || '',
         studio_phone: settings.studio_phone || ''
       };
-      
+
+      const results: boolean[] = [];
+
       // Agendar lembrete 1 dia antes
       const oneDayBefore = new Date(appointmentDate.getTime() - 24 * 60 * 60 * 1000);
       if (oneDayBefore > new Date()) {
@@ -231,6 +233,7 @@ export function useNotifications() {
         );
         results.push(result1);
       }
+
       // Agendar lembrete 2 horas antes
       const twoHoursBefore = new Date(appointmentDate.getTime() - 2 * 60 * 60 * 1000);
       if (twoHoursBefore > new Date()) {
@@ -244,9 +247,10 @@ export function useNotifications() {
         );
         results.push(result2);
       }
+
       const successCount = results.filter(r => r).length;
       console.log(`✅ ${successCount}/${results.length} notificações agendadas com sucesso`);
-      
+
       return successCount > 0; // Sucesso se pelo menos uma foi agendada
     } catch (error) {
       console.error('❌ Erro ao agendar notificações do agendamento:', error);

@@ -108,18 +108,16 @@ Deno.serve(async (req: Request) => {
     // Get pending notifications that should be sent now
     const now = new Date();
     const nowISO = now.toISOString();
-    console.log('⏰ Buscando notificações até:', now);
-    
-    // Buscar apenas notificações que não foram processadas recentemente
-    // para evitar duplicatas em caso de múltiplas execuções
+    console.log('⏰ Buscando notificações até:', nowISO);
+
+    // Buscar apenas notificações pendentes agendadas para o passado
     const { data: notifications, error: notificationsError } = await supabase
       .from('notification_queue')
       .select('*')
       .eq('status', 'pending')
       .lte('scheduled_for', nowISO)
-      .is('sent_at', null)
       .order('scheduled_for', { ascending: true })
-      .limit(10); // Reduzido para 10 para evitar sobrecarga
+      .limit(10);
 
     if (notificationsError) {
       console.error('❌ Erro ao buscar notificações:', notificationsError);
