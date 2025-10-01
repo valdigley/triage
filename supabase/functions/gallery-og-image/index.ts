@@ -124,17 +124,20 @@ Deno.serve(async (req: Request) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
+  <meta name="description" content="${description}">
 
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="${galleryUrl}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
-  ${imageUrl ? `<meta property="og:image" content="${imageUrl}">` : ''}
-  ${imageUrl ? `<meta property="og:image:secure_url" content="${imageUrl}">` : ''}
+  <meta property="og:site_name" content="Triagem Online">
+  <meta property="og:locale" content="pt_BR">
+  ${imageUrl ? `<meta property="og:image" content="${imageUrl}">
+  <meta property="og:image:secure_url" content="${imageUrl}">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:height" content="630">` : ''}
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
