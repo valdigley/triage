@@ -930,9 +930,14 @@ export function GalleriesView() {
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Nova Galeria Manual</h3>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                    {createStep === 0 ? 'Nova Galeria' : createStep === 1 ? 'Nova Galeria - Cliente' : 'Nova Galeria - Detalhes'}
+                  </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {createStep === 1 ? 'Passo 1: Selecionar Cliente' : 'Passo 2: Detalhes da Galeria'}
+                    {createStep === 0 && 'Escolha o tipo de galeria'}
+                    {createStep === 1 && 'Passo 1: Selecionar Cliente'}
+                    {createStep === 2 && !newGallery.is_public && 'Passo 2: Detalhes da Galeria'}
+                    {createStep === 2 && newGallery.is_public && 'Configure a Galeria Pública'}
                   </p>
                 </div>
                 <button
@@ -943,8 +948,63 @@ export function GalleriesView() {
                 </button>
               </div>
 
+              {/* Step 0: Choose Type */}
+              {createStep === 0 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    Escolha entre criar uma galeria para um cliente específico ou uma galeria pública para eventos.
+                  </p>
+
+                  {/* Client Gallery Option */}
+                  <button
+                    onClick={() => {
+                      setNewGallery(prev => ({ ...prev, is_public: false }));
+                      setCreateStep(1);
+                    }}
+                    className="w-full p-6 border-2 border-gray-300 dark:border-gray-600 rounded-lg hover:border-purple-500 dark:hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all text-left group"
+                  >
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
+                        <UserPlus className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Galeria para Cliente
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Crie uma galeria individual para um cliente específico. O cliente receberá um link exclusivo para selecionar suas fotos favoritas.
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Public Gallery Option */}
+                  <button
+                    onClick={() => {
+                      setNewGallery(prev => ({ ...prev, is_public: true }));
+                      setCreateStep(2);
+                    }}
+                    className="w-full p-6 border-2 border-gray-300 dark:border-gray-600 rounded-lg hover:border-green-500 dark:hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all text-left group"
+                  >
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0 w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
+                        <Camera className="h-6 w-6 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          Galeria Pública (Evento)
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Crie uma galeria pública para eventos. Qualquer pessoa com o link poderá ver as fotos, se cadastrar e selecionar suas favoritas. Pagamento por foto.
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+
               {/* Step 1: Select Client */}
-              {createStep === 1 && (
+              {createStep === 1 && !newGallery.is_public && (
                 <div className="space-y-4">
                   <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
                     <p className="text-sm text-purple-800 dark:text-purple-200">
@@ -1054,22 +1114,107 @@ export function GalleriesView() {
               {/* Step 2: Gallery Details */}
               {createStep === 2 && (
                 <div className="space-y-4">
-                  {/* Selected Client Info */}
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-green-800 dark:text-green-200">Cliente Selecionado</h4>
-                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">{newGallery.client_name}</p>
-                        <p className="text-xs text-green-600 dark:text-green-400">{newGallery.client_phone}</p>
+                  {/* Selected Client Info (only for private galleries) */}
+                  {!newGallery.is_public && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-medium text-green-800 dark:text-green-200">Cliente Selecionado</h4>
+                          <p className="text-sm text-green-700 dark:text-green-300 mt-1">{newGallery.client_name}</p>
+                          <p className="text-xs text-green-600 dark:text-green-400">{newGallery.client_phone}</p>
+                        </div>
+                        <button
+                          onClick={() => setCreateStep(1)}
+                          className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 text-sm underline"
+                        >
+                          Alterar
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setCreateStep(1)}
-                        className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 text-sm underline"
-                      >
-                        Alterar
-                      </button>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Public Gallery Info */}
+                  {newGallery.is_public && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                      <div className="flex items-start space-x-3">
+                        <Camera className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-green-800 dark:text-green-200">Galeria Pública</h4>
+                          <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                            Qualquer pessoa com o link poderá ver as fotos, se cadastrar e fazer sua seleção.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {newGallery.is_public ? (
+                    <>
+                      {/* Public Gallery Fields */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Nome do Evento *
+                        </label>
+                        <input
+                          type="text"
+                          value={newGallery.event_name}
+                          onChange={(e) => setNewGallery(prev => ({ ...prev, event_name: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="Ex: Festa de Formatura UFPE 2025"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Preço por Foto (R$) *
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          value={newGallery.price_per_photo}
+                          onChange={(e) => setNewGallery(prev => ({ ...prev, price_per_photo: parseFloat(e.target.value) }))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="30.00"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Cada pessoa pagará este valor por foto selecionada
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Senha da Galeria (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newGallery.password}
+                          onChange={(e) => setNewGallery(prev => ({ ...prev, password: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          placeholder="Deixe em branco para acesso livre"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Validade do Link (dias)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={newGallery.expiration_days}
+                          onChange={(e) => setNewGallery(prev => ({ ...prev, expiration_days: parseInt(e.target.value) }))}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Tempo que o link ficará ativo para seleção de fotos
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Private Gallery Fields */}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1128,11 +1273,22 @@ export function GalleriesView() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
+                  </>
+                  )}
                 </div>
               )}
 
               <div className="flex justify-end space-x-3 mt-6">
-                {createStep === 2 && (
+                {createStep === 0 && (
+                  <button
+                    onClick={resetCreateGallery}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                )}
+
+                {createStep === 2 && !newGallery.is_public && (
                   <button
                     onClick={() => setCreateStep(1)}
                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -1140,24 +1296,37 @@ export function GalleriesView() {
                     Voltar
                   </button>
                 )}
-                <button
-                  onClick={resetCreateGallery}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Cancelar
-                </button>
+
+                {createStep === 2 && newGallery.is_public && (
+                  <button
+                    onClick={() => setCreateStep(0)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Voltar
+                  </button>
+                )}
+
+                {createStep !== 0 && (
+                  <button
+                    onClick={resetCreateGallery}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                )}
+
                 {createStep === 2 && (
                   <button
-                    onClick={handleCreateManualGallery}
+                    onClick={newGallery.is_public ? handleCreatePublicGallery : handleCreateManualGallery}
                     disabled={creating}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                    className={`px-6 py-2 ${newGallery.is_public ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'} text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2`}
                   >
                     {creating ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     ) : (
                       <Plus className="h-4 w-4" />
                     )}
-                    <span>{creating ? 'Criando...' : 'Criar Galeria'}</span>
+                    <span>{creating ? 'Criando...' : newGallery.is_public ? 'Criar Galeria Pública' : 'Criar Galeria'}</span>
                   </button>
                 )}
               </div>
