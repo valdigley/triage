@@ -187,7 +187,8 @@ Deno.serve(async (req: Request) => {
     const { data: settings } = await supabase
       .from('settings')
       .select('price_commercial_hour')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     const pricePerPhoto = settings?.price_commercial_hour || 30;
     console.log('💰 Preço por foto extra:', pricePerPhoto);
@@ -249,7 +250,8 @@ Deno.serve(async (req: Request) => {
     const { data: settings } = await supabase
       .from('settings')
       .select('delivery_days')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     const deliveryDays = settings?.delivery_days || 7;
 

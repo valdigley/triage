@@ -27,7 +27,8 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
     const { data: settings } = await supabase
       .from('settings')
       .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour, studio_name, studio_phone')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!settings) {
       console.error('❌ Settings não encontradas');
@@ -154,7 +155,8 @@ Deno.serve(async (req: Request) => {
       .from('mercadopago_settings')
       .select('*')
       .eq('is_active', true)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
       console.error('❌ Configurações MercadoPago não encontradas:', mpError);

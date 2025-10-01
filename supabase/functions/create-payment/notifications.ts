@@ -18,7 +18,8 @@ export async function scheduleNotifications(appointmentId: string, supabase: any
     const { data: settings } = await supabase
       .from('settings')
       .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!settings) {
       throw new Error('Settings not found');

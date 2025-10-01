@@ -51,7 +51,8 @@ Deno.serve(async (req: Request) => {
       .from('mercadopago_settings')
       .select('*')
       .eq('is_active', true)
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
       console.error('❌ Configurações MercadoPago não encontradas');

@@ -21,7 +21,8 @@ export async function scheduleNotifications(appointmentId: string) {
     const { data: settings } = await supabase
       .from('settings')
       .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!settings) {
       throw new Error('Settings not found');
@@ -120,7 +121,8 @@ export async function scheduleGalleryNotifications(galleryId: string, galleryTok
     const { data: settings } = await supabase
       .from('settings')
       .select('*')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!settings) {
       throw new Error('Settings not found');
@@ -221,7 +223,8 @@ export async function scheduleSelectionConfirmation(appointmentId: string) {
     const { data: settings } = await supabase
       .from('settings')
       .select('*')
-      .single();
+      .limit(1)
+      .maybeSingle();
 
     if (!settings) {
       throw new Error('Settings not found');
