@@ -49,18 +49,11 @@ export function SettingsView() {
     instance_name: ''
   });
 
-  // Google Calendar form state
+  // Google Calendar form state (apenas campos essenciais)
   const [googleCalendarForm, setGoogleCalendarForm] = useState({
     calendar_id: '',
-    project_id: '',
-    private_key_id: '',
-    private_key: '',
     client_email: '',
-    client_id: '',
-    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-    token_uri: 'https://oauth2.googleapis.com/token',
-    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-    client_x509_cert_url: ''
+    private_key: ''
   });
 
   // Update form when Google Calendar settings change
@@ -69,15 +62,8 @@ export function SettingsView() {
       const key = googleCalendarSettings.service_account_key;
       setGoogleCalendarForm({
         calendar_id: googleCalendarSettings.calendar_id || '',
-        project_id: key?.project_id || '',
-        private_key_id: key?.private_key_id || '',
-        private_key: '', // Não mostrar a key por segurança
         client_email: key?.client_email || '',
-        client_id: key?.client_id || '',
-        auth_uri: key?.auth_uri || 'https://accounts.google.com/o/oauth2/auth',
-        token_uri: key?.token_uri || 'https://oauth2.googleapis.com/token',
-        auth_provider_x509_cert_url: key?.auth_provider_x509_cert_url || 'https://www.googleapis.com/oauth2/v1/certs',
-        client_x509_cert_url: key?.client_x509_cert_url || ''
+        private_key: '' // Não mostrar a key por segurança
       });
     }
   }, [googleCalendarSettings]);
@@ -911,34 +897,8 @@ export function SettingsView() {
                   Preencha com os dados do arquivo JSON baixado do Google Cloud
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Project ID *
-                    </label>
-                    <input
-                      type="text"
-                      value={googleCalendarForm.project_id}
-                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, project_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="meu-projeto-123456"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Private Key ID *
-                    </label>
-                    <input
-                      type="text"
-                      value={googleCalendarForm.private_key_id}
-                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, private_key_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="abc123def456..."
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Client Email *
                     </label>
@@ -949,35 +909,12 @@ export function SettingsView() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="service-account@projeto.iam.gserviceaccount.com"
                     />
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Campo <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">client_email</code> do JSON
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Client ID *
-                    </label>
-                    <input
-                      type="text"
-                      value={googleCalendarForm.client_id}
-                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, client_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="123456789012345678901"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Client Cert URL
-                    </label>
-                    <input
-                      type="url"
-                      value={googleCalendarForm.client_x509_cert_url}
-                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, client_x509_cert_url: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="https://www.googleapis.com/robot/v1/metadata/x509/..."
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Private Key *
                     </label>
@@ -986,11 +923,10 @@ export function SettingsView() {
                       onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, private_key: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
                       placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...&#10;-----END PRIVATE KEY-----"
-                      rows={6}
+                      rows={8}
                     />
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      <strong>Importante:</strong> Cole exatamente como está no JSON, com todas as quebras de linha.<br/>
-                      Aceita tanto o formato com <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">\n</code> quanto com quebras de linha reais.
+                      Campo <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">private_key</code> do JSON. Cole exatamente como está no arquivo.
                       {googleCalendarSettings && !googleCalendarForm.private_key && (
                         <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
                           Deixe em branco para manter a chave atual
@@ -1020,18 +956,12 @@ export function SettingsView() {
                         normalizedPrivateKey += '\n';
                       }
 
-                      // Construir o JSON da Service Account
+                      // Construir o JSON da Service Account (apenas campos essenciais)
                       const serviceAccountJson = {
                         type: "service_account",
-                        project_id: googleCalendarForm.project_id,
-                        private_key_id: googleCalendarForm.private_key_id,
                         private_key: normalizedPrivateKey,
                         client_email: googleCalendarForm.client_email,
-                        client_id: googleCalendarForm.client_id,
-                        auth_uri: googleCalendarForm.auth_uri,
-                        token_uri: googleCalendarForm.token_uri,
-                        auth_provider_x509_cert_url: googleCalendarForm.auth_provider_x509_cert_url,
-                        client_x509_cert_url: googleCalendarForm.client_x509_cert_url,
+                        token_uri: "https://oauth2.googleapis.com/token",
                         universe_domain: "googleapis.com"
                       };
 
