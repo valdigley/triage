@@ -118,7 +118,7 @@ export function BookingForm() {
 
   const loadAvailableSlots = async () => {
     if (!settings) return;
-    
+
     setLoadingSlots(true);
     try {
       // Buscar agendamentos existentes
@@ -126,48 +126,60 @@ export function BookingForm() {
         .from('appointments')
         .select('scheduled_date')
         .in('status', ['pending', 'confirmed']);
-      
+
       const slots = [];
       const today = new Date();
-      
+
       // Gerar slots para os próximos 30 dias
       for (let i = 0; i < 30; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
-        
+
         const daySlots = generateAvailableTimeSlots(
           date.toISOString().split('T')[0],
           existingAppointments || [],
           settings.commercial_hours
         );
-        
-        daySlots.forEach(slotDateTime => {
+
+        // Verificar cada slot no Google Calendar
+        for (const slotDateTime of daySlots) {
           const slotDate = new Date(slotDateTime);
-          const calculatedPrice = calculatePrice(
-            slotDateTime,
-            settings.commercial_hours,
-            settings.price_commercial_hour,
-            settings.price_after_hours
+          const endDate = addHoursInSaoPaulo(slotDate, 2);
+
+          // Verificar disponibilidade no Google Calendar
+          const availability = await checkGoogleCalendarAvailability(
+            slotDate.toISOString(),
+            endDate.toISOString()
           );
 
-          slots.push({
-            date: slotDate.toLocaleDateString('pt-BR', {
-              timeZone: 'America/Sao_Paulo',
-              weekday: 'short',
-              day: '2-digit',
-              month: '2-digit'
-            }),
-            time: slotDate.toLocaleTimeString('pt-BR', {
-              timeZone: 'America/Sao_Paulo',
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            datetime: slotDateTime,
-            price: calculatedPrice * settings.minimum_photos
-          });
-        });
+          // Apenas adicionar se estiver disponível no Google Calendar
+          if (availability.available) {
+            const calculatedPrice = calculatePrice(
+              slotDateTime,
+              settings.commercial_hours,
+              settings.price_commercial_hour,
+              settings.price_after_hours
+            );
+
+            slots.push({
+              date: slotDate.toLocaleDateString('pt-BR', {
+                timeZone: 'America/Sao_Paulo',
+                weekday: 'short',
+                day: '2-digit',
+                month: '2-digit'
+              }),
+              time: slotDate.toLocaleTimeString('pt-BR', {
+                timeZone: 'America/Sao_Paulo',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              datetime: slotDateTime,
+              price: calculatedPrice * settings.minimum_photos
+            });
+          }
+        }
       }
-      
+
       setAvailableSlots(slots);
     } catch (error) {
       console.error('Erro ao carregar horários disponíveis:', error);
