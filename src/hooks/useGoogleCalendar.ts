@@ -91,33 +91,21 @@ export function useGoogleCalendar() {
         console.log('🔑 Private key type:', typeof keyObject.private_key);
         console.log('🔑 Private key length:', keyObject.private_key?.length);
 
-        // Normalizar a private key
-        let normalizedPrivateKey = keyObject.private_key;
-        console.log('🔧 Normalizando private key...');
-        console.log('📊 Tipo:', typeof normalizedPrivateKey);
-        console.log('📊 Primeiros 50 chars:', normalizedPrivateKey.substring(0, 50));
-        console.log('📊 Tem \\n?', normalizedPrivateKey.includes('\n'));
-        console.log('📊 Tem \\\\n literal?', normalizedPrivateKey.includes('\\n'));
+        // Normalizar a private key - APENAS salvar como está no JSON original
+        const normalizedPrivateKey = keyObject.private_key;
 
-        // Se é uma string com \\n literal (não quebra de linha real), converter
-        if (normalizedPrivateKey.includes('\\n')) {
-          console.log('🔄 Substituindo \\\\n por quebras de linha reais...');
-          normalizedPrivateKey = normalizedPrivateKey.replace(/\\n/g, '\n');
-          console.log('✅ Convertido');
-        }
-
-        // Garantir que termina com quebra de linha
-        if (!normalizedPrivateKey.endsWith('\n')) {
-          normalizedPrivateKey += '\n';
-        }
-
-        console.log('📊 Após normalização - Primeiros 50 chars:', normalizedPrivateKey.substring(0, 50));
-        console.log('📊 Após normalização - Tem quebras de linha reais?', normalizedPrivateKey.includes('\n'));
+        console.log('📊 Private key info:');
+        console.log('  - Length:', normalizedPrivateKey.length);
+        console.log('  - Starts with:', normalizedPrivateKey.substring(0, 30));
+        console.log('  - Ends with:', normalizedPrivateKey.substring(normalizedPrivateKey.length - 30));
+        console.log('  - Contém \\n literal?', normalizedPrivateKey.includes('\\n'));
+        console.log('  - Split por \\n:', normalizedPrivateKey.split('\n').length, 'partes');
 
         // Criar objeto otimizado com apenas campos necessários
+        // IMPORTANTE: Salvar a private_key EXATAMENTE como veio no JSON
         const optimizedKey = {
           type: "service_account",
-          private_key: normalizedPrivateKey,
+          private_key: normalizedPrivateKey, // SEM modificações!
           client_email: keyObject.client_email,
           token_uri: "https://oauth2.googleapis.com/token",
           universe_domain: "googleapis.com"
@@ -126,7 +114,7 @@ export function useGoogleCalendar() {
         updateData.service_account_email = keyObject.client_email;
         updateData.service_account_key = optimizedKey;
 
-        console.log('✅ JSON processado e otimizado');
+        console.log('✅ JSON processado');
       }
 
       // Se já existe configuração, atualizar. Senão, inserir
