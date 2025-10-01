@@ -99,7 +99,11 @@ export function PhotoCard({
 
 
   return (
-    <div className={`relative group cursor-pointer w-full ${className}`}>
+    <div
+      className={`relative group cursor-pointer w-full ${className}`}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
       {/* Main Photo Container */}
       <div
         className="relative w-full overflow-hidden rounded-lg border-2 transition-all duration-200"
@@ -115,11 +119,20 @@ export function PhotoCard({
         <img
           src={photo.url}
           alt={photo.filename}
-          className="w-full h-auto object-contain touch-manipulation"
+          className="w-full h-auto object-contain touch-manipulation select-none pointer-events-none"
+          draggable="false"
+          onContextMenu={(e) => e.preventDefault()}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = `https://via.placeholder.com/300x200/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
           }}
+        />
+
+        {/* Protection Overlay - Invisible but blocks interactions */}
+        <div
+          className="absolute inset-0 z-[5]"
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
         />
 
         {/* Watermark */}

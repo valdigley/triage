@@ -105,11 +105,30 @@ export function ClientGallery() {
     }
   }, [selectedPhotos, photos]);
 
-  // Keyboard navigation for lightbox
+  // Keyboard navigation for lightbox + Protection against screenshots
   useEffect(() => {
-    if (!lightboxPhoto) return;
-
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Block screenshot shortcuts
+      if (
+        (e.key === 'PrintScreen') ||
+        (e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4' || e.key === '5')) || // Mac screenshots
+        (e.metaKey && e.shiftKey && e.key === 's') || // Some screenshot tools
+        (e.ctrlKey && e.key === 'PrintScreen') // Windows
+      ) {
+        e.preventDefault();
+        alert('Screenshots estão desabilitados nesta galeria. As fotos estarão disponíveis após a compra.');
+        return;
+      }
+
+      // Block save shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        return;
+      }
+
+      // Lightbox navigation only when lightbox is open
+      if (!lightboxPhoto) return;
+
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault();
@@ -132,8 +151,18 @@ export function ClientGallery() {
       }
     };
 
+    // Disable right-click on entire page
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
     window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
   }, [lightboxPhoto, gallery?.selection_completed]);
 
   const fetchGallery = async () => {
@@ -535,6 +564,15 @@ export function ClientGallery() {
               </div>
             )}
           </div>
+
+          {/* Protection Notice */}
+          {!gallery.selection_completed && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-4">
+              <p className="text-xs text-blue-800 dark:text-blue-200 text-center">
+                🔒 As fotos estão protegidas. Download disponível após a compra.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -749,16 +787,28 @@ export function ClientGallery() {
               )}
               
               {/* Main Image Container */}
-              <div className="w-full h-full flex items-center justify-center p-4 sm:p-8 lg:p-12">
+              <div
+                className="w-full h-full flex items-center justify-center p-4 sm:p-8 lg:p-12 relative"
+                onContextMenu={(e) => e.preventDefault()}
+                onDragStart={(e) => e.preventDefault()}
+              >
                 <img
                   src={lightboxPhoto.url}
                   alt={lightboxPhoto.filename}
-                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl touch-manipulation transition-transform duration-300"
+                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl touch-manipulation transition-transform duration-300 select-none pointer-events-none"
+                  draggable="false"
+                  onContextMenu={(e) => e.preventDefault()}
                   onError={(e) => {
                     // Fallback para imagem de erro
                     const target = e.target as HTMLImageElement;
                     target.src = `https://via.placeholder.com/800x600/f0f0f0/666?text=${encodeURIComponent(lightboxPhoto.filename)}`;
                   }}
+                />
+                {/* Invisible protection overlay */}
+                <div
+                  className="absolute inset-0 z-[5]"
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
                 />
               </div>
               
