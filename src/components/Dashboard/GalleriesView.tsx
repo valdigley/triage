@@ -30,6 +30,7 @@ export function GalleriesView() {
   });
   const [creating, setCreating] = useState(false);
   const [createStep, setCreateStep] = useState(1); // 1: Select Client, 2: Gallery Details
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
 
   const fetchPhotos = async (galleryId: string) => {
     try {
@@ -268,6 +269,7 @@ export function GalleriesView() {
   const resetCreateGallery = () => {
     setShowCreateGallery(false);
     setCreateStep(1);
+    setClientSearchTerm('');
     setNewGallery({
       name: '',
       selected_client_id: '',
@@ -297,9 +299,21 @@ export function GalleriesView() {
     );
   };
 
-  const filteredGalleries = galleries.filter(gallery => 
+  const filteredGalleries = galleries.filter(gallery =>
     statusFilter === 'all' || gallery.status === statusFilter
   );
+
+  // Filter clients based on search term
+  const filteredClients = clients.filter(client => {
+    if (!clientSearchTerm.trim()) return true;
+
+    const searchLower = clientSearchTerm.toLowerCase();
+    return (
+      client.name.toLowerCase().includes(searchLower) ||
+      client.phone.toLowerCase().includes(searchLower) ||
+      (client.email && client.email.toLowerCase().includes(searchLower))
+    );
+  });
 
   if (loading) {
     return (
@@ -883,25 +897,6 @@ export function GalleriesView() {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Tipo de Sessão
-                  </label>
-                  <select
-                    value={newGallery.sessionType || ''}
-                    onChange={(e) => setNewGallery(prev => ({ ...prev, sessionType: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="">Selecione o tipo de sessão</option>
-                    <option value="aniversario">🎂 Aniversário</option>
-                    <option value="gestante">🤱 Gestante</option>
-                    <option value="formatura">🎓 Formatura</option>
-                    <option value="comercial">💼 Comercial</option>
-                    <option value="pre_wedding">💑 Pré-wedding</option>
-                    <option value="tematico">🎨 Temático</option>
-                  </select>
-                </div>
-
 
               {/* Step 1: Select Client */}
               {createStep === 1 && (
@@ -931,39 +926,49 @@ export function GalleriesView() {
                       <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <input
                         type="text"
+                        value={clientSearchTerm}
+                        onChange={(e) => setClientSearchTerm(e.target.value)}
                         placeholder="Digite o nome, telefone ou email do cliente..."
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        onChange={(e) => {
-                          const term = e.target.value;
-                          // Filter clients in real-time
-                          if (term.trim() === '') {
-                            // Show all clients
-                          } else {
-                            // This would need to be implemented with a local filter
-                            // For now, we'll show all clients
-                          }
-                        }}
                       />
                     </div>
+
+                    {/* Show results count */}
+                    {clientSearchTerm && (
+                      <div className="mb-2 text-sm text-gray-600 dark:text-gray-400">
+                        {filteredClients.length} {filteredClients.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
+                      </div>
+                    )}
 
                     {/* Clients List */}
                     <div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg">
                       {clients.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                          <p>Nenhum cliente encontrado.</p>
+                          <p>Nenhum cliente cadastrado.</p>
                           <button
                             onClick={() => {
                               resetCreateGallery();
-                              setShowCreateClient(true);
+                              // Note: setShowCreateClient is not defined in this component
+                              // User should navigate to clients view to create one
                             }}
                             className="text-purple-600 dark:text-purple-400 underline mt-2"
                           >
-                            Criar primeiro cliente
+                            Ir para Clientes
+                          </button>
+                        </div>
+                      ) : filteredClients.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                          <p>Nenhum cliente encontrado com "{clientSearchTerm}"</p>
+                          <button
+                            onClick={() => setClientSearchTerm('')}
+                            className="text-purple-600 dark:text-purple-400 underline mt-2"
+                          >
+                            Limpar busca
                           </button>
                         </div>
                       ) : (
                         <div className="divide-y divide-gray-200 dark:divide-gray-600">
-                          {clients.map((client) => (
+                          {filteredClients.map((client) => (
                             <button
                               key={client.id}
                               onClick={() => handleClientSelect(client.id)}
