@@ -39,8 +39,64 @@ export function ClientGallery() {
   useEffect(() => {
     if (token) {
       fetchGallery();
+      updateMetaTags();
     }
   }, [token]);
+
+  const updateMetaTags = async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gallery-og-image?token=${token}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update meta tags
+        updateMetaTag('og:title', data.title);
+        updateMetaTag('og:description', data.description);
+        updateMetaTag('og:image', data.image);
+        updateMetaTag('twitter:card', 'summary_large_image');
+        updateMetaTag('twitter:title', data.title);
+        updateMetaTag('twitter:description', data.description);
+        updateMetaTag('twitter:image', data.image);
+
+        // Update page title
+        document.title = data.title;
+      }
+    } catch (error) {
+      console.error('Error updating meta tags:', error);
+    }
+  };
+
+  const updateMetaTag = (property: string, content: string) => {
+    if (!content) return;
+
+    let element = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement;
+    if (!element) {
+      element = document.querySelector(`meta[name="${property}"]`) as HTMLMetaElement;
+    }
+
+    if (element) {
+      element.content = content;
+    } else {
+      const meta = document.createElement('meta');
+      if (property.startsWith('og:') || property.startsWith('twitter:')) {
+        meta.setAttribute('property', property);
+      } else {
+        meta.setAttribute('name', property);
+      }
+      meta.content = content;
+      document.head.appendChild(meta);
+    }
+  };
 
   useEffect(() => {
     if (photos.length > 0) {

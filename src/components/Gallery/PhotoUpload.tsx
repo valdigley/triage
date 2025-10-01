@@ -281,18 +281,34 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
         }
       }
 
-      // Update gallery photo count
+      // Update gallery photo count and set preview image
       const { data: photos } = await supabase
         .from('photos_triage')
-        .select('id')
-        .eq('gallery_id', galleryId);
+        .select('id, url, thumbnail')
+        .eq('gallery_id', galleryId)
+        .order('created_at', { ascending: true });
+
+      // Get current gallery to check if preview already set
+      const { data: currentGallery } = await supabase
+        .from('galleries_triage')
+        .select('preview_image_url')
+        .eq('id', galleryId)
+        .maybeSingle();
+
+      const updateData: any = {
+        photos_uploaded: photos?.length || 0,
+        updated_at: new Date().toISOString()
+      };
+
+      // Set first photo as preview if not already set
+      if (!currentGallery?.preview_image_url && photos && photos.length > 0) {
+        updateData.preview_image_url = photos[0].url;
+        console.log('📸 Definindo primeira foto como preview:', photos[0].url);
+      }
 
       await supabase
         .from('galleries_triage')
-        .update({ 
-          photos_uploaded: photos?.length || 0,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', galleryId);
 
       // Check if we should send WhatsApp message automatically
