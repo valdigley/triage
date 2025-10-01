@@ -1,55 +1,137 @@
-// Script para gerar páginas HTML estáticas para Open Graph
-// Executar após deploy para cada galeria criada
+#!/usr/bin/env node
+// Script to generate static HTML pages with Open Graph tags for WhatsApp preview
+// This ensures WhatsApp shows thumbnails when sharing gallery links
 
-const fs = require('fs');
-const path = require('path');
+import { config } from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-function generateOGHtml(galleryToken, title, description, imageUrl, appUrl = 'https://triagem.online') {
-  const html = `<!DOCTYPE html>
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env file
+config();
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.log('ℹ️  Skipping OG page generation (no Supabase credentials).');
+  console.log('   OG pages will be generated at runtime by the edge function.');
+  process.exit(0);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function generateOGPages() {
+  console.log('🔍 Fetching galleries from database...');
+
+  const { data: galleries, error } = await supabase
+    .from('galleries_triage')
+    .select(`
+      id,
+      gallery_token,
+      name,
+      preview_image_url,
+      og_title,
+      og_description,
+      appointment:appointments(
+        client:clients(name)
+      )
+    `);
+
+  if (error) {
+    console.log('⚠️  Could not fetch galleries. This is OK during build.');
+    console.log('   The OG pages will be generated at runtime by the edge function.');
+    return;
+  }
+
+  if (!galleries || galleries.length === 0) {
+    console.log('ℹ️  No galleries found. Create some galleries first!');
+    return;
+  }
+
+  console.log(`📸 Found ${galleries.length} galleries`);
+
+  const distGDir = path.join(__dirname, 'dist', 'g');
+  if (!fs.existsSync(distGDir)) {
+    fs.mkdirSync(distGDir, { recursive: true });
+  }
+
+  let generated = 0;
+  for (const gallery of galleries) {
+    const token = gallery.gallery_token;
+    let imageUrl = gallery.preview_image_url;
+
+    if (!imageUrl) {
+      const { data: photos } = await supabase
+        .from('photos_triage')
+        .select('url')
+        .eq('gallery_id', gallery.id)
+        .limit(1)
+        .maybeSingle();
+
+      imageUrl = photos?.url || 'https://triagem.online/triagem.png';
+    }
+
+    const clientName = gallery.appointment?.client?.name || 'Cliente';
+    const title = gallery.og_title || `📸 Galeria de Fotos - ${clientName}`;
+    const description = gallery.og_description || 'Visualize e selecione suas fotos favoritas!';
+
+    const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
 
-  <!-- Open Graph / Facebook / WhatsApp -->
+  <!-- Open Graph / WhatsApp -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="${appUrl}/g/${galleryToken}">
+  <meta property="og:url" content="https://triagem.online/g/${token}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
-  ${imageUrl ? `<meta property="og:image" content="${imageUrl}">` : ''}
-  ${imageUrl ? `<meta property="og:image:secure_url" content="${imageUrl}">` : ''}
+  <meta property="og:image" content="${imageUrl}">
+  <meta property="og:image:secure_url" content="${imageUrl}">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Triagem Online">
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="${appUrl}/g/${galleryToken}">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
-  ${imageUrl ? `<meta name="twitter:image" content="${imageUrl}">` : ''}
+  <meta name="twitter:image" content="${imageUrl}">
 
-  <!-- Redirect to actual gallery page -->
-  <meta http-equiv="refresh" content="0;url=${appUrl}/gallery/${galleryToken}">
-  <script>window.location.href = "${appUrl}/gallery/${galleryToken}";</script>
+  <!-- Redirect -->
+  <meta http-equiv="refresh" content="0;url=/gallery/${token}">
+  <script>window.location.href='/gallery/${token}';</script>
+
+  <style>
+    body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;margin:0}
+    .loader{text-align:center}.spinner{border:4px solid rgba(255,255,255,.3);border-radius:50%;border-top:4px solid #fff;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
 </head>
 <body>
-  <p>Redirecionando para a galeria...</p>
-  <a href="${appUrl}/gallery/${galleryToken}">Clique aqui se não for redirecionado automaticamente</a>
+  <div class="loader">
+    <h2>📸 ${clientName}</h2>
+    <div class="spinner"></div>
+    <p>Carregando galeria...</p>
+  </div>
 </body>
 </html>`;
 
-  return html;
+    const filePath = path.join(distGDir, `${token}.html`);
+    fs.writeFileSync(filePath, html);
+    generated++;
+    console.log(`  ✅ /g/${token}.html`);
+  }
+
+  console.log(`\n🎉 Generated ${generated} Open Graph pages in dist/g/`);
+  console.log('💡 These pages will show previews when shared on WhatsApp!');
 }
 
-// Exemplo de uso
-const token = process.argv[2] || 'example-token';
-const title = process.argv[3] || 'Galeria de Fotos';
-const description = process.argv[4] || 'Confira as fotos da sua sessão!';
-const imageUrl = process.argv[5] || '';
-
-const html = generateOGHtml(token, title, description, imageUrl);
-console.log(html);
-
-module.exports = { generateOGHtml };
+generateOGPages().catch(console.error);

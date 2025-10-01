@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galeria de Fotos - Triagem Online</title>
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="📸 Suas Fotos Estão Prontas!">
+  <meta property="og:description" content="Visualize e selecione suas fotos favoritas da sessão fotográfica. Clique para acessar sua galeria exclusiva.">
+  <meta property="og:image" content="https://triagem.online/triagem.png">
+  <meta property="og:image:secure_url" content="https://triagem.online/triagem.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Triagem Online">
+  <meta property="og:locale" content="pt_BR">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="📸 Suas Fotos Estão Prontas!">
+  <meta name="twitter:description" content="Visualize e selecione suas fotos favoritas da sessão fotográfica.">
+  <meta name="twitter:image" content="https://triagem.online/triagem.png">
+
+  <script>
+    // Redirect to gallery using token from URL
+    const token = window.location.pathname.split('/').filter(Boolean).pop();
+    if (token && token !== 'gallery-preview.html') {
+      // Small delay to ensure meta tags are read by crawlers
+      setTimeout(() => {
+        window.location.href = `/gallery/${token}`;
+      }, 500);
+    }
+  </script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    p {
+      font-size: 16px;
+      opacity: 0.9;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 3px solid white;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .manual-link {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .manual-link a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 2px solid white;
+      padding-bottom: 2px;
+      transition: opacity 0.2s;
+    }
+
+    .manual-link a:hover {
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📸</div>
+    <h1>Suas Fotos Estão Prontas!</h1>
+    <p>Carregando sua galeria exclusiva...</p>
+    <div class="spinner"></div>
+
+    <div class="manual-link">
+      <p style="font-size: 14px; opacity: 0.7; margin-bottom: 10px;">
+        Não foi redirecionado automaticamente?
+      </p>
+      <a href="/" onclick="window.location.href = `/gallery/${window.location.pathname.split('/').filter(Boolean).pop()}`; return false;">
+        Clique aqui para acessar
+      </a>
+    </div>
+  </div>
+</body>
+</html>

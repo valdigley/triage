@@ -1,1 +1,5 @@
-/gallery/:token  /gallery-preview.html  200
+# Redirect crawlers to edge function for Open Graph tags
+/g/:token  https://0ec90b57d6e95fcbda19832f.supabase.co/functions/v1/gallery-og-image?token=:token  200  User-Agent=WhatsApp User-Agent=facebookexternalhit User-Agent=Facebot User-Agent=Twitterbot
+
+# All other routes go to React app
+/*  /index.html  200

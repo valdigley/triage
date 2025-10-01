@@ -1,0 +1,27 @@
+[[redirects]]
+  from = "/g/:token"
+  to = "https://0ec90b57d6e95fcbda19832f.supabase.co/functions/v1/gallery-og-image?token=:token"
+  status = 200
+  force = false
+  conditions = {User-Agent = ["WhatsApp*", "facebookexternalhit*", "Facebot*", "Twitterbot*", "LinkedInBot*"]}
+
+[[redirects]]
+  from = "/g/:token"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[headers]]
+  for = "/g/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
