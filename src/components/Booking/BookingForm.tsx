@@ -559,26 +559,75 @@ export function BookingForm() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Data e Horário da Sessão
+                    Data da Sessão
                   </label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 dark:text-gray-500" />
                     <input
-                      type="datetime-local"
-                      value={formData.scheduledDate}
+                      type="date"
+                      value={selectedDate}
                       onChange={(e) => handleDateChange(e.target.value)}
-                      min={new Date().toISOString().slice(0, 16)}
+                      min={new Date().toISOString().slice(0, 10)}
                       className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
                       required
                     />
                   </div>
-                  {isCheckingAvailability && (
-                    <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                      Verificando disponibilidade...
-                    </p>
-                  )}
                 </div>
+
+                {/* Horários Disponíveis */}
+                {selectedDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Horários Disponíveis
+                    </label>
+                    
+                    {loadingSlots ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mr-3"></div>
+                        <span className="text-gray-600 dark:text-gray-400">Carregando horários...</span>
+                      </div>
+                    ) : availableTimeSlots.length === 0 ? (
+                      <div className="text-center py-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <Clock className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                        <p className="text-red-700 dark:text-red-300 font-medium">
+                          Nenhum horário disponível nesta data
+                        </p>
+                        <p className="text-red-600 dark:text-red-400 text-sm mt-1">
+                          Tente outra data ou entre em contato conosco
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {availableTimeSlots.map((slot) => {
+                          const slotDate = new Date(slot);
+                          const timeString = slotDate.toLocaleTimeString('pt-BR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          });
+                          const isSelected = formData.scheduledDate === slot;
+                          
+                          return (
+                            <button
+                              key={slot}
+                              type="button"
+                              onClick={() => handleTimeSlotSelect(slot)}
+                              className={`p-3 border-2 rounded-lg text-center transition-all ${
+                                isSelected
+                                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                                  : 'border-gray-200 dark:border-gray-600 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/10'
+                              }`}
+                            >
+                              <div className="font-medium text-sm">{timeString}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                Disponível
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {price > 0 && (
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4">
