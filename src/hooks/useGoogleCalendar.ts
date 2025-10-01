@@ -87,21 +87,32 @@ export function useGoogleCalendar() {
           return false;
         }
         console.log('✅ Campos obrigatórios presentes');
+        console.log('📧 Client email:', keyObject.client_email);
+        console.log('🔑 Private key type:', typeof keyObject.private_key);
+        console.log('🔑 Private key length:', keyObject.private_key?.length);
 
         // Normalizar a private key
-        let normalizedPrivateKey = keyObject.private_key.trim();
+        let normalizedPrivateKey = keyObject.private_key;
         console.log('🔧 Normalizando private key...');
+        console.log('📊 Tipo:', typeof normalizedPrivateKey);
+        console.log('📊 Primeiros 50 chars:', normalizedPrivateKey.substring(0, 50));
+        console.log('📊 Tem \\n?', normalizedPrivateKey.includes('\n'));
+        console.log('📊 Tem \\\\n literal?', normalizedPrivateKey.includes('\\n'));
 
-        // Substituir \\n literal por quebras de linha reais
-        if (!normalizedPrivateKey.includes('\n') && normalizedPrivateKey.includes('\\n')) {
+        // Se é uma string com \\n literal (não quebra de linha real), converter
+        if (normalizedPrivateKey.includes('\\n')) {
+          console.log('🔄 Substituindo \\\\n por quebras de linha reais...');
           normalizedPrivateKey = normalizedPrivateKey.replace(/\\n/g, '\n');
-          console.log('✅ Convertido \\\\n para \\n');
+          console.log('✅ Convertido');
         }
 
-        // Garantir que termina com \n
+        // Garantir que termina com quebra de linha
         if (!normalizedPrivateKey.endsWith('\n')) {
           normalizedPrivateKey += '\n';
         }
+
+        console.log('📊 Após normalização - Primeiros 50 chars:', normalizedPrivateKey.substring(0, 50));
+        console.log('📊 Após normalização - Tem quebras de linha reais?', normalizedPrivateKey.includes('\n'));
 
         // Criar objeto otimizado com apenas campos necessários
         const optimizedKey = {
