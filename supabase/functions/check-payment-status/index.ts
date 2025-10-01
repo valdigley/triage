@@ -4,9 +4,84 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value);
+}
+
 async function schedulePaymentConfirmationNotification(supabase, appointmentId) {
-  // Implementation for scheduling notification
-  console.log('📅 Agendando notificação de confirmação para:', appointmentId);
+  try {
+    console.log('📅 Agendando notificação de confirmação para:', appointmentId);
+    
+    // Get appointment details
+    const { data: appointment, error: appointmentError } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        client_id (
+          name,
+          phone
+        )
+      `)
+      .eq('id', appointmentId)
+      .single();
+
+    if (appointmentError || !appointment) {
+      console.error('❌ Erro ao buscar appointment:', appointmentError);
+      return;
+    }
+
+    // Get notification template
+    const { data: template, error: templateError } = await supabase
+      .from('notification_templates')
+      .select('*')
+      .eq('type', 'payment_confirmation')
+      .eq('is_active', true)
+      .single();
+
+    if (templateError || !template) {
+      console.log('⚠️ Template de confirmação de pagamento não encontrado');
+      return;
+    }
+
+    // Format message
+    const scheduledDate = new Date(appointment.scheduled_date);
+    const formattedDate = scheduledDate.toLocaleDateString('pt-BR');
+    const formattedTime = scheduledDate.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    const formattedAmount = formatCurrency(appointment.total_amount);
+
+    let message = template.message_template
+      .replace('{cliente_nome}', appointment.client_id?.name || 'Cliente')
+      .replace('{data_sessao}', formattedDate)
+      .replace('{horario_sessao}', formattedTime)
+      .replace('{tipo_sessao}', appointment.session_type)
+      .replace('{valor_total}', formattedAmount);
+
+    // Schedule notification for immediate sending
+    const { error: notificationError } = await supabase
+      .from('notification_queue')
+      .insert({
+        appointment_id: appointmentId,
+        template_type: 'payment_confirmation',
+        recipient_phone: appointment.client_id?.phone,
+        recipient_name: appointment.client_id?.name || 'Cliente',
+        message: message,
+        scheduled_for: new Date().toISOString()
+      });
+
+    if (notificationError) {
+      console.error('❌ Erro ao agendar notificação:', notificationError);
+    } else {
+      console.log('✅ Notificação de confirmação agendada com sucesso');
+    }
+  } catch (error) {
+    console.error('❌ Erro ao processar notificação de confirmação:', error);
+  }
 }
 
 Deno.serve(async (req: Request) => {
