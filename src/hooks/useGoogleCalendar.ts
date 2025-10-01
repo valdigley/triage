@@ -77,13 +77,28 @@ export function useGoogleCalendar() {
 
         // Validate required fields
         console.log('🔍 Validando campos obrigatórios...');
+        console.log('🔍 Keys no JSON:', Object.keys(keyObject));
+        console.log('🔍 Tipo do objeto:', typeof keyObject);
+        console.log('🔍 JSON completo:', JSON.stringify(keyObject, null, 2));
+
         if (!keyObject.private_key || !keyObject.client_email) {
-          console.error('❌ Campos obrigatórios faltando:', {
+          console.error('❌ Campos obrigatórios faltando!');
+          console.error('📋 Campos encontrados:', {
+            has_type: !!keyObject.type,
+            has_project_id: !!keyObject.project_id,
             has_private_key: !!keyObject.private_key,
             has_client_email: !!keyObject.client_email,
-            available_keys: Object.keys(keyObject)
+            total_keys: Object.keys(keyObject).length,
+            keys: Object.keys(keyObject)
           });
-          setError('JSON incompleto. Certifique-se de que contém "private_key" e "client_email".');
+          setError(
+            '❌ JSON incompleto ou mal formatado.\n\n' +
+            'Certifique-se de:\n' +
+            '1️⃣ Copiar TODO o conteúdo do arquivo JSON (incluindo as chaves { })\n' +
+            '2️⃣ O JSON deve conter os campos "private_key" e "client_email"\n' +
+            '3️⃣ Cole o texto completo sem modificações\n\n' +
+            `Campos encontrados: ${Object.keys(keyObject).join(', ')}`
+          );
           return false;
         }
         console.log('✅ Campos obrigatórios presentes');
