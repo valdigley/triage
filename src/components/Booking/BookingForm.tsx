@@ -46,7 +46,7 @@ function generateAvailableTimeSlots(
       const hourStr = hour.toString().padStart(2, '0');
       const minuteStr = startMinute.toString().padStart(2, '0');
 
-      const isoDateTime = `${year}-${month}-${day}T${hourStr}:${minuteStr}`;
+      const isoDateTime = toSaoPauloISO(`${year}-${month}-${day}T${hourStr}:${minuteStr}`);
       const slotDateTime = new Date(isoDateTime);
 
       const hasConflict = existingAppointments.some(apt => {
