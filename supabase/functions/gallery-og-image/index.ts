@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     const appUrl = settings?.app_url || Deno.env.get('APP_URL') || 'https://triagem.online';
-    const galleryUrl = `${appUrl}/gallery/${token}`;
+    const galleryUrl = `${appUrl}/g/${token}`;
 
     // If format is 'json' or Accept header is application/json, return JSON
     const acceptHeader = req.headers.get('Accept') || '';
