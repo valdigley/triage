@@ -101,25 +101,21 @@ export function PhotoCard({
   return (
     <div className={`relative group cursor-pointer w-full ${className}`}>
       {/* Main Photo Container */}
-      <div 
-        className="relative w-full overflow-hidden rounded-lg border-2 transition-all duration-200 sm:hover:shadow-lg"
+      <div
+        className="relative w-full overflow-hidden rounded-lg border-2 transition-all duration-200"
         style={{
           borderColor: isSelected ? '#7c3aed' : '#e5e7eb'
         }}
         onClick={() => {
-          // No mobile, sempre seleciona se possível. No desktop, chama onViewFullSize
-          if (window.innerWidth < 640) { // sm breakpoint
-            if (canSelect) onToggleSelection();
-          } else {
-            onViewFullSize();
-          }
+          if (canSelect) onToggleSelection();
+          else onViewFullSize();
         }}
       >
         {/* Photo */}
         <img
           src={photo.url}
           alt={photo.filename}
-          className="w-full h-auto object-contain transition-transform duration-200 sm:group-hover:scale-105 touch-manipulation"
+          className="w-full h-auto object-contain touch-manipulation"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = `https://via.placeholder.com/300x200/f0f0f0/666?text=${encodeURIComponent(photo.filename)}`;
@@ -151,23 +147,6 @@ export function PhotoCard({
         )}
       </div>
 
-      {/* Expand Button - Hover Overlay */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          // No mobile, seleciona. No desktop, abre lightbox
-          if (window.innerWidth < 640) {
-            if (canSelect) onToggleSelection();
-          } else {
-            onViewFullSize();
-          }
-        }}
-        className="absolute inset-0 bg-black bg-opacity-0 sm:hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center opacity-0 sm:group-hover:opacity-100 rounded-lg"
-      >
-        <div className="hidden sm:block bg-white bg-opacity-90 rounded-full p-2">
-          <Expand className="h-5 w-5 text-gray-800" />
-        </div>
-      </button>
 
       {/* Comment Button */}
       {canComment && onAddComment && (
@@ -176,24 +155,11 @@ export function PhotoCard({
             e.stopPropagation();
             onAddComment();
           }}
-          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-200 hover:bg-blue-600"
+          className="absolute bottom-2 right-2 bg-gray-600 bg-opacity-80 text-white rounded-full p-2 transition-all duration-200 hover:bg-blue-600"
           title="Adicionar comentário"
         >
-          <MessageSquare className="h-3 w-3" />
+          <MessageSquare className="h-4 w-4" />
         </button>
-      )}
-
-      {/* Selection Status */}
-      {canSelect && (
-        <div className="absolute bottom-2 left-2 opacity-0 sm:group-hover:opacity-100 transition-all duration-200">
-          <div className={`px-2 py-1 rounded text-xs font-medium ${
-            isSelected 
-              ? 'bg-purple-600 text-white' 
-              : 'bg-white bg-opacity-90 text-gray-800'
-          }`}>
-            {isSelected ? 'Selecionada' : 'Selecionar'}
-          </div>
-        </div>
       )}
     </div>
   );

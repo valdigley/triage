@@ -521,11 +521,11 @@ export function ClientGallery() {
             </div>
 
             {/* Photos Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {photos.map((photo) => {
                 const isSelected = selectedPhotos.includes(photo.id);
                 const canSelect = !gallery.selection_completed;
-                
+
                 const watermarkSettings = settings ? {
                   enabled: settings.watermark_enabled || false,
                   text: settings.watermark_text || 'Preview',
@@ -543,12 +543,7 @@ export function ClientGallery() {
                       canSelect={canSelect}
                       onToggleSelection={() => canSelect && togglePhotoSelection(photo.id)}
                       onViewFullSize={() => {
-                        // No mobile, clique seleciona. No desktop, abre lightbox
-                        if (window.innerWidth < 640) { // sm breakpoint
-                          if (canSelect) togglePhotoSelection(photo.id);
-                        } else {
-                          openLightbox(photo);
-                        }
+                        if (canSelect) togglePhotoSelection(photo.id);
                       }}
                       hasComment={!!photoComments[photo.id]}
                       watermarkSettings={watermarkSettings}
