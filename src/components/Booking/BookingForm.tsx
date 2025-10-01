@@ -75,13 +75,14 @@ export function BookingForm() {
   const { getActiveSettings } = useMercadoPago();
   const { sendPaymentConfirmation } = useWhatsApp();
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState<Array<{
     date: string;
     time: string;
     datetime: string;
     price: number;
   }>>([]);
-  const [loadingSlots, setLoadingSlots] = useState(true);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [formData, setFormData] = useState<BookingFormData>({
     clientName: '',
     clientEmail: '',
@@ -109,17 +110,19 @@ export function BookingForm() {
   const activeSessionTypes = getActiveSessionTypes();
   const mpSettings = getActiveSettings();
 
-  // Carregar horários disponíveis quando o componente monta
+  // Carregar horários quando uma data for selecionada
   React.useEffect(() => {
-    if (settings) {
-      loadAvailableSlots();
+    if (settings && selectedDate) {
+      loadAvailableSlotsForDate(selectedDate);
     }
-  }, [settings]);
+  }, [selectedDate, settings]);
 
-  const loadAvailableSlots = async () => {
+  const loadAvailableSlotsForDate = async (date: string) => {
     if (!settings) return;
 
     setLoadingSlots(true);
+    setAvailableSlots([]);
+
     try {
       // Buscar agendamentos existentes
       const { data: existingAppointments } = await supabase
@@ -127,56 +130,49 @@ export function BookingForm() {
         .select('scheduled_date')
         .in('status', ['pending', 'confirmed']);
 
+      const daySlots = generateAvailableTimeSlots(
+        date,
+        existingAppointments || [],
+        settings.commercial_hours
+      );
+
       const slots = [];
-      const today = new Date();
 
-      // Gerar slots para os próximos 30 dias
-      for (let i = 0; i < 30; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
+      // Verificar cada slot no Google Calendar
+      for (const slotDateTime of daySlots) {
+        const slotDate = new Date(slotDateTime);
+        const endDate = addHoursInSaoPaulo(slotDate, 2);
 
-        const daySlots = generateAvailableTimeSlots(
-          date.toISOString().split('T')[0],
-          existingAppointments || [],
-          settings.commercial_hours
+        // Verificar disponibilidade no Google Calendar
+        const availability = await checkGoogleCalendarAvailability(
+          slotDate.toISOString(),
+          endDate.toISOString()
         );
 
-        // Verificar cada slot no Google Calendar
-        for (const slotDateTime of daySlots) {
-          const slotDate = new Date(slotDateTime);
-          const endDate = addHoursInSaoPaulo(slotDate, 2);
-
-          // Verificar disponibilidade no Google Calendar
-          const availability = await checkGoogleCalendarAvailability(
-            slotDate.toISOString(),
-            endDate.toISOString()
+        // Apenas adicionar se estiver disponível no Google Calendar
+        if (availability.available) {
+          const calculatedPrice = calculatePrice(
+            slotDateTime,
+            settings.commercial_hours,
+            settings.price_commercial_hour,
+            settings.price_after_hours
           );
 
-          // Apenas adicionar se estiver disponível no Google Calendar
-          if (availability.available) {
-            const calculatedPrice = calculatePrice(
-              slotDateTime,
-              settings.commercial_hours,
-              settings.price_commercial_hour,
-              settings.price_after_hours
-            );
-
-            slots.push({
-              date: slotDate.toLocaleDateString('pt-BR', {
-                timeZone: 'America/Sao_Paulo',
-                weekday: 'short',
-                day: '2-digit',
-                month: '2-digit'
-              }),
-              time: slotDate.toLocaleTimeString('pt-BR', {
-                timeZone: 'America/Sao_Paulo',
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-              datetime: slotDateTime,
-              price: calculatedPrice * settings.minimum_photos
-            });
-          }
+          slots.push({
+            date: slotDate.toLocaleDateString('pt-BR', {
+              timeZone: 'America/Sao_Paulo',
+              weekday: 'short',
+              day: '2-digit',
+              month: '2-digit'
+            }),
+            time: slotDate.toLocaleTimeString('pt-BR', {
+              timeZone: 'America/Sao_Paulo',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            datetime: slotDateTime,
+            price: calculatedPrice * settings.minimum_photos
+          });
         }
       }
 
@@ -678,26 +674,45 @@ export function BookingForm() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-                    Horários Disponíveis
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Selecione a Data
                   </label>
-                  
-                  {loadingSlots ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Carregando horários disponíveis...</p>
-                    </div>
-                  ) : availableSlots.length === 0 ? (
-                    <div className="text-center py-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <Clock className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                        Nenhum horário disponível nos próximos 30 dias.
-                      </p>
-                      <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
-                        Entre em contato para agendar em outras datas.
-                      </p>
-                    </div>
-                  ) : (
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-4"
+                  />
+                </div>
+
+                {selectedDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                      Horários Disponíveis - {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', {
+                        timeZone: 'America/Sao_Paulo',
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </label>
+
+                    {loadingSlots ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Verificando horários disponíveis...</p>
+                      </div>
+                    ) : availableSlots.length === 0 ? (
+                      <div className="text-center py-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <Clock className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+                        <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                          Nenhum horário disponível nesta data.
+                        </p>
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                          Escolha outra data ou entre em contato.
+                        </p>
+                      </div>
+                    ) : (
                     <div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg">
                       <div className="grid grid-cols-1 gap-2 p-2">
                         {availableSlots.map((slot, index) => (
@@ -732,9 +747,10 @@ export function BookingForm() {
                           </button>
                         ))}
                       </div>
-                     </div>
-                  )}
-                </div>
+                    </div>
+                    )}
+                  </div>
+                )}
 
                 {price > 0 && (
                   <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4">
