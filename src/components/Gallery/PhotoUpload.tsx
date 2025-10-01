@@ -304,7 +304,8 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
           console.log(`Agendando notificação da galeria: ${totalPhotos} fotos >= ${minimumPhotos} mínimas`);
 
           // Schedule gallery ready notification usando função centralizada
-          const galleryLink = `${window.location.origin}/gallery/${gallery.gallery_token}`;
+          const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+          const galleryLink = `${appUrl}/gallery/${gallery.gallery_token}`;
           await scheduleGalleryNotifications(gallery.appointment.id, galleryLink);
 
           console.log('Notificação da galeria agendada automaticamente');

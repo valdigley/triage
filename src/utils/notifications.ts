@@ -137,7 +137,8 @@ export async function scheduleGalleryNotifications(galleryId: string, galleryTok
 
     const clientName = appointment.client?.name || 'Cliente';
     const clientPhone = appointment.client?.phone || '';
-    const galleryLink = `${window.location.origin}/gallery/${galleryToken}`;
+    const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+    const galleryLink = `${appUrl}/gallery/${galleryToken}`;
 
     // Format currency
     const formatCurrency = (amount: number): string => {

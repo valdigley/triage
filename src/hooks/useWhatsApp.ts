@@ -164,7 +164,8 @@ export function useWhatsApp() {
   };
 
   const sendGalleryLink = async (clientName: string, clientPhone: string, galleryToken: string, expirationDate: string): Promise<boolean> => {
-    const galleryUrl = `${window.location.origin}/gallery/${galleryToken}`;
+    const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+    const galleryUrl = `${appUrl}/gallery/${galleryToken}`;
     
     const message = `📸 *Suas Fotos Estão Prontas!*\n\n` +
                    `Olá ${clientName}!\n\n` +

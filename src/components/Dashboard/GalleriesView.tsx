@@ -177,7 +177,8 @@ export function GalleriesView() {
   };
 
   const copyGalleryLink = (token: string) => {
-    const link = `${window.location.origin}/gallery/${token}`;
+    const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+    const link = `${appUrl}/gallery/${token}`;
     navigator.clipboard.writeText(link);
     alert('Link copiado para a área de transferência!');
   };
