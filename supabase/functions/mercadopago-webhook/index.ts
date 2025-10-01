@@ -301,47 +301,25 @@ Deno.serve(async (req: Request) => {
             console.log('✅ Novo cliente criado:', clientId);
           }
 
-          // 2. Create appointment
-          const { data: appointment, error: appointmentError } = await supabase
-            .from('appointments')
-            .insert([{
-              client_id: clientId,
-              session_type: 'tematico',
-              session_details: {
-                event: eventName,
-                source: 'public_gallery'
-              },
-              scheduled_date: new Date().toISOString(),
-              total_amount: paymentData.transaction_amount,
-              minimum_photos: 0,
-              status: 'confirmed',
-              payment_status: 'paid',
-              terms_accepted: true
-            }])
-            .select()
-            .single();
-
-          if (appointmentError) throw appointmentError;
-          console.log('✅ Appointment criado:', appointment.id);
-
-          // 3. Get parent gallery expiration
+          // 2. Get parent gallery expiration
           const { data: parentGallery } = await supabase
             .from('galleries_triage')
             .select('link_expires_at')
             .eq('id', parentGalleryId)
             .single();
 
-          // 4. Create individual gallery
+          // 3. Create individual gallery (without appointment)
           const { data: individualGallery, error: galleryError } = await supabase
             .from('galleries_triage')
             .insert([{
-              appointment_id: appointment.id,
+              client_id: clientId,
               parent_gallery_id: parentGalleryId,
               name: `${eventName} - ${clientName}`,
               password: null,
               link_expires_at: parentGallery?.link_expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
               status: 'completed',
-              photos_selected: selectedPhotos
+              photos_selected: selectedPhotos,
+              payment_status: 'paid'
             }])
             .select()
             .single();
@@ -349,15 +327,16 @@ Deno.serve(async (req: Request) => {
           if (galleryError) throw galleryError;
           console.log('✅ Galeria individual criada:', individualGallery.id);
 
-          // 5. Create payment record
+          // 4. Create payment record (without appointment)
           const { error: paymentError } = await supabase
             .from('payments')
             .insert({
-              appointment_id: appointment.id,
+              client_id: clientId,
+              gallery_id: individualGallery.id,
               mercadopago_id: paymentId.toString(),
               amount: paymentData.transaction_amount,
               status: paymentData.status,
-              payment_type: 'initial',
+              payment_type: 'public_gallery',
               webhook_data: paymentData
             });
 
