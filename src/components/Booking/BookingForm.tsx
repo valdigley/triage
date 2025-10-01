@@ -8,6 +8,7 @@ import { useMercadoPago } from '../../hooks/useMercadoPago';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { calculatePrice, isDateTimeAvailable, formatCurrency } from '../../utils/pricing';
 import { SessionDetailsForm } from './SessionDetailsForm';
+import { supabase } from '../../lib/supabase';
 
 // Função para gerar horários disponíveis
 function generateAvailableTimeSlots(
@@ -67,6 +68,9 @@ export function BookingForm() {
   const { getActiveSettings } = useMercadoPago();
   const { sendPaymentConfirmation } = useWhatsApp();
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [formData, setFormData] = useState<BookingFormData>({
     clientName: '',
     clientEmail: '',
