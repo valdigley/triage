@@ -13,7 +13,6 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Get Supabase client
     const { createClient } = await import('npm:@supabase/supabase-js@2');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -26,7 +25,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'formData e amount são obrigatórios' 
+          error: 'formData e amount s\u00e3o obrigat\u00f3rios' 
         }),
         {
           status: 400,
@@ -38,7 +37,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create appointment first
     const { data: existingClient } = await supabase
       .from('clients')
       .select('*')
@@ -49,7 +47,6 @@ Deno.serve(async (req: Request) => {
 
     if (existingClient) {
       clientId = existingClient.id;
-      // Update client info if needed
       await supabase
         .from('clients')
         .update({
@@ -73,7 +70,6 @@ Deno.serve(async (req: Request) => {
       clientId = newClient.id;
     }
 
-    // Create appointment
     const { data: appointment, error: appointmentError } = await supabase
       .from('appointments')
       .insert([{
@@ -92,7 +88,6 @@ Deno.serve(async (req: Request) => {
 
     if (appointmentError) throw appointmentError;
 
-    // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabase
       .from('mercadopago_settings')
       .select('*')
@@ -104,7 +99,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Configurações do MercadoPago não encontradas' 
+          error: 'Configura\u00e7\u00f5es do MercadoPago n\u00e3o encontradas' 
         }),
         {
           status: 400,
@@ -116,31 +111,28 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Split client name
     const nameParts = clientName.trim().split(' ');
     const firstName = nameParts[0] || 'Cliente';
     const lastName = nameParts.slice(1).join(' ') || 'Sobrenome';
     
-    // Get session type details for item description
     const sessionTypeLabels = {
-      'aniversario': 'Sessão de Aniversário',
+      'aniversario': 'Sess\u00e3o de Anivers\u00e1rio',
       'gestante': 'Ensaio Gestante',
-      'formatura': 'Sessão de Formatura',
-      'comercial': 'Sessão Comercial',
-      'pre_wedding': 'Ensaio Pré-Wedding',
-      'tematico': 'Sessão Temática'
+      'formatura': 'Sess\u00e3o de Formatura',
+      'comercial': 'Sess\u00e3o Comercial',
+      'pre_wedding': 'Ensaio Pr\u00e9-Wedding',
+      'tematico': 'Sess\u00e3o Tem\u00e1tica'
     };
     
     const sessionLabel = sessionTypeLabels[formData.sessionType] || sessionType;
 
-    // Create PIX payment - FLUXO OFICIAL
     const pixPaymentData = {
       transaction_amount: amount,
-      date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutos
+      date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       payment_method_id: "pix",
       external_reference: appointment.id,
       notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercadopago-webhook`,
-      description: `Sessão Fotográfica - ${sessionType}`,
+      description: `Sess\u00e3o Fotogr\u00e1fica - ${sessionType}`,
       ...(deviceId && { device_id: deviceId }),
       payer: {
         first_name: firstName,
@@ -148,7 +140,7 @@ Deno.serve(async (req: Request) => {
         email: clientEmail || 'cliente@exemplo.com',
         identification: {
           type: "CPF",
-          number: "11111111111" // CPF padrão para testes
+          number: "11111111111"
         },
         address: {
           zip_code: "01310-100",
@@ -195,11 +187,9 @@ Deno.serve(async (req: Request) => {
     const pixData = await pixResponse.json();
     console.log('PIX payment created:', JSON.stringify(pixData, null, 2));
 
-    // Extract QR code data
     const qrCode = pixData.point_of_interaction?.transaction_data?.qr_code;
     const qrCodeBase64 = pixData.point_of_interaction?.transaction_data?.qr_code_base64;
 
-    // Create payment record in database
     const { error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -214,17 +204,58 @@ Deno.serve(async (req: Request) => {
       console.error('Database error:', paymentError);
     }
 
-    // Schedule automatic notifications
     try {
-      // Import the scheduleNotifications function
       const { scheduleNotifications } = await import('./notifications.ts');
       await scheduleNotifications(appointment.id, supabase);
     } catch (error) {
       console.error('Error scheduling notifications:', error);
     }
 
-    // Note: When payment is approved via webhook, the appointment status will be updated to 'confirmed'
-    // and a gallery will be created automatically by the database trigger
+    try {
+      console.log('\ud83d\udcc5 Creating Google Calendar event...');
+      console.log('Appointment ID:', appointment.id);
+      console.log('Scheduled date:', formData.scheduledDate);
+
+      const startDate = new Date(formData.scheduledDate);
+      const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+
+      const calendarPayload = {
+        appointmentId: appointment.id,
+        summary: `Sess\u00e3o de Fotos - ${formData.clientName}`,
+        description: `Tipo: ${sessionLabel}\nCliente: ${formData.clientName}\nTelefone: ${formData.clientPhone}\nEmail: ${formData.clientEmail || 'N\u00e3o informado'}`,
+        startDateTime: startDate.toISOString(),
+        endDateTime: endDate.toISOString(),
+        attendees: formData.clientEmail ? [formData.clientEmail] : [],
+      };
+
+      console.log('Calendar payload:', JSON.stringify(calendarPayload, null, 2));
+
+      const calendarResponse = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/create-calendar-event`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(calendarPayload),
+        }
+      );
+
+      console.log('Calendar response status:', calendarResponse.status);
+
+      if (calendarResponse.ok) {
+        const calendarResult = await calendarResponse.json();
+        console.log('\u2705 Google Calendar event created:', JSON.stringify(calendarResult, null, 2));
+      } else {
+        const errorText = await calendarResponse.text();
+        console.error('\u274c Failed to create calendar event. Status:', calendarResponse.status);
+        console.error('\u274c Error response:', errorText);
+      }
+    } catch (error) {
+      console.error('\u274c Error creating calendar event (non-critical):', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    }
 
     return new Response(
       JSON.stringify({
