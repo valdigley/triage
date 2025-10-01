@@ -42,13 +42,11 @@ export function useGoogleCalendar() {
 
   const saveSettings = async (
     calendarId: string,
-    serviceAccountEmail: string,
-    serviceAccountKey: string
+    serviceAccountJson?: string
   ): Promise<boolean> => {
     try {
       console.log('🔄 Salvando configurações do Google Calendar...');
       console.log('Calendar ID:', calendarId);
-      console.log('Service Account Email:', serviceAccountEmail);
 
       // Verificar se usuário está autenticado
       const { data: { user } } = await supabase.auth.getUser();
@@ -59,60 +57,82 @@ export function useGoogleCalendar() {
       }
       console.log('✅ Usuário autenticado:', user.email);
 
-      // Parse service account key JSON
-      let keyObject;
-      try {
-        console.log('📝 Parseando JSON da Service Account Key...');
-        keyObject = JSON.parse(serviceAccountKey);
-        console.log('✅ JSON parseado com sucesso');
-      } catch (parseError) {
-        console.error('❌ Erro ao parsear JSON:', parseError);
-        setError('JSON da Service Account Key inválido. Verifique se é um JSON válido.');
-        return false;
+      // Se tem JSON novo, processar
+      let updateData: any = {
+        calendar_id: calendarId,
+      };
+
+      if (serviceAccountJson) {
+        // Parse service account key JSON
+        let keyObject;
+        try {
+          console.log('📝 Parseando JSON da Service Account...');
+          keyObject = JSON.parse(serviceAccountJson);
+          console.log('✅ JSON parseado com sucesso');
+        } catch (parseError) {
+          console.error('❌ Erro ao parsear JSON:', parseError);
+          setError('JSON inválido. Verifique o formato.');
+          return false;
+        }
+
+        // Validate required fields
+        console.log('🔍 Validando campos obrigatórios...');
+        if (!keyObject.private_key || !keyObject.client_email) {
+          console.error('❌ Campos obrigatórios faltando');
+          setError('JSON incompleto. Certifique-se de que contém "private_key" e "client_email".');
+          return false;
+        }
+        console.log('✅ Campos obrigatórios presentes');
+
+        updateData.service_account_email = keyObject.client_email;
+        updateData.service_account_key = keyObject;
       }
 
-      // Validate required fields
-      console.log('🔍 Validando campos obrigatórios...');
-      if (!keyObject.private_key || !keyObject.client_email) {
-        console.error('❌ Campos obrigatórios faltando:', {
-          has_private_key: !!keyObject.private_key,
-          has_client_email: !!keyObject.client_email
-        });
-        setError('JSON da Service Account Key está incompleto. Certifique-se de que contém "private_key" e "client_email".');
-        return false;
-      }
-      console.log('✅ Campos obrigatórios presentes');
-
-      // Desativar configurações antigas
-      if (settings) {
-        console.log('🔄 Desativando configuração antiga...');
-        await supabase
+      // Se já existe configuração, atualizar. Senão, inserir
+      if (settings && !serviceAccountJson) {
+        // Apenas atualizar calendar_id
+        console.log('🔄 Atualizando calendar_id...');
+        const { data, error } = await supabase
           .from('google_calendar_settings')
-          .update({ is_active: false })
-          .eq('id', settings.id);
-        console.log('✅ Configuração antiga desativada');
-      }
+          .update(updateData)
+          .eq('id', settings.id)
+          .select()
+          .single();
 
-      // Inserir nova configuração
-      console.log('💾 Inserindo nova configuração no banco...');
-      const { data, error } = await supabase
-        .from('google_calendar_settings')
-        .insert({
-          calendar_id: calendarId,
-          service_account_email: serviceAccountEmail,
-          service_account_key: keyObject,
-          is_active: true,
-        })
-        .select()
-        .single();
+        if (error) {
+          console.error('❌ Erro do Supabase:', error);
+          throw error;
+        }
 
-      if (error) {
-        console.error('❌ Erro do Supabase:', error);
-        throw error;
+        setSettings(data);
+      } else {
+        // Desativar configurações antigas e inserir nova
+        if (settings) {
+          console.log('🔄 Desativando configuração antiga...');
+          await supabase
+            .from('google_calendar_settings')
+            .update({ is_active: false })
+            .eq('id', settings.id);
+        }
+
+        console.log('💾 Inserindo nova configuração...');
+        updateData.is_active = true;
+
+        const { data, error } = await supabase
+          .from('google_calendar_settings')
+          .insert(updateData)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('❌ Erro do Supabase:', error);
+          throw error;
+        }
+
+        setSettings(data);
       }
 
       console.log('✅ Configurações salvas com sucesso!');
-      setSettings(data);
       setError(null);
       return true;
     } catch (error) {
@@ -125,51 +145,9 @@ export function useGoogleCalendar() {
 
   const updateSettings = async (
     calendarId: string,
-    serviceAccountEmail: string,
-    serviceAccountKey?: string
+    serviceAccountJson?: string
   ): Promise<boolean> => {
-    try {
-      if (!settings) {
-        return await saveSettings(calendarId, serviceAccountEmail, serviceAccountKey || '{}');
-      }
-
-      let updateData: any = {
-        calendar_id: calendarId,
-        service_account_email: serviceAccountEmail,
-        updated_at: new Date().toISOString(),
-      };
-
-      // Se uma nova key foi fornecida, parse e adicione
-      if (serviceAccountKey && serviceAccountKey.trim()) {
-        try {
-          const keyObject = JSON.parse(serviceAccountKey);
-          if (!keyObject.private_key || !keyObject.client_email) {
-            setError('JSON da Service Account Key está incompleto');
-            return false;
-          }
-          updateData.service_account_key = keyObject;
-        } catch (parseError) {
-          setError('JSON da Service Account Key inválido');
-          return false;
-        }
-      }
-
-      const { data, error } = await supabase
-        .from('google_calendar_settings')
-        .update(updateData)
-        .eq('id', settings.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setSettings(data);
-      return true;
-    } catch (error) {
-      console.error('Erro ao atualizar configurações:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao atualizar configurações');
-      return false;
-    }
+    return await saveSettings(calendarId, serviceAccountJson);
   };
 
   const deleteSettings = async (): Promise<boolean> => {

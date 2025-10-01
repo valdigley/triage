@@ -49,21 +49,18 @@ export function SettingsView() {
     instance_name: ''
   });
 
-  // Google Calendar form state (apenas campos essenciais)
+  // Google Calendar form state (campo único para JSON)
   const [googleCalendarForm, setGoogleCalendarForm] = useState({
     calendar_id: '',
-    client_email: '',
-    private_key: ''
+    service_account_json: ''
   });
 
   // Update form when Google Calendar settings change
   useEffect(() => {
     if (googleCalendarSettings) {
-      const key = googleCalendarSettings.service_account_key;
       setGoogleCalendarForm({
         calendar_id: googleCalendarSettings.calendar_id || '',
-        client_email: key?.client_email || '',
-        private_key: '' // Não mostrar a key por segurança
+        service_account_json: '' // Não mostrar o JSON por segurança
       });
     }
   }, [googleCalendarSettings]);
@@ -892,48 +889,30 @@ export function SettingsView() {
               </div>
 
               <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                <h3 className="font-medium text-gray-800 dark:text-white mb-3">Dados da Service Account</h3>
+                <h3 className="font-medium text-gray-800 dark:text-white mb-3">Service Account JSON</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Preencha com os dados do arquivo JSON baixado do Google Cloud
+                  Cole aqui o conteúdo completo do arquivo JSON baixado do Google Cloud Console
                 </p>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Client Email *
-                    </label>
-                    <input
-                      type="email"
-                      value={googleCalendarForm.client_email}
-                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, client_email: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="service-account@projeto.iam.gserviceaccount.com"
-                    />
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Campo <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">client_email</code> do JSON
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Private Key *
-                    </label>
-                    <textarea
-                      value={googleCalendarForm.private_key}
-                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, private_key: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
-                      placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...&#10;-----END PRIVATE KEY-----"
-                      rows={8}
-                    />
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Campo <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">private_key</code> do JSON. Cole exatamente como está no arquivo.
-                      {googleCalendarSettings && !googleCalendarForm.private_key && (
-                        <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
-                          Deixe em branco para manter a chave atual
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Arquivo JSON da Service Account *
+                  </label>
+                  <textarea
+                    value={googleCalendarForm.service_account_json}
+                    onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, service_account_json: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
+                    placeholder='{&#10;  "type": "service_account",&#10;  "project_id": "seu-projeto",&#10;  "private_key_id": "abc123...",&#10;  "private_key": "-----BEGIN PRIVATE KEY-----\\n...",&#10;  "client_email": "conta@projeto.iam.gserviceaccount.com",&#10;  "client_id": "123456789",&#10;  ...&#10;}'
+                    rows={12}
+                  />
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Cole o arquivo JSON completo. Todos os campos serão extraídos automaticamente.
+                    {googleCalendarSettings && !googleCalendarForm.service_account_json && (
+                      <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
+                        Deixe em branco para manter as credenciais atuais
+                      </span>
+                    )}
+                  </p>
                 </div>
               </div>
 
@@ -943,48 +922,61 @@ export function SettingsView() {
                     setSaving(true);
                     setTestResult(null);
                     try {
-                      // Normalizar a private key (substituir \n literais por quebras de linha reais)
-                      let normalizedPrivateKey = googleCalendarForm.private_key.trim();
+                      let jsonString = '';
 
-                      // Se a key não tem quebras de linha mas tem \n literal, converter
-                      if (!normalizedPrivateKey.includes('\n') && normalizedPrivateKey.includes('\\n')) {
-                        normalizedPrivateKey = normalizedPrivateKey.replace(/\\n/g, '\n');
+                      // Se tem JSON, fazer o parse e validar
+                      if (googleCalendarForm.service_account_json) {
+                        try {
+                          const parsed = JSON.parse(googleCalendarForm.service_account_json);
+
+                          // Validar campos obrigatórios
+                          if (!parsed.client_email || !parsed.private_key) {
+                            setTestResult({
+                              success: false,
+                              message: 'JSON inválido: faltam campos client_email ou private_key'
+                            });
+                            return;
+                          }
+
+                          // Normalizar a private key
+                          let normalizedPrivateKey = parsed.private_key.trim();
+                          if (!normalizedPrivateKey.includes('\n') && normalizedPrivateKey.includes('\\n')) {
+                            normalizedPrivateKey = normalizedPrivateKey.replace(/\\n/g, '\n');
+                          }
+                          if (!normalizedPrivateKey.endsWith('\n')) {
+                            normalizedPrivateKey += '\n';
+                          }
+
+                          // Construir JSON otimizado
+                          const serviceAccountJson = {
+                            type: "service_account",
+                            private_key: normalizedPrivateKey,
+                            client_email: parsed.client_email,
+                            token_uri: "https://oauth2.googleapis.com/token",
+                            universe_domain: "googleapis.com"
+                          };
+
+                          jsonString = JSON.stringify(serviceAccountJson);
+                        } catch (error) {
+                          setTestResult({
+                            success: false,
+                            message: 'JSON inválido. Verifique o formato e tente novamente.'
+                          });
+                          return;
+                        }
                       }
 
-                      // Garantir que termina com \n
-                      if (!normalizedPrivateKey.endsWith('\n')) {
-                        normalizedPrivateKey += '\n';
-                      }
-
-                      // Construir o JSON da Service Account (apenas campos essenciais)
-                      const serviceAccountJson = {
-                        type: "service_account",
-                        private_key: normalizedPrivateKey,
-                        client_email: googleCalendarForm.client_email,
-                        token_uri: "https://oauth2.googleapis.com/token",
-                        universe_domain: "googleapis.com"
-                      };
-
-                      const jsonString = JSON.stringify(serviceAccountJson);
-
-                      const success = googleCalendarSettings && !googleCalendarForm.private_key
-                        ? await updateGoogleCalendarSettings(
-                            googleCalendarForm.calendar_id,
-                            googleCalendarForm.client_email,
-                            '' // Mantém a key existente
-                          )
-                        : await saveGoogleCalendarSettings(
-                            googleCalendarForm.calendar_id,
-                            googleCalendarForm.client_email,
-                            jsonString
-                          );
+                      const success = await saveGoogleCalendarSettings(
+                        googleCalendarForm.calendar_id,
+                        jsonString || undefined
+                      );
 
                       if (success) {
                         setTestResult({ success: true, message: 'Configurações salvas com sucesso!' });
-                        // Limpar private key do formulário por segurança
-                        setGoogleCalendarForm(prev => ({ ...prev, private_key: '' }));
+                        // Limpar JSON do formulário por segurança
+                        setGoogleCalendarForm(prev => ({ ...prev, service_account_json: '' }));
                       } else {
-                        const errorMsg = googleCalendarError || 'Erro ao salvar configurações. Verifique os dados no console do navegador.';
+                        const errorMsg = googleCalendarError || 'Erro ao salvar configurações.';
                         setTestResult({ success: false, message: errorMsg });
                       }
                     } finally {
@@ -994,11 +986,7 @@ export function SettingsView() {
                   disabled={
                     saving ||
                     !googleCalendarForm.calendar_id ||
-                    !googleCalendarForm.client_email ||
-                    !googleCalendarForm.project_id ||
-                    !googleCalendarForm.private_key_id ||
-                    !googleCalendarForm.client_id ||
-                    (!googleCalendarSettings && !googleCalendarForm.private_key)
+                    (!googleCalendarSettings && !googleCalendarForm.service_account_json)
                   }
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
