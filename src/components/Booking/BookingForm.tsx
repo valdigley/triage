@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Phone, Mail, User, Clock, DollarSign, QrCode, ExternalLink } from 'lucide-react';
+import { Calendar, Phone, Mail, User, Clock, DollarSign, QrCode, ExternalLink, ChevronRight } from 'lucide-react';
 import { BookingFormData, SessionType } from '../../types';
 import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
@@ -68,9 +68,13 @@ export function BookingForm() {
   const { getActiveSettings } = useMercadoPago();
   const { sendPaymentConfirmation } = useWhatsApp();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<Array<{
+    date: string;
+    time: string;
+    datetime: string;
+    price: number;
+  }>>([]);
+  const [loadingSlots, setLoadingSlots] = useState(true);
   const [formData, setFormData] = useState<BookingFormData>({
     clientName: '',
     clientEmail: '',
@@ -98,51 +102,74 @@ export function BookingForm() {
   const activeSessionTypes = getActiveSessionTypes();
   const mpSettings = getActiveSettings();
 
-  const handleDateChange = async (dateOnly: string) => {
-    setSelectedDate(dateOnly);
-    setAvailableTimeSlots([]);
-    setFormData(prev => ({ ...prev, scheduledDate: '' }));
-    setPrice(0);
+  // Carregar horários disponíveis quando o componente monta
+  React.useEffect(() => {
+    if (settings) {
+      loadAvailableSlots();
+    }
+  }, [settings]);
+
+  const loadAvailableSlots = async () => {
+    if (!settings) return;
     
-    if (settings && dateOnly) {
-      setLoadingSlots(true);
+    setLoadingSlots(true);
+    try {
+      // Buscar agendamentos existentes
+      const { data: existingAppointments } = await supabase
+        .from('appointments')
+        .select('scheduled_date')
+        .in('status', ['pending', 'confirmed']);
       
-      try {
-        // Buscar agendamentos existentes
-        const { data: existingAppointments } = await supabase
-          .from('appointments')
-          .select('scheduled_date')
-          .in('status', ['pending', 'confirmed']);
+      const slots = [];
+      const today = new Date();
+      
+      // Gerar slots para os próximos 30 dias
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
         
-        // Gerar horários disponíveis para a data selecionada
-        const slots = generateAvailableTimeSlots(
-          dateOnly,
+        const daySlots = generateAvailableTimeSlots(
+          date.toISOString().split('T')[0],
           existingAppointments || [],
           settings.commercial_hours
         );
         
-        setAvailableTimeSlots(slots);
-      } catch (error) {
-        console.error('Erro ao buscar horários disponíveis:', error);
-        setAvailableTimeSlots([]);
-      } finally {
-        setLoadingSlots(false);
+        daySlots.forEach(slotDateTime => {
+          const slotDate = new Date(slotDateTime);
+          const calculatedPrice = calculatePrice(
+            slotDateTime,
+            settings.commercial_hours,
+            settings.price_commercial_hour,
+            settings.price_after_hours
+          );
+          
+          slots.push({
+            date: slotDate.toLocaleDateString('pt-BR', {
+              weekday: 'short',
+              day: '2-digit',
+              month: '2-digit'
+            }),
+            time: slotDate.toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            datetime: slotDateTime,
+            price: calculatedPrice * settings.minimum_photos
+          });
+        });
       }
+      
+      setAvailableSlots(slots);
+    } catch (error) {
+      console.error('Erro ao carregar horários disponíveis:', error);
+    } finally {
+      setLoadingSlots(false);
     }
   };
 
-  const handleTimeSlotSelect = (dateTime: string) => {
-    setFormData(prev => ({ ...prev, scheduledDate: dateTime }));
-    
-    if (settings) {
-      const calculatedPrice = calculatePrice(
-        dateTime,
-        settings.commercial_hours,
-        settings.price_commercial_hour,
-        settings.price_after_hours
-      );
-      setPrice(calculatedPrice * settings.minimum_photos);
-    }
+  const handleSlotSelect = (slot: typeof availableSlots[0]) => {
+    setFormData(prev => ({ ...prev, scheduledDate: slot.datetime }));
+    setPrice(slot.price);
   };
 
   const handleSubmit = async () => {
@@ -526,7 +553,7 @@ export function BookingForm() {
             {/* Step 1: Session Type and Date */}
             {currentStep === 1 && (
               <div className="space-y-4 sm:space-y-6">
-                <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-white">Escolha o tipo de sessão</h2>
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-white">Escolha o tipo de sessão e horário</h2>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {activeSessionTypes.map((sessionType) => (
@@ -562,24 +589,60 @@ export function BookingForm() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Data e Horário da Sessão
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                    Horários Disponíveis
                   </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 dark:text-gray-500" />
-                    <input
-                      type="datetime-local"
-                      value={formData.scheduledDate}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      min={new Date().toISOString().slice(0, 16)}
-                      className="w-full pl-8 sm:pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base"
-                      required
-                    />
-                  </div>
-                  {isCheckingAvailability && (
-                    <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                      Verificando disponibilidade...
+                  
+                  {loadingSlots ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Carregando horários disponíveis...</p>
+                    </div>
+                  ) : availableSlots.length === 0 ? (
+                    <div className="text-center py-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <Clock className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        Nenhum horário disponível nos próximos 30 dias.
+                      </p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                        Entre em contato para agendar em outras datas.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg">
+                      <div className="grid grid-cols-1 gap-2 p-2">
+                        {availableSlots.map((slot, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleSlotSelect(slot)}
+                            className={`w-full p-3 rounded-lg border-2 transition-all text-left hover:border-gray-400 ${
+                              formData.scheduledDate === slot.datetime
+                                ? 'border-gray-600 bg-gray-100 dark:bg-gray-700'
+                                : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <Calendar className="h-4 w-4 text-gray-500" />
+                                <div>
+                                  <div className="text-sm font-medium text-gray-800 dark:text-white">
+                                    {slot.date}
+                                  </div>
+                                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                                    {slot.time}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <div className="text-sm font-bold text-green-600">
+                                  {formatCurrency(slot.price)}
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-gray-400" />
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     </p>
                   )}
                 </div>
@@ -752,10 +815,10 @@ export function BookingForm() {
                 {currentStep < 3 ? (
                   <button
                     onClick={() => setCurrentStep(prev => prev + 1)}
-                    disabled={!isStepValid() || loadingSlots}
+                    disabled={!isStepValid()}
                     className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
                   >
-                    {loadingSlots ? 'Carregando...' : 'Continuar'}
+                    Continuar
                   </button>
                 ) : (
                   <button
