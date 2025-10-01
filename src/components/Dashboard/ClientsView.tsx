@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Phone, Mail, Eye, ExternalLink, UserPlus, X } from 'lucide-react';
+import { Search, Phone, Mail, Eye, ExternalLink, UserPlus, X, Edit2, Trash2 } from 'lucide-react';
 import { useClients } from '../../hooks/useClients';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency } from '../../utils/pricing';
@@ -14,12 +14,16 @@ export function ClientsView() {
     appointments: Appointment[];
   } | null>(null);
   const [showCreateClient, setShowCreateClient] = useState(false);
+  const [showEditClient, setShowEditClient] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({
     name: '',
     phone: '',
     email: ''
   });
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -81,7 +85,7 @@ export function ClientsView() {
         phone: '',
         email: ''
       });
-      
+
       // Refresh clients list
       await refetch();
     } catch (error) {
@@ -89,6 +93,97 @@ export function ClientsView() {
       alert('Erro ao criar cliente. Tente novamente.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleEditClient = (client: Client) => {
+    setEditingClient(client);
+    setShowEditClient(true);
+  };
+
+  const handleUpdateClient = async () => {
+    if (!editingClient || !editingClient.name || !editingClient.phone) {
+      alert('Nome e telefone são obrigatórios');
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      // Check if phone is being changed and already exists
+      const { data: existingClient } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('phone', editingClient.phone)
+        .neq('id', editingClient.id)
+        .maybeSingle();
+
+      if (existingClient) {
+        alert('Já existe outro cliente com este telefone');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          name: editingClient.name,
+          phone: editingClient.phone,
+          email: editingClient.email || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingClient.id);
+
+      if (error) throw error;
+
+      alert('Cliente atualizado com sucesso!');
+      setShowEditClient(false);
+      setEditingClient(null);
+
+      // Refresh clients list
+      await refetch();
+    } catch (error) {
+      console.error('Erro ao atualizar cliente:', error);
+      alert('Erro ao atualizar cliente. Tente novamente.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteClient = async (client: Client) => {
+    const confirmMessage = `Tem certeza que deseja excluir o cliente "${client.name}"?\n\n` +
+                          `ATENÇÃO: Esta ação irá:\n` +
+                          `• Excluir todos os agendamentos do cliente\n` +
+                          `• Excluir todas as galerias associadas\n` +
+                          `• Excluir todos os pagamentos\n\n` +
+                          `Esta ação NÃO PODE ser desfeita!`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setDeleting(client.id);
+    try {
+      // The database will handle cascading deletes via foreign keys
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', client.id);
+
+      if (error) throw error;
+
+      alert('Cliente excluído com sucesso!');
+
+      // Close modal if it's open
+      if (selectedClient?.client.id === client.id) {
+        setSelectedClient(null);
+      }
+
+      // Refresh clients list
+      await refetch();
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error);
+      alert('Erro ao excluir cliente. Tente novamente.');
+    } finally {
+      setDeleting(null);
     }
   };
   return (
@@ -171,17 +266,38 @@ export function ClientsView() {
                       <button
                         onClick={() => handleViewClient(client)}
                         className="text-purple-600 hover:text-purple-900 transition-colors"
+                        title="Ver detalhes"
                       >
                         <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEditClient(client)}
+                        className="text-blue-600 hover:text-blue-900 transition-colors"
+                        title="Editar cliente"
+                      >
+                        <Edit2 className="h-4 w-4" />
                       </button>
                       <a
                         href={generateWhatsAppLink(client.phone, client.name)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-green-600 hover:text-green-900 transition-colors"
+                        title="Contatar via WhatsApp"
                       >
                         <ExternalLink className="h-4 w-4" />
                       </a>
+                      <button
+                        onClick={() => handleDeleteClient(client)}
+                        disabled={deleting === client.id}
+                        className="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50"
+                        title="Excluir cliente"
+                      >
+                        {deleting === client.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -235,24 +351,54 @@ export function ClientsView() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleViewClient(client)}
-                className="flex-1 bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center space-x-1"
-              >
-                <Eye className="h-4 w-4" />
-                <span>Ver Detalhes</span>
-              </button>
-              
-              <a
-                href={generateWhatsAppLink(client.phone, client.name)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-1"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>WhatsApp</span>
-              </a>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleViewClient(client)}
+                  className="flex-1 bg-purple-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center space-x-1"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span>Ver Detalhes</span>
+                </button>
+
+                <button
+                  onClick={() => handleEditClient(client)}
+                  className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
+                >
+                  <Edit2 className="h-4 w-4" />
+                  <span>Editar</span>
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <a
+                  href={generateWhatsAppLink(client.phone, client.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-1"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span>WhatsApp</span>
+                </a>
+
+                <button
+                  onClick={() => handleDeleteClient(client)}
+                  disabled={deleting === client.id}
+                  className="flex-1 bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-1"
+                >
+                  {deleting === client.id ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Excluindo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      <span>Excluir</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -440,6 +586,93 @@ export function ClientsView() {
                     <UserPlus className="h-4 w-4" />
                   )}
                   <span>{creating ? 'Criando...' : 'Criar Cliente'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Client Modal */}
+      {showEditClient && editingClient && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Editar Cliente</h3>
+                <button
+                  onClick={() => {
+                    setShowEditClient(false);
+                    setEditingClient(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingClient.name}
+                    onChange={(e) => setEditingClient(prev => prev ? { ...prev, name: e.target.value } : null)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Nome completo do cliente"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Telefone *
+                  </label>
+                  <input
+                    type="tel"
+                    value={editingClient.phone}
+                    onChange={(e) => setEditingClient(prev => prev ? { ...prev, phone: e.target.value } : null)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    E-mail
+                  </label>
+                  <input
+                    type="email"
+                    value={editingClient.email || ''}
+                    onChange={(e) => setEditingClient(prev => prev ? { ...prev, email: e.target.value } : null)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="cliente@email.com (opcional)"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowEditClient(false);
+                    setEditingClient(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdateClient}
+                  disabled={updating}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {updating ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Edit2 className="h-4 w-4" />
+                  )}
+                  <span>{updating ? 'Salvando...' : 'Salvar Alterações'}</span>
                 </button>
               </div>
             </div>
