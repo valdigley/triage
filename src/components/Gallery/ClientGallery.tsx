@@ -466,117 +466,84 @@ export function ClientGallery() {
     try {
       const { supabase } = await import('../../lib/supabase');
 
-      // 1. Criar ou buscar cliente
-      let clientId: string;
-
-      // Verificar se cliente já existe pelo telefone
-      const { data: existingClient } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('phone', clientData.phone)
+      // Buscar configurações do MercadoPago
+      const { data: mpSettings } = await supabase
+        .from('mercadopago_settings')
+        .select('*')
+        .eq('is_active', true)
+        .limit(1)
         .maybeSingle();
 
-      if (existingClient) {
-        clientId = existingClient.id;
-      } else {
-        // Criar novo cliente
-        const { data: newClient, error: clientError } = await supabase
-          .from('clients')
-          .insert([{
-            name: clientData.name,
-            phone: clientData.phone,
-            email: clientData.email || null,
-            total_spent: 0
-          }])
-          .select()
-          .single();
-
-        if (clientError) throw clientError;
-        clientId = newClient.id;
+      if (!mpSettings || !mpSettings.access_token) {
+        throw new Error('Configurações de pagamento não encontradas');
       }
 
-      // 2. Criar appointment para o cliente
-      const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .insert([{
-          client_id: clientId,
-          session_type: 'tematico',
-          session_details: {
-            event: gallery.event_name || gallery.name,
-            source: 'public_gallery'
-          },
-          scheduled_date: new Date().toISOString(),
-          total_amount: selectedPhotos.length * (gallery.price_per_photo || 0),
-          minimum_photos: 0,
-          status: 'confirmed',
-          payment_status: 'pending',
-          terms_accepted: true
-        }])
-        .select()
-        .single();
-
-      if (appointmentError) throw appointmentError;
-
-      // 3. Criar sub-galeria individual
-      const expirationDate = new Date(gallery.link_expires_at || new Date());
-
-      const { data: individualGallery, error: galleryError } = await supabase
-        .from('galleries_triage')
-        .insert([{
-          appointment_id: appointment.id,
-          parent_gallery_id: gallery.id,
-          name: `${gallery.event_name || gallery.name} - ${clientData.name}`,
-          password: null,
-          link_expires_at: expirationDate.toISOString(),
-          status: 'started',
-          photos_selected: selectedPhotos
-        }])
-        .select()
-        .single();
-
-      if (galleryError) throw galleryError;
-
-      // 4. Gerar pagamento
+      // Gerar pagamento PIX diretamente
       const totalAmount = selectedPhotos.length * (gallery.price_per_photo || 0);
+      const nameParts = clientData.name.trim().split(' ');
+      const firstName = nameParts[0] || 'Cliente';
+      const lastName = nameParts.slice(1).join(' ') || 'Sobrenome';
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-extra-photos-payment`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({
-            galleryId: individualGallery.id,
-            appointmentId: appointment.id,
-            extraPhotos: selectedPhotos.length,
-            totalAmount: totalAmount,
-            clientName: clientData.name,
-            clientEmail: clientData.email || null,
-            selectedPhotos: selectedPhotos
-          })
+      const pixPaymentData = {
+        transaction_amount: totalAmount,
+        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        payment_method_id: "pix",
+        external_reference: `public-${gallery.id}-${Date.now()}`,
+        notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`,
+        description: `${selectedPhotos.length} fotos - ${gallery.event_name || gallery.name}`,
+        metadata: {
+          parent_gallery_id: gallery.id,
+          client_name: clientData.name,
+          client_phone: clientData.phone,
+          client_email: clientData.email || '',
+          selected_photos: JSON.stringify(selectedPhotos),
+          photos_count: selectedPhotos.length,
+          event_name: gallery.event_name || gallery.name
+        },
+        payer: {
+          first_name: firstName,
+          last_name: lastName,
+          email: clientData.email || 'cliente@exemplo.com',
+          identification: {
+            type: "CPF",
+            number: "11111111111"
+          }
         }
-      );
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Payment error:', errorData);
-        throw new Error(errorData.error || 'Erro ao gerar pagamento');
+      const pixResponse = await fetch('https://api.mercadopago.com/v1/payments', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${mpSettings.access_token}`,
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': `public-${gallery.id}-${Date.now()}`
+        },
+        body: JSON.stringify(pixPaymentData)
+      });
+
+      if (!pixResponse.ok) {
+        const errorData = await pixResponse.json();
+        console.error('MercadoPago Error:', errorData);
+        throw new Error('Erro ao gerar pagamento PIX');
       }
 
-      const payment = await response.json();
+      const pixData = await pixResponse.json();
+      const qrCode = pixData.point_of_interaction?.transaction_data?.qr_code;
+      const qrCodeBase64 = pixData.point_of_interaction?.transaction_data?.qr_code_base64;
 
-      if (!payment.success) {
-        throw new Error(payment.error || 'Erro ao gerar pagamento');
-      }
+      setPaymentData({
+        payment_id: pixData.id.toString(),
+        status: pixData.status,
+        qr_code: qrCode,
+        qr_code_base64: qrCodeBase64,
+        expires_at: pixPaymentData.date_of_expiration
+      });
 
-      setPaymentData(payment);
       setShowIdentificationForm(false);
       setShowPayment(true);
 
       // Iniciar polling do status do pagamento
-      startPaymentPolling(payment.payment_id);
+      startPaymentPolling(pixData.id.toString());
 
     } catch (error) {
       console.error('Erro ao processar identificação:', error);

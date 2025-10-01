@@ -247,15 +247,138 @@ Deno.serve(async (req: Request) => {
     
     const appointmentId = paymentData.external_reference;
     console.log('🎯 Appointment ID extraído:', appointmentId);
-    
+
     if (!appointmentId) {
       console.error('❌ External reference não encontrado no pagamento');
-      return new Response('External reference not found', { 
+      return new Response('External reference not found', {
         status: 400,
-        headers: corsHeaders 
+        headers: corsHeaders
       });
     }
-    
+
+    // Check if this is a public gallery payment
+    if (appointmentId.startsWith('public-')) {
+      console.log('🎉 ===== PAGAMENTO DE GALERIA PÚBLICA =====');
+
+      // Only process approved payments
+      if (paymentData.status === 'approved' && paymentData.metadata) {
+        console.log('✅ Pagamento aprovado - criando galeria individual...');
+
+        const metadata = paymentData.metadata;
+        const parentGalleryId = metadata.parent_gallery_id;
+        const clientName = metadata.client_name;
+        const clientPhone = metadata.client_phone;
+        const clientEmail = metadata.client_email;
+        const selectedPhotos = JSON.parse(metadata.selected_photos || '[]');
+        const eventName = metadata.event_name;
+
+        try {
+          // 1. Create or get client
+          let clientId: string;
+          const { data: existingClient } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('phone', clientPhone)
+            .maybeSingle();
+
+          if (existingClient) {
+            clientId = existingClient.id;
+            console.log('✅ Cliente existente encontrado:', clientId);
+          } else {
+            const { data: newClient, error: clientError } = await supabase
+              .from('clients')
+              .insert([{
+                name: clientName,
+                phone: clientPhone,
+                email: clientEmail || null,
+                total_spent: 0
+              }])
+              .select()
+              .single();
+
+            if (clientError) throw clientError;
+            clientId = newClient.id;
+            console.log('✅ Novo cliente criado:', clientId);
+          }
+
+          // 2. Create appointment
+          const { data: appointment, error: appointmentError } = await supabase
+            .from('appointments')
+            .insert([{
+              client_id: clientId,
+              session_type: 'tematico',
+              session_details: {
+                event: eventName,
+                source: 'public_gallery'
+              },
+              scheduled_date: new Date().toISOString(),
+              total_amount: paymentData.transaction_amount,
+              minimum_photos: 0,
+              status: 'confirmed',
+              payment_status: 'paid',
+              terms_accepted: true
+            }])
+            .select()
+            .single();
+
+          if (appointmentError) throw appointmentError;
+          console.log('✅ Appointment criado:', appointment.id);
+
+          // 3. Get parent gallery expiration
+          const { data: parentGallery } = await supabase
+            .from('galleries_triage')
+            .select('link_expires_at')
+            .eq('id', parentGalleryId)
+            .single();
+
+          // 4. Create individual gallery
+          const { data: individualGallery, error: galleryError } = await supabase
+            .from('galleries_triage')
+            .insert([{
+              appointment_id: appointment.id,
+              parent_gallery_id: parentGalleryId,
+              name: `${eventName} - ${clientName}`,
+              password: null,
+              link_expires_at: parentGallery?.link_expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              status: 'completed',
+              photos_selected: selectedPhotos
+            }])
+            .select()
+            .single();
+
+          if (galleryError) throw galleryError;
+          console.log('✅ Galeria individual criada:', individualGallery.id);
+
+          // 5. Create payment record
+          const { error: paymentError } = await supabase
+            .from('payments')
+            .insert({
+              appointment_id: appointment.id,
+              mercadopago_id: paymentId.toString(),
+              amount: paymentData.transaction_amount,
+              status: paymentData.status,
+              payment_type: 'initial',
+              webhook_data: paymentData
+            });
+
+          if (paymentError) {
+            console.error('❌ Erro ao criar registro de pagamento:', paymentError);
+          } else {
+            console.log('✅ Registro de pagamento criado');
+          }
+
+          console.log('🎉 ===== GALERIA PÚBLICA PROCESSADA COM SUCESSO =====');
+
+        } catch (error) {
+          console.error('❌ Erro ao processar galeria pública:', error);
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
     // Check if this is an extra photos payment
     if (appointmentId.includes('-extra-')) {
       console.log('📸 ===== PAGAMENTO DE FOTOS EXTRAS =====');
