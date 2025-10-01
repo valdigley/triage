@@ -14,13 +14,13 @@ export function useClients() {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      
-      // Buscar clientes com cálculo real do total gasto
+
+      // Buscar todos os clientes (LEFT JOIN para incluir clientes sem agendamentos)
       const { data, error } = await supabase
         .from('clients')
         .select(`
           *,
-          appointments!inner(
+          appointments(
             id,
             total_amount,
             payment_status
@@ -29,30 +29,21 @@ export function useClients() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
+
       // Calcular total gasto real para cada cliente
       const clientsWithRealTotal = (data || []).map(client => {
-        const totalSpent = client.appointments
+        const totalSpent = (client.appointments || [])
           .filter((apt: any) => apt.payment_status === 'approved')
           .reduce((sum: number, apt: any) => sum + apt.total_amount, 0);
-        
+
         return {
           ...client,
           total_spent: totalSpent,
           appointments: undefined // Remove appointments do objeto final
         };
       });
-      
-      // Remover duplicatas (clientes podem aparecer múltiplas vezes devido ao join)
-      const uniqueClients = clientsWithRealTotal.reduce((acc: any[], client) => {
-        const existing = acc.find(c => c.id === client.id);
-        if (!existing) {
-          acc.push(client);
-        }
-        return acc;
-      }, []);
-      
-      setClients(uniqueClients);
+
+      setClients(clientsWithRealTotal);
     } catch (err) {
       console.error('Erro ao buscar clientes:', err);
       setError(err instanceof Error ? err.message : 'Falha ao buscar clientes');
@@ -64,13 +55,13 @@ export function useClients() {
   const searchClients = async (searchTerm: string) => {
     try {
       setLoading(true);
-      
-      // Buscar clientes com cálculo real do total gasto
+
+      // Buscar todos os clientes (LEFT JOIN para incluir clientes sem agendamentos)
       let query = supabase
         .from('clients')
         .select(`
           *,
-          appointments!inner(
+          appointments(
             id,
             total_amount,
             payment_status
@@ -85,30 +76,21 @@ export function useClients() {
       const { data, error } = await query;
 
       if (error) throw error;
-      
+
       // Calcular total gasto real para cada cliente
       const clientsWithRealTotal = (data || []).map(client => {
-        const totalSpent = client.appointments
+        const totalSpent = (client.appointments || [])
           .filter((apt: any) => apt.payment_status === 'approved')
           .reduce((sum: number, apt: any) => sum + apt.total_amount, 0);
-        
+
         return {
           ...client,
           total_spent: totalSpent,
           appointments: undefined // Remove appointments do objeto final
         };
       });
-      
-      // Remover duplicatas
-      const uniqueClients = clientsWithRealTotal.reduce((acc: any[], client) => {
-        const existing = acc.find(c => c.id === client.id);
-        if (!existing) {
-          acc.push(client);
-        }
-        return acc;
-      }, []);
-      
-      setClients(uniqueClients);
+
+      setClients(clientsWithRealTotal);
     } catch (err) {
       console.error('Erro ao pesquisar clientes:', err);
       setError(err instanceof Error ? err.message : 'Falha ao pesquisar clientes');
