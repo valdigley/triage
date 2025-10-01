@@ -26,7 +26,8 @@ export function GalleriesView() {
     client_phone: '',
     client_email: '',
     password: '',
-    expiration_days: 30
+    expiration_days: 30,
+    session_type: 'tematico' as 'aniversario' | 'gestante' | 'formatura' | 'comercial' | 'pre_wedding' | 'tematico'
   });
   const [creating, setCreating] = useState(false);
   const [createStep, setCreateStep] = useState(1); // 1: Select Client, 2: Gallery Details
@@ -192,12 +193,12 @@ export function GalleriesView() {
       // Use selected client
       const clientId = newGallery.selected_client_id;
 
-      // Create manual appointment
+      // Create manual appointment with selected session type
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([{
           client_id: clientId,
-          session_type: 'tematico',
+          session_type: newGallery.session_type,
           session_details: { theme: 'Galeria Manual' },
           scheduled_date: new Date().toISOString(),
           total_amount: 0,
@@ -239,7 +240,8 @@ export function GalleriesView() {
         client_phone: '',
         client_email: '',
         password: '',
-        expiration_days: 30
+        expiration_days: 30,
+        session_type: 'tematico'
       });
       
       // Refresh galleries list
@@ -277,7 +279,8 @@ export function GalleriesView() {
       client_phone: '',
       client_email: '',
       password: '',
-      expiration_days: 30
+      expiration_days: 30,
+      session_type: 'tematico'
     });
   };
 
@@ -1037,6 +1040,24 @@ export function GalleriesView() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="Ex: Ensaio João - Janeiro 2025"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Tipo de Sessão *
+                    </label>
+                    <select
+                      value={newGallery.session_type}
+                      onChange={(e) => setNewGallery(prev => ({ ...prev, session_type: e.target.value as any }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="aniversario">🎂 Aniversário</option>
+                      <option value="gestante">🤱 Gestante</option>
+                      <option value="formatura">🎓 Formatura</option>
+                      <option value="comercial">💼 Comercial</option>
+                      <option value="pre_wedding">💑 Pré-wedding</option>
+                      <option value="tematico">🎨 Temático</option>
+                    </select>
                   </div>
 
                   <div>
