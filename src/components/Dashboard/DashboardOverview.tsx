@@ -211,10 +211,11 @@ export function DashboardOverview() {
                     <div>
                       <p className="text-sm sm:text-base font-medium text-gray-800 dark:text-white">{appointment.client?.name}</p>
                       <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                        {sessionTypeLabels[appointment.session_type]} - 
+                        {sessionTypeLabels[appointment.session_type]} -
                         {new Date(appointment.scheduled_date).toLocaleTimeString('pt-BR', {
                           hour: '2-digit',
-                          minute: '2-digit'
+                          minute: '2-digit',
+                          timeZone: 'America/Sao_Paulo'
                         })}
                       </p>
                     </div>
@@ -259,12 +260,15 @@ export function DashboardOverview() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs sm:text-sm font-medium text-gray-800 dark:text-white">
-                      {new Date(appointment.scheduled_date).toLocaleDateString('pt-BR')}
+                      {new Date(appointment.scheduled_date).toLocaleDateString('pt-BR', {
+                        timeZone: 'America/Sao_Paulo'
+                      })}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {new Date(appointment.scheduled_date).toLocaleTimeString('pt-BR', {
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
+                        timeZone: 'America/Sao_Paulo'
                       })}
                     </p>
                   </div>
