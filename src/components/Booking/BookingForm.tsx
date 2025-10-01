@@ -17,13 +17,13 @@ function generateAvailableTimeSlots(
   existingAppointments: Array<{ scheduled_date: string }>,
   commercialHours: any
 ): string[] {
-  const selectedDate = new Date(date + 'T00:00:00');
+  const selectedDate = new Date(date + 'T12:00:00');
 
-  const dayOfWeekSP = parseInt(selectedDate.toLocaleString('en-US', {
-    timeZone: 'America/Sao_Paulo',
-    weekday: 'numeric'
-  }));
-  const dayOfWeek = dayOfWeekSP === 7 ? 0 : dayOfWeekSP;
+  const spDateString = selectedDate.toLocaleString('en-US', {
+    timeZone: 'America/Sao_Paulo'
+  });
+  const spDate = new Date(spDateString);
+  const dayOfWeek = spDate.getDay();
 
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayName = dayNames[dayOfWeek];
