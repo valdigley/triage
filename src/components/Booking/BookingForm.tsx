@@ -9,6 +9,57 @@ import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { calculatePrice, isDateTimeAvailable, formatCurrency } from '../../utils/pricing';
 import { SessionDetailsForm } from './SessionDetailsForm';
 
+// Função para gerar horários disponíveis
+function generateAvailableTimeSlots(
+  date: string,
+  existingAppointments: Array<{ scheduled_date: string }>,
+  commercialHours: any
+): string[] {
+  const selectedDate = new Date(date);
+  const dayOfWeek = selectedDate.getDay();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayName = dayNames[dayOfWeek];
+  const daySchedule = commercialHours[dayName];
+
+  if (!daySchedule.enabled) {
+    return [];
+  }
+
+  const availableSlots: string[] = [];
+  const [startHour, startMinute] = daySchedule.start.split(':').map(Number);
+  const [endHour, endMinute] = daySchedule.end.split(':').map(Number);
+
+  // Gerar slots de 1 em 1 hora (1h sessão + 1h intervalo = 2h entre cada slot)
+  for (let hour = startHour; hour <= endHour - 1; hour += 2) {
+    const slotTime = `${hour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+    
+    // Verificar se o horário não ultrapassa o fim do expediente
+    if (hour < endHour || (hour === endHour && startMinute <= endMinute)) {
+      const slotDateTime = new Date(selectedDate);
+      slotDateTime.setHours(hour, startMinute, 0, 0);
+      
+      // Verificar se não há conflito com agendamentos existentes
+      const hasConflict = existingAppointments.some(apt => {
+        const existingDate = new Date(apt.scheduled_date);
+        const timeDiff = Math.abs(slotDateTime.getTime() - existingDate.getTime());
+        const twoHours = 2 * 60 * 60 * 1000; // 2 horas em milliseconds
+        return timeDiff < twoHours;
+      });
+
+      // Verificar se é no futuro
+      const now = new Date();
+      const isInFuture = slotDateTime > now;
+
+      if (!hasConflict && isInFuture) {
+        const isoDateTime = slotDateTime.toISOString().slice(0, 16);
+        availableSlots.push(isoDateTime);
+      }
+    }
+  }
+
+  return availableSlots;
+}
+
 export function BookingForm() {
   const { settings } = useSettings();
   const { getActiveSessionTypes } = useSessionTypes();
@@ -43,35 +94,50 @@ export function BookingForm() {
   const activeSessionTypes = getActiveSessionTypes();
   const mpSettings = getActiveSettings();
 
-  const handleDateChange = async (date: string) => {
-    setFormData(prev => ({ ...prev, scheduledDate: date }));
+  const handleDateChange = async (dateOnly: string) => {
+    setSelectedDate(dateOnly);
+    setAvailableTimeSlots([]);
+    setFormData(prev => ({ ...prev, scheduledDate: '' }));
+    setPrice(0);
     
-    if (settings && date) {
-      // Check if date is in the future
-      const appointmentDate = new Date(date);
-      const now = new Date();
+    if (settings && dateOnly) {
+      setLoadingSlots(true);
       
-      if (appointmentDate <= now) {
-        alert('Por favor, selecione uma data e horário futuros.');
-        setFormData(prev => ({ ...prev, scheduledDate: '' }));
-        return;
+      try {
+        // Buscar agendamentos existentes
+        const { data: existingAppointments } = await supabase
+          .from('appointments')
+          .select('scheduled_date')
+          .in('status', ['pending', 'confirmed']);
+        
+        // Gerar horários disponíveis para a data selecionada
+        const slots = generateAvailableTimeSlots(
+          dateOnly,
+          existingAppointments || [],
+          settings.commercial_hours
+        );
+        
+        setAvailableTimeSlots(slots);
+      } catch (error) {
+        console.error('Erro ao buscar horários disponíveis:', error);
+        setAvailableTimeSlots([]);
+      } finally {
+        setLoadingSlots(false);
       }
+    }
+  };
 
-      setIsCheckingAvailability(true);
+  const handleTimeSlotSelect = (dateTime: string) => {
+    setFormData(prev => ({ ...prev, scheduledDate: dateTime }));
+    
+    if (settings) {
       const calculatedPrice = calculatePrice(
-        date,
+        dateTime,
         settings.commercial_hours,
         settings.price_commercial_hour,
         settings.price_after_hours
       );
       setPrice(calculatedPrice * settings.minimum_photos);
-
-      const isAvailable = await checkAvailability(date);
-      if (!isAvailable) {
-        alert('Horário não disponível. Lembre-se: cada sessão dura 1h com intervalo de 1h entre sessões. Por favor, escolha outro horário.');
-        setFormData(prev => ({ ...prev, scheduledDate: '' }));
-      }
-      setIsCheckingAvailability(false);
     }
   };
 
