@@ -308,21 +308,22 @@ export function ClientGallery() {
         console.log('✅ Seleção submetida com sucesso');
         setGallery(prev => prev ? { ...prev, selection_completed: true, status: 'completed' } : null);
         setShowCode(true);
-        
+
+        // Calcular fotos extras
+        const extrasCount = Math.max(0, selectedPhotos.length - (gallery.appointment?.minimum_photos || 5));
+
         // Se há fotos extras, mostrar carrinho
-        if (selectedPhotos.length > 0) {
+        if (extrasCount > 0) {
           setShowCart(true);
+        } else {
+          alert('✅ Seleção enviada com sucesso!\n\nSua seleção foi salva e o estúdio foi notificado.\n\nVocê receberá as fotos editadas conforme combinado.\n\n💡 Dica: Você receberá uma confirmação por WhatsApp em alguns minutos.');
         }
-        
+
         // Reprocessar notificações apenas uma vez após delay maior
         setTimeout(async () => {
           console.log('🔄 Reprocessando notificações pendentes (única vez)...');
           await reprocessPendingNotifications();
         }, 8000); // Aumentado para 8 segundos
-        
-        if (extraPhotos === 0) {
-          alert('✅ Seleção enviada com sucesso!\n\nSua seleção foi salva e o estúdio foi notificado.\n\nVocê receberá as fotos editadas conforme combinado.\n\n💡 Dica: Você receberá uma confirmação por WhatsApp em alguns minutos.');
-        }
       } else {
         console.warn('⚠️ Falha na submissão, mas seleção pode ter sido salva');
         alert('✅ Sua seleção foi salva!\n\nO sistema de notificação pode estar temporariamente indisponível, mas sua seleção foi registrada com sucesso.\n\nEntre em contato com o estúdio para confirmar.');
@@ -386,7 +387,7 @@ export function ClientGallery() {
   }
 
   const minimumPhotos = gallery.appointment?.minimum_photos || 5;
-  const extraPhotos = selectedPhotos.length; // Contar desde a primeira foto
+  const extraPhotos = Math.max(0, selectedPhotos.length - minimumPhotos); // Apenas fotos acima do mínimo
   const pricePerPhoto = settings?.price_commercial_hour || 30; // Use system price or fallback to 30
   const extraCost = extraPhotos * pricePerPhoto;
   const isExpired = new Date() > new Date(gallery.link_expires_at);
@@ -648,7 +649,7 @@ export function ClientGallery() {
 
               <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                 <div className="text-xl lg:text-2xl font-bold text-orange-600 dark:text-orange-400">{extraPhotos}</div>
-                <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Total</div>
+                <div className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">Extras</div>
               </div>
               
               {photoComments[lightboxPhoto.id] && (
@@ -663,10 +664,10 @@ export function ClientGallery() {
                 </div>
               )}
               
-              {selectedPhotos.length > 0 && (
+              {extraPhotos > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 text-center">
                   <div className="text-xs lg:text-sm text-orange-600 dark:text-orange-400 font-medium">
-                    Custo total: {formatCurrency(extraCost)}
+                    Custo adicional: {formatCurrency(extraCost)}
                   </div>
                 </div>
               )}
