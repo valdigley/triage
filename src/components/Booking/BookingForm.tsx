@@ -254,50 +254,8 @@ export function BookingForm() {
         setPaymentStatus(paymentResult.status);
         setCurrentStep(4); // Go to payment step instead of separate payment screen
 
-        // Create Google Calendar event
-        try {
-          console.log('📅 Criando evento no Google Calendar...');
-          const startDate = new Date(formData.scheduledDate);
-          const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
-
-          const sessionTypeLabels: Record<string, string> = {
-            'aniversario': 'Sessão de Aniversário',
-            'gestante': 'Ensaio Gestante',
-            'formatura': 'Sessão de Formatura',
-            'comercial': 'Sessão Comercial',
-            'pre_wedding': 'Ensaio Pré-Wedding',
-            'tematico': 'Sessão Temática'
-          };
-          const sessionLabel = sessionTypeLabels[formData.sessionType] || formData.sessionType;
-
-          const calendarResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-calendar-event`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              appointmentId: paymentResult.appointment_id,
-              summary: `Sessão de Fotos - ${formData.clientName}`,
-              description: `Tipo: ${sessionLabel}\nCliente: ${formData.clientName}\nTelefone: ${formData.clientPhone}\nEmail: ${formData.clientEmail || 'Não informado'}`,
-              startDateTime: startDate.toISOString(),
-              endDateTime: endDate.toISOString(),
-              attendees: formData.clientEmail ? [formData.clientEmail] : [],
-            }),
-          });
-
-          if (calendarResponse.ok) {
-            const calendarResult = await calendarResponse.json();
-            console.log('✅ Evento criado no Google Calendar:', calendarResult);
-          } else {
-            console.error('❌ Erro ao criar evento no Google Calendar:', await calendarResponse.text());
-          }
-        } catch (calendarError) {
-          console.error('❌ Erro ao criar evento no Google Calendar:', calendarError);
-        }
-
         // Start polling for payment status
-        startPaymentPolling(paymentResult.payment_id);
+        startPaymentPolling(paymentResult.payment_id, paymentResult.appointment_id);
       } else {
         throw new Error(paymentResult.error || 'Erro ao criar pagamento');
       }
@@ -309,7 +267,7 @@ export function BookingForm() {
     }
   };
 
-  const startPaymentPolling = (paymentId: string) => {
+  const startPaymentPolling = (paymentId: string, appointmentId: string) => {
     const interval = setInterval(async () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-payment-status?payment_id=${paymentId}`, {
@@ -317,17 +275,59 @@ export function BookingForm() {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           }
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
           setPaymentStatus(result.status);
-          
+
           if (result.status === 'approved') {
             // Payment approved - stop polling and show success
             clearInterval(interval);
             setPollingInterval(null);
-            
+
+            // Create Google Calendar event after payment confirmation
+            try {
+              console.log('📅 Pagamento confirmado! Criando evento no Google Calendar...');
+              const startDate = new Date(formData.scheduledDate);
+              const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+
+              const sessionTypeLabels: Record<string, string> = {
+                'aniversario': 'Sessão de Aniversário',
+                'gestante': 'Ensaio Gestante',
+                'formatura': 'Sessão de Formatura',
+                'comercial': 'Sessão Comercial',
+                'pre_wedding': 'Ensaio Pré-Wedding',
+                'tematico': 'Sessão Temática'
+              };
+              const sessionLabel = sessionTypeLabels[formData.sessionType] || formData.sessionType;
+
+              const calendarResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-calendar-event`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  appointmentId: appointmentId,
+                  summary: `Sessão de Fotos - ${formData.clientName}`,
+                  description: `Tipo: ${sessionLabel}\nCliente: ${formData.clientName}\nTelefone: ${formData.clientPhone}\nEmail: ${formData.clientEmail || 'Não informado'}`,
+                  startDateTime: startDate.toISOString(),
+                  endDateTime: endDate.toISOString(),
+                  attendees: formData.clientEmail ? [formData.clientEmail] : [],
+                }),
+              });
+
+              if (calendarResponse.ok) {
+                const calendarResult = await calendarResponse.json();
+                console.log('✅ Evento criado no Google Calendar:', calendarResult);
+              } else {
+                console.error('❌ Erro ao criar evento no Google Calendar:', await calendarResponse.text());
+              }
+            } catch (calendarError) {
+              console.error('❌ Erro ao criar evento no Google Calendar:', calendarError);
+            }
+
             // Send payment confirmation message
             try {
               const selectedSessionType = activeSessionTypes.find(st => st.name === formData.sessionType);
