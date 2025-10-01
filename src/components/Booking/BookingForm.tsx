@@ -737,12 +737,7 @@ export function BookingForm() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <div className="text-sm font-bold text-green-600">
-                                  {formatCurrency(slot.price)}
-                                </div>
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
-                              </div>
+                              <ChevronRight className="h-4 w-4 text-gray-400" />
                             </div>
                           </button>
                         ))}
