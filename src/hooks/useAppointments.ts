@@ -35,6 +35,47 @@ export function useAppointments() {
     }
   };
 
+  const createGoogleCalendarEvent = async (
+    appointment: any,
+    formData: BookingFormData
+  ): Promise<void> => {
+    try {
+      // Calcular horário de término (padrão: 2 horas após o início)
+      const startDate = new Date(appointment.scheduled_date);
+      const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-calendar-event`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            appointmentId: appointment.id,
+            summary: `Sessão de Fotos - ${formData.clientName}`,
+            description: `Tipo: ${formData.sessionType}\nDetalhes: ${formData.sessionDetails}\nCliente: ${formData.clientName}\nTelefone: ${formData.clientPhone}\nEmail: ${formData.clientEmail}`,
+            startDateTime: startDate.toISOString(),
+            endDateTime: endDate.toISOString(),
+            attendees: formData.clientEmail ? [formData.clientEmail] : [],
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Evento criado no Google Calendar:', result.eventLink);
+      } else {
+        const error = await response.json();
+        console.error('❌ Erro ao criar evento:', error);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao chamar API de criação de evento:', error);
+      throw error;
+    }
+  };
+
   const checkGoogleCalendarAvailability = async (
     startDateTime: string,
     endDateTime: string
@@ -169,6 +210,14 @@ export function useAppointments() {
         }
       } catch (error) {
         console.error('❌ Erro ao agendar notificações (não crítico):', error);
+      }
+
+      // Create event in Google Calendar
+      try {
+        console.log('📅 Criando evento no Google Calendar...');
+        await createGoogleCalendarEvent(appointment, formData);
+      } catch (error) {
+        console.error('❌ Erro ao criar evento no Google Calendar (não crítico):', error);
       }
 
       await fetchAppointments();
