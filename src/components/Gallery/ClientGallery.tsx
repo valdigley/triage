@@ -35,6 +35,12 @@ export function ClientGallery() {
   const [showPayment, setShowPayment] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<string>('pending');
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showIdentificationForm, setShowIdentificationForm] = useState(false);
+  const [clientData, setClientData] = useState({
+    name: '',
+    phone: '',
+    email: ''
+  });
 
   useEffect(() => {
     if (token) {
@@ -320,11 +326,18 @@ export function ClientGallery() {
         
         if (result.success) {
           setPaymentStatus(result.status);
-          
+
           if (result.status === 'approved') {
             // Payment approved - stop polling and show success
             clearInterval(interval);
             setPollingInterval(null);
+
+            // Se for galeria pública, finalizar a seleção
+            if (gallery?.is_public) {
+              alert('✅ Pagamento confirmado!\n\nSua seleção foi finalizada com sucesso.\n\nVocê receberá as fotos editadas no prazo combinado.');
+              setShowPayment(false);
+              setGallery(prev => prev ? { ...prev, selection_completed: true, status: 'completed' } : null);
+            }
           } else if (result.status === 'expired' || result.status === 'cancelled') {
             // Payment expired/cancelled - stop polling
             clearInterval(interval);
@@ -385,6 +398,12 @@ export function ClientGallery() {
       return;
     }
 
+    // Se for galeria pública, mostrar formulário de identificação primeiro
+    if (gallery.is_public) {
+      setShowIdentificationForm(true);
+      return;
+    }
+
     console.log('🚀 Iniciando submissão da seleção...');
     setSubmitting(true);
     try {
@@ -432,6 +451,127 @@ export function ClientGallery() {
     } catch (error) {
       console.error('❌ Erro crítico ao enviar seleção:', error);
       alert('✅ Sua seleção foi salva!\n\nOcorreu um problema técnico, mas sua seleção foi registrada com sucesso.\n\nEntre em contato com o estúdio para confirmar.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleIdentificationSubmit = async () => {
+    if (!gallery || !clientData.name || !clientData.phone) {
+      alert('Por favor, preencha nome e telefone.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { supabase } = await import('../../lib/supabase');
+
+      // 1. Criar ou buscar cliente
+      let clientId: string;
+
+      // Verificar se cliente já existe pelo telefone
+      const { data: existingClient } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('phone', clientData.phone)
+        .maybeSingle();
+
+      if (existingClient) {
+        clientId = existingClient.id;
+      } else {
+        // Criar novo cliente
+        const { data: newClient, error: clientError } = await supabase
+          .from('clients')
+          .insert([{
+            name: clientData.name,
+            phone: clientData.phone,
+            email: clientData.email || null,
+            total_spent: 0
+          }])
+          .select()
+          .single();
+
+        if (clientError) throw clientError;
+        clientId = newClient.id;
+      }
+
+      // 2. Criar appointment para o cliente
+      const { data: appointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .insert([{
+          client_id: clientId,
+          session_type: 'tematico',
+          session_details: {
+            event: gallery.event_name || gallery.name,
+            source: 'public_gallery'
+          },
+          scheduled_date: new Date().toISOString(),
+          total_amount: selectedPhotos.length * (gallery.price_per_photo || 0),
+          minimum_photos: 0,
+          status: 'confirmed',
+          payment_status: 'pending',
+          terms_accepted: true
+        }])
+        .select()
+        .single();
+
+      if (appointmentError) throw appointmentError;
+
+      // 3. Criar sub-galeria individual
+      const expirationDate = new Date(gallery.link_expires_at || new Date());
+
+      const { data: individualGallery, error: galleryError } = await supabase
+        .from('galleries_triage')
+        .insert([{
+          appointment_id: appointment.id,
+          parent_gallery_id: gallery.id,
+          name: `${gallery.event_name || gallery.name} - ${clientData.name}`,
+          password: null,
+          link_expires_at: expirationDate.toISOString(),
+          status: 'started',
+          photos_selected: selectedPhotos
+        }])
+        .select()
+        .single();
+
+      if (galleryError) throw galleryError;
+
+      // 4. Gerar pagamento
+      const totalAmount = selectedPhotos.length * (gallery.price_per_photo || 0);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            appointment_id: appointment.id,
+            total_amount: totalAmount,
+            items: [{
+              title: `${selectedPhotos.length} fotos - ${gallery.event_name || gallery.name}`,
+              quantity: selectedPhotos.length,
+              unit_price: gallery.price_per_photo || 0
+            }]
+          })
+        }
+      );
+
+      if (!response.ok) throw new Error('Erro ao gerar pagamento');
+
+      const payment = await response.json();
+      setPaymentData(payment);
+      setShowIdentificationForm(false);
+      setShowPayment(true);
+
+      // Iniciar polling do status do pagamento
+      startPaymentPolling(payment.payment_id);
+
+    } catch (error) {
+      console.error('Erro ao processar identificação:', error);
+      alert('Erro ao processar seus dados. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -932,6 +1072,122 @@ export function ClientGallery() {
                   <Send className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span>Salvar</span>
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Identification Form Modal (Public Gallery) */}
+        {showIdentificationForm && gallery?.is_public && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full mx-3 sm:mx-0 p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
+                  Identificação
+                </h3>
+                <button
+                  onClick={() => setShowIdentificationForm(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Resumo da Seleção */}
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                      {selectedPhotos.length} {selectedPhotos.length === 1 ? 'foto selecionada' : 'fotos selecionadas'}
+                    </div>
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                      {formatCurrency(selectedPhotos.length * (gallery.price_per_photo || 0))}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {formatCurrency(gallery.price_per_photo || 0)} por foto
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informação */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    Para finalizar sua seleção, precisamos de alguns dados para contato e entrega das fotos.
+                  </p>
+                </div>
+
+                {/* Formulário */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nome Completo *
+                    </label>
+                    <input
+                      type="text"
+                      value={clientData.name}
+                      onChange={(e) => setClientData(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Seu nome completo"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Telefone/WhatsApp *
+                    </label>
+                    <input
+                      type="tel"
+                      value={clientData.phone}
+                      onChange={(e) => setClientData(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="(00) 00000-0000"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      E-mail (opcional)
+                    </label>
+                    <input
+                      type="email"
+                      value={clientData.email}
+                      onChange={(e) => setClientData(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+                </div>
+
+                {/* Botões */}
+                <div className="space-y-3 pt-2">
+                  <button
+                    onClick={handleIdentificationSubmit}
+                    disabled={submitting || !clientData.name || !clientData.phone}
+                    className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 font-medium"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                        <span>Processando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-5 w-5" />
+                        <span>Continuar para Pagamento</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setShowIdentificationForm(false)}
+                    disabled={submitting}
+                    className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Voltar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
