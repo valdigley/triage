@@ -181,10 +181,14 @@ export function BookingForm() {
     setIsSubmitting(true);
     try {
       // Verificar disponibilidade no Google Calendar ANTES de processar pagamento
-      const selectedDate = new Date(formData.date + 'T' + formData.time);
+      const selectedDate = new Date(formData.scheduledDate);
       const endDate = new Date(selectedDate.getTime() + 2 * 60 * 60 * 1000); // +2 horas
 
       console.log('🔍 Verificando disponibilidade no Google Calendar...');
+      console.log('📅 Data selecionada:', formData.scheduledDate);
+      console.log('📅 selectedDate:', selectedDate);
+      console.log('📅 endDate:', endDate);
+
       const availability = await checkGoogleCalendarAvailability(
         selectedDate.toISOString(),
         endDate.toISOString()
