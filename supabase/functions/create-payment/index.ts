@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
       console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     }
 
-    return new Response(JSON.stringify({ success: true, payment_id: pixData.id, status: pixData.status, qr_code: qrCode, qr_code_base64: qrCodeBase64, expires_at: pixPaymentData.date_of_expiration }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    return new Response(JSON.stringify({ success: true, appointment_id: appointment.id, payment_id: pixData.id, status: pixData.status, qr_code: qrCode, qr_code_base64: qrCodeBase64, expires_at: pixPaymentData.date_of_expiration }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
   } catch (error) {
     console.error('Error:', error);
