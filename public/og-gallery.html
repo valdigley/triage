@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galeria de Fotos - Triagem Online</title>
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://triagem.online/g/TOKEN_AQUI">
+  <meta property="og:title" content="📸 Galeria de Fotos - Triagem Online">
+  <meta property="og:description" content="Visualize e selecione suas fotos favoritas da sessão fotográfica!">
+  <meta property="og:image" content="https://triagem.online/triagem.png">
+  <meta property="og:image:secure_url" content="https://triagem.online/triagem.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Triagem Online">
+  <meta property="og:locale" content="pt_BR">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://triagem.online/g/TOKEN_AQUI">
+  <meta name="twitter:title" content="📸 Galeria de Fotos - Triagem Online">
+  <meta name="twitter:description" content="Visualize e selecione suas fotos favoritas da sessão fotográfica!">
+  <meta name="twitter:image" content="https://triagem.online/triagem.png">
+
+  <!-- Redirect to actual gallery page after a moment -->
+  <script>
+    // Extract token from URL
+    const pathParts = window.location.pathname.split('/');
+    const token = pathParts[pathParts.length - 1].replace('.html', '');
+
+    // Redirect to React app with token
+    setTimeout(() => {
+      window.location.href = `https://triagem.online/g/${token}`;
+    }, 100);
+  </script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .loader {
+      text-align: center;
+    }
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top: 4px solid white;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="loader">
+    <div class="spinner"></div>
+    <h2>📸 Carregando sua galeria...</h2>
+    <p>Aguarde um momento</p>
+  </div>
+</body>
+</html>
