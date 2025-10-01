@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Phone, Mail, Eye, ExternalLink, UserPlus, X, Edit2, Trash2 } from 'lucide-react';
+import { Search, Phone, Mail, Eye, ExternalLink, UserPlus, X, CreditCard as Edit2, Trash2 } from 'lucide-react';
 import { useClients } from '../../hooks/useClients';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency } from '../../utils/pricing';
