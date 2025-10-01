@@ -540,7 +540,7 @@ export function ClientGallery() {
       const totalAmount = selectedPhotos.length * (gallery.price_per_photo || 0);
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-extra-photos-payment`,
         {
           method: 'POST',
           headers: {
@@ -548,20 +548,29 @@ export function ClientGallery() {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
           },
           body: JSON.stringify({
-            appointment_id: appointment.id,
-            total_amount: totalAmount,
-            items: [{
-              title: `${selectedPhotos.length} fotos - ${gallery.event_name || gallery.name}`,
-              quantity: selectedPhotos.length,
-              unit_price: gallery.price_per_photo || 0
-            }]
+            galleryId: individualGallery.id,
+            appointmentId: appointment.id,
+            extraPhotos: selectedPhotos.length,
+            totalAmount: totalAmount,
+            clientName: clientData.name,
+            clientEmail: clientData.email || null,
+            selectedPhotos: selectedPhotos
           })
         }
       );
 
-      if (!response.ok) throw new Error('Erro ao gerar pagamento');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Payment error:', errorData);
+        throw new Error(errorData.error || 'Erro ao gerar pagamento');
+      }
 
       const payment = await response.json();
+
+      if (!payment.success) {
+        throw new Error(payment.error || 'Erro ao gerar pagamento');
+      }
+
       setPaymentData(payment);
       setShowIdentificationForm(false);
       setShowPayment(true);
