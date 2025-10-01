@@ -19,7 +19,7 @@ export function useSettings() {
         .select('*')
         .order('created_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       setSettings(data);
