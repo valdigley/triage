@@ -18,6 +18,7 @@ export function SettingsView() {
   const {
     settings: googleCalendarSettings,
     loading: googleCalendarLoading,
+    error: googleCalendarError,
     saveSettings: saveGoogleCalendarSettings,
     updateSettings: updateGoogleCalendarSettings,
     testConnection: testGoogleCalendarConnection
@@ -947,7 +948,8 @@ export function SettingsView() {
                       if (success) {
                         setTestResult({ success: true, message: 'Configurações salvas com sucesso!' });
                       } else {
-                        setTestResult({ success: false, message: 'Erro ao salvar configurações. Verifique os dados.' });
+                        const errorMsg = googleCalendarError || 'Erro ao salvar configurações. Verifique os dados no console do navegador.';
+                        setTestResult({ success: false, message: errorMsg });
                       }
                     } finally {
                       setSaving(false);

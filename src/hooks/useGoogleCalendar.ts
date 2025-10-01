@@ -46,30 +46,55 @@ export function useGoogleCalendar() {
     serviceAccountKey: string
   ): Promise<boolean> => {
     try {
+      console.log('🔄 Salvando configurações do Google Calendar...');
+      console.log('Calendar ID:', calendarId);
+      console.log('Service Account Email:', serviceAccountEmail);
+
+      // Verificar se usuário está autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('❌ Usuário não autenticado');
+        setError('Você precisa estar autenticado para salvar configurações.');
+        return false;
+      }
+      console.log('✅ Usuário autenticado:', user.email);
+
       // Parse service account key JSON
       let keyObject;
       try {
+        console.log('📝 Parseando JSON da Service Account Key...');
         keyObject = JSON.parse(serviceAccountKey);
+        console.log('✅ JSON parseado com sucesso');
       } catch (parseError) {
-        setError('JSON da Service Account Key inválido');
+        console.error('❌ Erro ao parsear JSON:', parseError);
+        setError('JSON da Service Account Key inválido. Verifique se é um JSON válido.');
         return false;
       }
 
       // Validate required fields
+      console.log('🔍 Validando campos obrigatórios...');
       if (!keyObject.private_key || !keyObject.client_email) {
-        setError('JSON da Service Account Key está incompleto');
+        console.error('❌ Campos obrigatórios faltando:', {
+          has_private_key: !!keyObject.private_key,
+          has_client_email: !!keyObject.client_email
+        });
+        setError('JSON da Service Account Key está incompleto. Certifique-se de que contém "private_key" e "client_email".');
         return false;
       }
+      console.log('✅ Campos obrigatórios presentes');
 
       // Desativar configurações antigas
       if (settings) {
+        console.log('🔄 Desativando configuração antiga...');
         await supabase
           .from('google_calendar_settings')
           .update({ is_active: false })
           .eq('id', settings.id);
+        console.log('✅ Configuração antiga desativada');
       }
 
       // Inserir nova configuração
+      console.log('💾 Inserindo nova configuração no banco...');
       const { data, error } = await supabase
         .from('google_calendar_settings')
         .insert({
@@ -81,13 +106,19 @@ export function useGoogleCalendar() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro do Supabase:', error);
+        throw error;
+      }
 
+      console.log('✅ Configurações salvas com sucesso!');
       setSettings(data);
+      setError(null);
       return true;
     } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao salvar configurações');
+      console.error('❌ Erro ao salvar configurações:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao salvar configurações';
+      setError(errorMessage);
       return false;
     }
   };
