@@ -46,7 +46,8 @@ function generateAvailableTimeSlots(
       const hourStr = hour.toString().padStart(2, '0');
       const minuteStr = startMinute.toString().padStart(2, '0');
 
-      const isoDateTime = toSaoPauloISO(`${year}-${month}-${day}T${hourStr}:${minuteStr}`);
+      // Criar data no timezone de São Paulo (BRT é UTC-3)
+      const isoDateTime = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00-03:00`;
       const slotDateTime = new Date(isoDateTime);
 
       const hasConflict = existingAppointments.some(apt => {
