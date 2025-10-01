@@ -643,7 +643,6 @@ export function BookingForm() {
                           </button>
                         ))}
                       </div>
-                    </p>
                   )}
                 </div>
 
