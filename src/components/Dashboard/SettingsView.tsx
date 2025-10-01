@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Upload, TestTube, Check, X, AlertCircle, Camera, MessageSquare, CreditCard, Palette, Clock, Shield, Smartphone, Eye, EyeOff } from 'lucide-react';
+import { Save, Upload, TestTube, Check, X, AlertCircle, Camera, MessageSquare, CreditCard, Palette, Clock, Shield, Smartphone, Eye, EyeOff, Calendar } from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useMercadoPago } from '../../hooks/useMercadoPago';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { supabase } from '../../lib/supabase';
 import { CommercialHours, SessionTypeData, NotificationTemplate } from '../../types';
 
@@ -14,6 +15,13 @@ export function SettingsView() {
   const { settings: mpSettings, updateSettings: updateMPSettings, testConnection } = useMercadoPago();
   const { instances, testConnection: testWhatsAppConnection, refetch: refetchWhatsApp } = useWhatsApp();
   const { templates, updateTemplate } = useNotifications();
+  const {
+    settings: googleCalendarSettings,
+    loading: googleCalendarLoading,
+    saveSettings: saveGoogleCalendarSettings,
+    updateSettings: updateGoogleCalendarSettings,
+    testConnection: testGoogleCalendarConnection
+  } = useGoogleCalendar();
   
   const [activeTab, setActiveTab] = useState('general');
   const [saving, setSaving] = useState(false);
@@ -39,6 +47,24 @@ export function SettingsView() {
     evolution_api_key: '',
     instance_name: ''
   });
+
+  // Google Calendar form state
+  const [googleCalendarForm, setGoogleCalendarForm] = useState({
+    calendar_id: '',
+    service_account_email: '',
+    service_account_key: ''
+  });
+
+  // Update form when Google Calendar settings change
+  useEffect(() => {
+    if (googleCalendarSettings) {
+      setGoogleCalendarForm({
+        calendar_id: googleCalendarSettings.calendar_id || '',
+        service_account_email: googleCalendarSettings.service_account_email || '',
+        service_account_key: '' // Não mostrar a key por segurança
+      });
+    }
+  }, [googleCalendarSettings]);
 
   // Get active WhatsApp instance data
   const activeWhatsAppInstance = instances.find(instance => 
@@ -281,6 +307,7 @@ export function SettingsView() {
     { id: 'watermark', label: 'Marca d\'água', icon: Palette },
     { id: 'sessions', label: 'Tipos de Sessão', icon: Camera },
     { id: 'notifications', label: 'Notificações', icon: MessageSquare },
+    { id: 'google-calendar', label: 'Google Calendar', icon: Calendar },
     { id: 'whatsapp', label: 'WhatsApp', icon: Smartphone },
     { id: 'mercadopago', label: 'MercadoPago', icon: CreditCard },
     { id: 'security', label: 'Segurança', icon: Shield }
@@ -813,6 +840,182 @@ export function SettingsView() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Google Calendar Tab */}
+        {activeTab === 'google-calendar' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Integração Google Calendar</h2>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Como Configurar</h3>
+              <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                <li>Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                <li>Crie um projeto e ative a <strong>Google Calendar API</strong></li>
+                <li>Crie uma <strong>Service Account</strong> em IAM & Admin</li>
+                <li>Gere uma chave JSON para a Service Account</li>
+                <li>Compartilhe seu calendário com o email da Service Account</li>
+                <li>Cole as informações abaixo</li>
+              </ol>
+            </div>
+
+            {googleCalendarSettings && (
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <span className="font-medium text-green-800 dark:text-green-200">
+                    Google Calendar configurado e ativo
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Calendar ID
+                </label>
+                <input
+                  type="text"
+                  value={googleCalendarForm.calendar_id}
+                  onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, calendar_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="seu-email@gmail.com ou calendar-id"
+                />
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Encontre em: Configurações do Calendário → Integrar calendário
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Service Account Email
+                </label>
+                <input
+                  type="email"
+                  value={googleCalendarForm.service_account_email}
+                  onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, service_account_email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="service-account@projeto.iam.gserviceaccount.com"
+                />
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Email da Service Account criada no Google Cloud
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Service Account Key (JSON)
+                </label>
+                <textarea
+                  value={googleCalendarForm.service_account_key}
+                  onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, service_account_key: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
+                  placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", ...}'
+                  rows={8}
+                />
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Cole o conteúdo completo do arquivo JSON baixado
+                  {googleCalendarSettings && !googleCalendarForm.service_account_key && (
+                    <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
+                      Deixe em branco para manter a chave atual
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  onClick={async () => {
+                    setSaving(true);
+                    setTestResult(null);
+                    try {
+                      const success = googleCalendarSettings
+                        ? await updateGoogleCalendarSettings(
+                            googleCalendarForm.calendar_id,
+                            googleCalendarForm.service_account_email,
+                            googleCalendarForm.service_account_key
+                          )
+                        : await saveGoogleCalendarSettings(
+                            googleCalendarForm.calendar_id,
+                            googleCalendarForm.service_account_email,
+                            googleCalendarForm.service_account_key
+                          );
+
+                      if (success) {
+                        setTestResult({ success: true, message: 'Configurações salvas com sucesso!' });
+                      } else {
+                        setTestResult({ success: false, message: 'Erro ao salvar configurações. Verifique os dados.' });
+                      }
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving || !googleCalendarForm.calendar_id || !googleCalendarForm.service_account_email || (!googleCalendarSettings && !googleCalendarForm.service_account_key)}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  <span>{googleCalendarSettings ? 'Atualizar' : 'Salvar'}</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    setTesting(true);
+                    setTestResult(null);
+                    const result = await testGoogleCalendarConnection();
+                    setTestResult(result);
+                    setTesting(false);
+                  }}
+                  disabled={testing || !googleCalendarSettings}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {testing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <TestTube className="h-4 w-4" />
+                  )}
+                  <span>Testar Conexão</span>
+                </button>
+              </div>
+
+              {testResult && (
+                <div className={`p-4 rounded-lg ${
+                  testResult.success
+                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                    : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                }`}>
+                  <div className="flex items-start space-x-2">
+                    {testResult.success ? (
+                      <Check className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <X className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    )}
+                    <p className={`text-sm ${
+                      testResult.success
+                        ? 'text-green-800 dark:text-green-200'
+                        : 'text-red-800 dark:text-red-200'
+                    }`}>
+                      {testResult.message}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">⚠️ Importante</h3>
+              <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1 list-disc list-inside">
+                <li>A Service Account Key contém informações sensíveis. Mantenha-a segura.</li>
+                <li>Certifique-se de compartilhar o calendário com o email da Service Account.</li>
+                <li>A permissão mínima necessária é "Ver todos os detalhes do evento".</li>
+                <li>O sistema verificará automaticamente a disponibilidade antes de cada agendamento.</li>
+              </ul>
             </div>
           </div>
         )}
