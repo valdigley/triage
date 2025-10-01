@@ -302,17 +302,19 @@ export function useGalleries() {
         if (galleryData.appointment?.client) {
           console.log('📱 Agendando notificação de seleção para:', galleryData.appointment.client.name);
           
-          // Verificar se já existe notificação pendente para evitar duplicatas
+          // Verificar se já existe notificação (pendente OU enviada recentemente)
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
           const { data: existingNotification } = await supabase
             .from('notification_queue')
-            .select('id')
+            .select('id, status, sent_at')
             .eq('appointment_id', galleryData.appointment.id)
             .eq('template_type', 'selection_received')
-            .eq('status', 'pending')
+            .or(`status.eq.pending,and(status.eq.sent,sent_at.gte.${fiveMinutesAgo})`)
             .maybeSingle();
 
           if (existingNotification) {
-            console.log('⚠️ Notificação já existe na fila, pulando duplicata');
+            console.log('⚠️ Notificação já existe (pendente ou enviada recentemente), pulando duplicata');
             return true;
           }
 
@@ -396,12 +398,7 @@ export function useGalleries() {
 
           if (notificationSuccess) {
             console.log('✅ Notificação agendada com sucesso');
-            
-            // Processar fila após delay para evitar múltiplas execuções
-            setTimeout(async () => {
-              console.log('🔄 Processando fila de notificações...');
-              await processNotificationQueue();
-            }, 5000); // Aumentado para 5 segundos
+            // NÃO processar a fila aqui - será processada pelo ClientGallery
           } else {
             console.error('❌ Falha ao agendar notificação');
           }

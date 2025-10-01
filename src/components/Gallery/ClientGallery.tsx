@@ -404,11 +404,27 @@ export function ClientGallery() {
           alert('✅ Seleção enviada com sucesso!\n\nSua seleção foi salva e o estúdio foi notificado.\n\nVocê receberá as fotos editadas conforme combinado.\n\n💡 Dica: Você receberá uma confirmação por WhatsApp em alguns minutos.');
         }
 
-        // Reprocessar notificações apenas uma vez após delay maior
+        // Aguardar upload mínimo de fotos antes de enviar link da galeria
+        const minimumPhotosToSend = gallery.appointment?.minimum_photos || 5;
+
         setTimeout(async () => {
-          console.log('🔄 Reprocessando notificações pendentes (única vez)...');
-          await reprocessPendingNotifications();
-        }, 8000); // Aumentado para 8 segundos
+          console.log('🔄 Verificando fotos carregadas antes de enviar notificações...');
+
+          // Verificar quantas fotos estão carregadas na galeria
+          const { data: currentPhotos } = await (await import('../../lib/supabase')).supabase
+            .from('photos_triage')
+            .select('id')
+            .eq('gallery_id', gallery.id);
+
+          const uploadedCount = currentPhotos?.length || 0;
+
+          if (uploadedCount >= minimumPhotosToSend) {
+            console.log(`✅ ${uploadedCount} fotos carregadas (mínimo: ${minimumPhotosToSend}), processando notificações...`);
+            await reprocessPendingNotifications();
+          } else {
+            console.log(`⏳ Apenas ${uploadedCount}/${minimumPhotosToSend} fotos carregadas, aguardando mais uploads...`);
+          }
+        }, 10000); // Delay de 10 segundos para dar tempo do upload
       } else {
         console.warn('⚠️ Falha na submissão, mas seleção pode ter sido salva');
         alert('✅ Sua seleção foi salva!\n\nO sistema de notificação pode estar temporariamente indisponível, mas sua seleção foi registrada com sucesso.\n\nEntre em contato com o estúdio para confirmar.');
