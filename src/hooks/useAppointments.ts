@@ -35,6 +35,61 @@ export function useAppointments() {
     }
   };
 
+  const checkGoogleCalendarAvailability = async (
+    startDateTime: string,
+    endDateTime: string
+  ): Promise<{ available: boolean; message: string; conflictingEvents?: any[] }> => {
+    try {
+      console.log('🔍 Verificando disponibilidade no Google Calendar...');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-calendar-availability`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            startDateTime,
+            endDateTime,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error('❌ Erro ao verificar disponibilidade:', response.status);
+        return {
+          available: true, // Fallback: permitir em caso de erro
+          message: 'Não foi possível verificar o calendário Google. Prosseguindo...',
+        };
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log(result.available ? '✅ Horário disponível' : '⚠️ Horário ocupado');
+        return {
+          available: result.available,
+          message: result.message,
+          conflictingEvents: result.conflictingEvents,
+        };
+      }
+
+      // Se não teve sucesso mas retornou available=true (fallback)
+      return {
+        available: result.available ?? true,
+        message: result.error || 'Erro ao verificar disponibilidade',
+      };
+    } catch (error) {
+      console.error('❌ Erro ao chamar API de disponibilidade:', error);
+      return {
+        available: true, // Fallback: permitir em caso de erro
+        message: 'Erro ao verificar calendário. Prosseguindo com agendamento.',
+      };
+    }
+  };
+
   const createAppointment = async (formData: BookingFormData, totalAmount: number) => {
     try {
       // First, create or get client
@@ -221,6 +276,7 @@ export function useAppointments() {
     error,
     createAppointment,
     checkAvailability,
+    checkGoogleCalendarAvailability,
     updateAppointmentStatus,
     deleteAppointment,
     refetch: fetchAppointments

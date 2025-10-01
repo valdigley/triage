@@ -64,7 +64,7 @@ function generateAvailableTimeSlots(
 export function BookingForm() {
   const { settings } = useSettings();
   const { getActiveSessionTypes } = useSessionTypes();
-  const { appointments, checkAvailability, createAppointment } = useAppointments();
+  const { appointments, checkAvailability, createAppointment, checkGoogleCalendarAvailability } = useAppointments();
   const { getActiveSettings } = useMercadoPago();
   const { sendPaymentConfirmation } = useWhatsApp();
   const [currentStep, setCurrentStep] = useState(1);
@@ -178,20 +178,42 @@ export function BookingForm() {
       return;
     }
 
-    // Get device ID for MercadoPago security
-    let deviceId = '';
-    try {
-      // @ts-ignore - MercadoPago global variable
-      if (window.MP_DEVICE_SESSION_ID) {
-        // @ts-ignore
-        deviceId = window.MP_DEVICE_SESSION_ID;
-      }
-    } catch (error) {
-      console.log('Device ID not available:', error);
-    }
-
     setIsSubmitting(true);
     try {
+      // Verificar disponibilidade no Google Calendar ANTES de processar pagamento
+      const selectedDate = new Date(formData.date + 'T' + formData.time);
+      const endDate = new Date(selectedDate.getTime() + 2 * 60 * 60 * 1000); // +2 horas
+
+      console.log('🔍 Verificando disponibilidade no Google Calendar...');
+      const availability = await checkGoogleCalendarAvailability(
+        selectedDate.toISOString(),
+        endDate.toISOString()
+      );
+
+      if (!availability.available) {
+        alert(
+          `❌ ${availability.message}\n\n` +
+          `Este horário já está ocupado no calendário Google. ` +
+          `Por favor, escolha outro horário.`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('✅ Horário disponível no Google Calendar');
+
+      // Get device ID for MercadoPago security
+      let deviceId = '';
+      try {
+        // @ts-ignore - MercadoPago global variable
+        if (window.MP_DEVICE_SESSION_ID) {
+          // @ts-ignore
+          deviceId = window.MP_DEVICE_SESSION_ID;
+        }
+      } catch (error) {
+        console.log('Device ID not available:', error);
+      }
+
       const selectedSessionType = activeSessionTypes.find(st => st.name === formData.sessionType);
       
       console.log('Enviando dados para create-payment:', {
