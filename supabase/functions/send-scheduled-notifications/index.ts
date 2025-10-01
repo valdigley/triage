@@ -19,6 +19,102 @@ function isValidPhoneNumber(phone: string): boolean {
   return cleanPhone.length >= 12 && cleanPhone.length <= 13;
 }
 
+async function processTemplate(
+  supabase: any,
+  templateType: string,
+  appointmentId: string
+): Promise<string | null> {
+  try {
+    // Get template
+    const { data: template } = await supabase
+      .from('notification_templates')
+      .select('message_template')
+      .eq('type', templateType)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!template) {
+      console.error('❌ Template não encontrado:', templateType);
+      return null;
+    }
+
+    // Get appointment details
+    const { data: appointment } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        client:clients(*)
+      `)
+      .eq('id', appointmentId)
+      .maybeSingle();
+
+    if (!appointment) {
+      console.error('❌ Appointment não encontrado:', appointmentId);
+      return null;
+    }
+
+    // Get settings
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    // Get session type
+    const { data: sessionType } = await supabase
+      .from('session_types')
+      .select('*')
+      .eq('name', appointment.session_type)
+      .maybeSingle();
+
+    const appointmentDate = new Date(appointment.scheduled_date);
+    const clientName = appointment.client?.name || 'Cliente';
+
+    const formatCurrency = (amount: number): string => {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      }).format(amount);
+    };
+
+    // Variables for template
+    const variables: Record<string, string> = {
+      client_name: clientName,
+      amount: formatCurrency(appointment.total_amount),
+      session_type: sessionType?.label || appointment.session_type,
+      appointment_date: appointmentDate.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'America/Sao_Paulo'
+      }),
+      appointment_time: appointmentDate.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo'
+      }),
+      studio_address: settings?.studio_address || '',
+      studio_maps_url: settings?.studio_maps_url || '',
+      delivery_days: (settings?.delivery_days || 7).toString(),
+      price_per_photo: formatCurrency(settings?.price_commercial_hour || 30),
+      minimum_photos: (appointment.minimum_photos || 5).toString(),
+      gallery_link: ''
+    };
+
+    // Replace variables in template
+    let message = template.message_template;
+    Object.entries(variables).forEach(([key, value]) => {
+      message = message.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    });
+
+    return message;
+  } catch (error) {
+    console.error('❌ Erro ao processar template:', error);
+    return null;
+  }
+}
+
 async function sendWhatsAppMessage(
   instanceName: string,
   apiUrl: string,
@@ -30,20 +126,20 @@ async function sendWhatsAppMessage(
     console.log('📞 Preparando envio WhatsApp...');
     console.log('🏷️ Instância:', instanceName);
     console.log('🌐 API URL:', apiUrl);
-    
+
     // Validar entrada
     if (!instanceName || !apiUrl || !apiKey || !phone || !message) {
       console.error('❌ Parâmetros obrigatórios faltando');
       return false;
     }
-    
+
     // Limpar e validar telefone
     const cleanPhone = cleanPhoneNumber(phone);
     if (!isValidPhoneNumber(phone)) {
       console.error('❌ Número de telefone inválido:', phone, '→', cleanPhone);
       return false;
     }
-    
+
     console.log('📱 Telefone limpo:', cleanPhone);
     console.log('📝 Tamanho da mensagem:', message.length, 'caracteres');
 
@@ -65,7 +161,7 @@ async function sendWhatsAppMessage(
     });
 
     console.log('📡 Status da resposta:', response.status);
-    
+
     if (response.ok) {
       const responseData = await response.json();
       console.log('✅ Resposta da API:', responseData);
@@ -226,9 +322,27 @@ Deno.serve(async (req: Request) => {
             status: 'processing'
           })
           .eq('id', notification.id);
-        
+
+        // Processar template dinamicamente (busca template atualizado do banco)
+        let messageToSend = notification.message;
+        if (notification.template_type && notification.appointment_id) {
+          console.log('🔄 Processando template dinâmico:', notification.template_type);
+          const dynamicMessage = await processTemplate(
+            supabase,
+            notification.template_type,
+            notification.appointment_id
+          );
+
+          if (dynamicMessage) {
+            messageToSend = dynamicMessage;
+            console.log('✅ Template atualizado aplicado');
+          } else {
+            console.log('⚠️ Usando mensagem original (fallback)');
+          }
+        }
+
         // Validar dados da notificação
-        if (!notification.recipient_phone || !notification.message) {
+        if (!notification.recipient_phone || !messageToSend) {
           console.error('❌ Dados da notificação inválidos');
           failed++;
           await supabase
@@ -240,13 +354,13 @@ Deno.serve(async (req: Request) => {
             .eq('id', notification.id);
           continue;
         }
-        
+
         const success = await sendWhatsAppMessage(
           activeInstance.instance_name,
           evolution_api_url,
           evolution_api_key,
           notification.recipient_phone,
-          notification.message
+          messageToSend
         );
 
         const processingTime = Date.now() - startTime;
