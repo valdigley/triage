@@ -164,9 +164,10 @@ export function useWhatsApp() {
   };
 
   const sendGalleryLink = async (clientName: string, clientPhone: string, galleryToken: string, expirationDate: string): Promise<boolean> => {
-    const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-    const galleryUrl = `${appUrl}/gallery/${galleryToken}`;
-    
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    // Use the edge function URL for WhatsApp preview - it returns HTML with meta tags
+    const galleryUrl = `${supabaseUrl}/functions/v1/gallery-og-image?token=${galleryToken}`;
+
     const message = `📸 *Suas Fotos Estão Prontas!*\n\n` +
                    `Olá ${clientName}!\n\n` +
                    `Suas fotos da sessão fotográfica estão prontas para visualização e seleção! 🎉\n\n` +

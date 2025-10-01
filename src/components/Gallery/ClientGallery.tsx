@@ -48,7 +48,7 @@ export function ClientGallery() {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gallery-og-image?token=${token}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gallery-og-image?token=${token}&format=json`,
         {
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
