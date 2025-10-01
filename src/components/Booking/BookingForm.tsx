@@ -9,15 +9,22 @@ import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { calculatePrice, isDateTimeAvailable, formatCurrency } from '../../utils/pricing';
 import { SessionDetailsForm } from './SessionDetailsForm';
 import { supabase } from '../../lib/supabase';
+import { toSaoPauloISO, addHoursInSaoPaulo, formatSaoPauloDateTime } from '../../utils/timezone';
 
-// Função para gerar horários disponíveis
+// Função para gerar horários disponíveis (usando timezone de São Paulo)
 function generateAvailableTimeSlots(
   date: string,
   existingAppointments: Array<{ scheduled_date: string }>,
   commercialHours: any
 ): string[] {
-  const selectedDate = new Date(date);
-  const dayOfWeek = selectedDate.getDay();
+  const selectedDate = new Date(date + 'T00:00:00');
+
+  const dayOfWeekSP = parseInt(selectedDate.toLocaleString('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'numeric'
+  }));
+  const dayOfWeek = dayOfWeekSP === 7 ? 0 : dayOfWeekSP;
+
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayName = dayNames[dayOfWeek];
   const daySchedule = commercialHours[dayName];
@@ -30,29 +37,29 @@ function generateAvailableTimeSlots(
   const [startHour, startMinute] = daySchedule.start.split(':').map(Number);
   const [endHour, endMinute] = daySchedule.end.split(':').map(Number);
 
-  // Gerar slots de 1 em 1 hora (1h sessão + 1h intervalo = 2h entre cada slot)
+  const year = selectedDate.getFullYear();
+  const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
+  const day = selectedDate.getDate().toString().padStart(2, '0');
+
   for (let hour = startHour; hour <= endHour - 1; hour += 2) {
-    const slotTime = `${hour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
-    
-    // Verificar se o horário não ultrapassa o fim do expediente
     if (hour < endHour || (hour === endHour && startMinute <= endMinute)) {
-      const slotDateTime = new Date(selectedDate);
-      slotDateTime.setHours(hour, startMinute, 0, 0);
-      
-      // Verificar se não há conflito com agendamentos existentes
+      const hourStr = hour.toString().padStart(2, '0');
+      const minuteStr = startMinute.toString().padStart(2, '0');
+
+      const isoDateTime = `${year}-${month}-${day}T${hourStr}:${minuteStr}`;
+      const slotDateTime = new Date(isoDateTime);
+
       const hasConflict = existingAppointments.some(apt => {
         const existingDate = new Date(apt.scheduled_date);
         const timeDiff = Math.abs(slotDateTime.getTime() - existingDate.getTime());
-        const twoHours = 2 * 60 * 60 * 1000; // 2 horas em milliseconds
+        const twoHours = 2 * 60 * 60 * 1000;
         return timeDiff < twoHours;
       });
 
-      // Verificar se é no futuro
       const now = new Date();
       const isInFuture = slotDateTime > now;
 
       if (!hasConflict && isInFuture) {
-        const isoDateTime = slotDateTime.toISOString().slice(0, 16);
         availableSlots.push(isoDateTime);
       }
     }
@@ -142,14 +149,16 @@ export function BookingForm() {
             settings.price_commercial_hour,
             settings.price_after_hours
           );
-          
+
           slots.push({
             date: slotDate.toLocaleDateString('pt-BR', {
+              timeZone: 'America/Sao_Paulo',
               weekday: 'short',
               day: '2-digit',
               month: '2-digit'
             }),
             time: slotDate.toLocaleTimeString('pt-BR', {
+              timeZone: 'America/Sao_Paulo',
               hour: '2-digit',
               minute: '2-digit'
             }),
@@ -182,10 +191,10 @@ export function BookingForm() {
     try {
       // Verificar disponibilidade no Google Calendar ANTES de processar pagamento
       const selectedDate = new Date(formData.scheduledDate);
-      const endDate = new Date(selectedDate.getTime() + 2 * 60 * 60 * 1000); // +2 horas
+      const endDate = addHoursInSaoPaulo(selectedDate, 2);
 
       console.log('🔍 Verificando disponibilidade no Google Calendar...');
-      console.log('📅 Data selecionada:', formData.scheduledDate);
+      console.log('📅 Data selecionada (São Paulo):', formData.scheduledDate);
       console.log('📅 selectedDate:', selectedDate);
       console.log('📅 endDate:', endDate);
 
@@ -290,7 +299,7 @@ export function BookingForm() {
             try {
               console.log('📅 Pagamento confirmado! Criando evento no Google Calendar...');
               const startDate = new Date(formData.scheduledDate);
-              const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+              const endDate = addHoursInSaoPaulo(startDate, 2);
 
               const sessionTypeLabels: Record<string, string> = {
                 'aniversario': 'Sessão de Aniversário',
@@ -517,7 +526,7 @@ export function BookingForm() {
                     Cliente: {formData.clientName}
                   </p>
                   <p className="text-sm sm:text-base text-gray-600">
-                    Data: {new Date(formData.scheduledDate).toLocaleString('pt-BR')}
+                    Data: {formatSaoPauloDateTime(formData.scheduledDate)}
                   </p>
                 </div>
 
@@ -825,7 +834,7 @@ export function BookingForm() {
                     <div>
                       <span className="text-gray-600 dark:text-gray-400">Data:</span>
                       <span className="ml-2 font-medium">
-                        {new Date(formData.scheduledDate).toLocaleString('pt-BR')}
+                        {formatSaoPauloDateTime(formData.scheduledDate)}
                       </span>
                     </div>
                     <div>
