@@ -146,7 +146,8 @@ export function useAppointments() {
       const { data: settings } = await supabase
         .from('settings')
         .select('commercial_hours')
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (!settings) return false;
 
