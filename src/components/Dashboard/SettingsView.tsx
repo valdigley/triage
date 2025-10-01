@@ -989,7 +989,8 @@ export function SettingsView() {
                       rows={6}
                     />
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Cole a private key completa incluindo as linhas BEGIN e END
+                      <strong>Importante:</strong> Cole exatamente como está no JSON, com todas as quebras de linha.<br/>
+                      Aceita tanto o formato com <code className="bg-gray-200 dark:bg-gray-600 px-1 rounded">\n</code> quanto com quebras de linha reais.
                       {googleCalendarSettings && !googleCalendarForm.private_key && (
                         <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
                           Deixe em branco para manter a chave atual
@@ -1006,12 +1007,25 @@ export function SettingsView() {
                     setSaving(true);
                     setTestResult(null);
                     try {
+                      // Normalizar a private key (substituir \n literais por quebras de linha reais)
+                      let normalizedPrivateKey = googleCalendarForm.private_key.trim();
+
+                      // Se a key não tem quebras de linha mas tem \n literal, converter
+                      if (!normalizedPrivateKey.includes('\n') && normalizedPrivateKey.includes('\\n')) {
+                        normalizedPrivateKey = normalizedPrivateKey.replace(/\\n/g, '\n');
+                      }
+
+                      // Garantir que termina com \n
+                      if (!normalizedPrivateKey.endsWith('\n')) {
+                        normalizedPrivateKey += '\n';
+                      }
+
                       // Construir o JSON da Service Account
                       const serviceAccountJson = {
                         type: "service_account",
                         project_id: googleCalendarForm.project_id,
                         private_key_id: googleCalendarForm.private_key_id,
-                        private_key: googleCalendarForm.private_key,
+                        private_key: normalizedPrivateKey,
                         client_email: googleCalendarForm.client_email,
                         client_id: googleCalendarForm.client_id,
                         auth_uri: googleCalendarForm.auth_uri,
