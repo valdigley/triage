@@ -78,14 +78,44 @@ export function useGoogleCalendar() {
         // Validate required fields
         console.log('🔍 Validando campos obrigatórios...');
         if (!keyObject.private_key || !keyObject.client_email) {
-          console.error('❌ Campos obrigatórios faltando');
+          console.error('❌ Campos obrigatórios faltando:', {
+            has_private_key: !!keyObject.private_key,
+            has_client_email: !!keyObject.client_email,
+            available_keys: Object.keys(keyObject)
+          });
           setError('JSON incompleto. Certifique-se de que contém "private_key" e "client_email".');
           return false;
         }
         console.log('✅ Campos obrigatórios presentes');
 
+        // Normalizar a private key
+        let normalizedPrivateKey = keyObject.private_key.trim();
+        console.log('🔧 Normalizando private key...');
+
+        // Substituir \\n literal por quebras de linha reais
+        if (!normalizedPrivateKey.includes('\n') && normalizedPrivateKey.includes('\\n')) {
+          normalizedPrivateKey = normalizedPrivateKey.replace(/\\n/g, '\n');
+          console.log('✅ Convertido \\\\n para \\n');
+        }
+
+        // Garantir que termina com \n
+        if (!normalizedPrivateKey.endsWith('\n')) {
+          normalizedPrivateKey += '\n';
+        }
+
+        // Criar objeto otimizado com apenas campos necessários
+        const optimizedKey = {
+          type: "service_account",
+          private_key: normalizedPrivateKey,
+          client_email: keyObject.client_email,
+          token_uri: "https://oauth2.googleapis.com/token",
+          universe_domain: "googleapis.com"
+        };
+
         updateData.service_account_email = keyObject.client_email;
-        updateData.service_account_key = keyObject;
+        updateData.service_account_key = optimizedKey;
+
+        console.log('✅ JSON processado e otimizado');
       }
 
       // Se já existe configuração, atualizar. Senão, inserir

@@ -922,53 +922,24 @@ export function SettingsView() {
                     setSaving(true);
                     setTestResult(null);
                     try {
-                      let jsonString = '';
-
-                      // Se tem JSON, fazer o parse e validar
+                      // Validar JSON antes de enviar (apenas estrutura básica)
                       if (googleCalendarForm.service_account_json) {
                         try {
-                          const parsed = JSON.parse(googleCalendarForm.service_account_json);
-
-                          // Validar campos obrigatórios
-                          if (!parsed.client_email || !parsed.private_key) {
-                            setTestResult({
-                              success: false,
-                              message: 'JSON inválido: faltam campos client_email ou private_key'
-                            });
-                            return;
-                          }
-
-                          // Normalizar a private key
-                          let normalizedPrivateKey = parsed.private_key.trim();
-                          if (!normalizedPrivateKey.includes('\n') && normalizedPrivateKey.includes('\\n')) {
-                            normalizedPrivateKey = normalizedPrivateKey.replace(/\\n/g, '\n');
-                          }
-                          if (!normalizedPrivateKey.endsWith('\n')) {
-                            normalizedPrivateKey += '\n';
-                          }
-
-                          // Construir JSON otimizado
-                          const serviceAccountJson = {
-                            type: "service_account",
-                            private_key: normalizedPrivateKey,
-                            client_email: parsed.client_email,
-                            token_uri: "https://oauth2.googleapis.com/token",
-                            universe_domain: "googleapis.com"
-                          };
-
-                          jsonString = JSON.stringify(serviceAccountJson);
+                          JSON.parse(googleCalendarForm.service_account_json);
                         } catch (error) {
                           setTestResult({
                             success: false,
                             message: 'JSON inválido. Verifique o formato e tente novamente.'
                           });
+                          setSaving(false);
                           return;
                         }
                       }
 
+                      // Enviar JSON original para o backend processar
                       const success = await saveGoogleCalendarSettings(
                         googleCalendarForm.calendar_id,
-                        jsonString || undefined
+                        googleCalendarForm.service_account_json || undefined
                       );
 
                       if (success) {
