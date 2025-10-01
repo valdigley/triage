@@ -190,7 +190,7 @@ export function GalleriesView() {
 
   const copyGalleryLink = (token: string) => {
     const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-    const link = `${appUrl}/gallery/${token}`;
+    const link = `${appUrl}/g/${token}`;
     navigator.clipboard.writeText(link);
     alert('Link copiado para a área de transferência!');
   };
