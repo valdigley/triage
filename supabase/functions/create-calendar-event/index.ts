@@ -180,11 +180,9 @@ Deno.serve(async (req: Request) => {
         dateTime: endDateTime,
         timeZone: "America/Sao_Paulo",
       },
-      attendees: attendees?.map(email => ({ email })) || [],
       reminders: {
         useDefault: false,
         overrides: [
-          { method: "email", minutes: 24 * 60 }, // 1 dia antes
           { method: "popup", minutes: 60 }, // 1 hora antes
         ],
       },
