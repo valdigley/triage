@@ -257,6 +257,79 @@ export function useNotifications() {
       return false;
     }
   };
+
+  // Função para agendar notificações de galeria (gallery_ready + selection_reminder)
+  const scheduleGalleryNotifications = async (
+    appointmentId: string,
+    galleryLink: string
+  ): Promise<boolean> => {
+    try {
+      console.log('📸 Agendando notificações de galeria para appointment:', appointmentId);
+
+      // Buscar dados do appointment
+      const { data: appointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .select(`
+          *,
+          client:clients(*)
+        `)
+        .eq('id', appointmentId)
+        .single();
+
+      if (appointmentError || !appointment) {
+        console.error('❌ Appointment não encontrado:', appointmentError);
+        return false;
+      }
+
+      // Buscar configurações
+      const { data: settings } = await supabase
+        .from('settings')
+        .select('delivery_days')
+        .single();
+
+      const clientName = appointment.client?.name || 'Cliente';
+      const clientPhone = appointment.client?.phone || '';
+
+      const variables = {
+        client_name: clientName,
+        gallery_link: galleryLink,
+        delivery_days: (settings?.delivery_days || 7).toString()
+      };
+
+      // Agendar notificação imediata de galeria pronta
+      const galleryReadySuccess = await scheduleNotificationSafe(
+        appointmentId,
+        'gallery_ready',
+        clientPhone,
+        clientName,
+        new Date().toISOString(),
+        variables
+      );
+
+      // Agendar lembrete de seleção (6 dias depois = 1 dia antes do prazo de 7 dias)
+      const selectionReminderDate = new Date();
+      selectionReminderDate.setDate(selectionReminderDate.getDate() + 6);
+
+      const selectionReminderSuccess = await scheduleNotificationSafe(
+        appointmentId,
+        'selection_reminder',
+        clientPhone,
+        clientName,
+        selectionReminderDate.toISOString(),
+        variables
+      );
+
+      console.log(
+        `✅ Notificações de galeria: gallery_ready=${galleryReadySuccess}, selection_reminder=${selectionReminderSuccess}`
+      );
+
+      return galleryReadySuccess && selectionReminderSuccess;
+    } catch (error) {
+      console.error('❌ Erro ao agendar notificações de galeria:', error);
+      return false;
+    }
+  };
+
   // Função para processar fila manualmente (fallback)
   const processNotificationQueue = async (): Promise<boolean> => {
     try {
@@ -305,6 +378,7 @@ export function useNotifications() {
     updateTemplate,
     scheduleNotificationSafe,
     scheduleAllAppointmentNotifications,
+    scheduleGalleryNotifications,
     processNotificationQueue,
     refetch: fetchTemplates
   };

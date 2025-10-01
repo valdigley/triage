@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Upload, X, Image, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
+import { useNotifications } from '../../hooks/useNotifications';
 
 // Função para redimensionar imagem
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<Blob> => {
@@ -61,6 +62,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
   const [isUploading, setIsUploading] = useState(false);
   const [deletingPhotos, setDeletingPhotos] = useState<Set<string>>(new Set());
   const { sendGalleryLink } = useWhatsApp();
+  const { scheduleGalleryNotifications } = useNotifications();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -300,10 +302,11 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
       if (totalPhotos >= minimumPhotos && gallery?.appointment?.client) {
         try {
           console.log(`Agendando notificação da galeria: ${totalPhotos} fotos >= ${minimumPhotos} mínimas`);
-          
-          // Schedule gallery ready notification
-          await scheduleGalleryNotification(gallery);
-          
+
+          // Schedule gallery ready notification usando função centralizada
+          const galleryLink = `${window.location.origin}/gallery/${gallery.gallery_token}`;
+          await scheduleGalleryNotifications(gallery.appointment.id, galleryLink);
+
           console.log('Notificação da galeria agendada automaticamente');
         } catch (error) {
           console.error('Erro ao agendar notificação da galeria:', error);
@@ -315,126 +318,6 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
 
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  const scheduleGalleryNotification = async (gallery: any) => {
-    try {
-      // Get settings
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
-        .limit(1)
-        .maybeSingle();
-
-      if (!settings) {
-        throw new Error('Settings not found');
-      }
-
-      // Get session type details
-      const { data: sessionType } = await supabase
-        .from('session_types')
-        .select('*')
-        .eq('name', gallery.appointment.session_type)
-        .single();
-
-      const clientName = gallery.appointment.client?.name || 'Cliente';
-      const clientPhone = gallery.appointment.client?.phone || '';
-      const galleryLink = `${window.location.origin}/gallery/${gallery.gallery_token}`;
-
-      // Format currency
-      const formatCurrency = (amount: number): string => {
-        return new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL'
-        }).format(amount);
-      };
-
-      const appointmentDate = new Date(gallery.appointment.scheduled_date);
-
-      const variables = {
-        client_name: clientName,
-        gallery_link: galleryLink,
-        delivery_days: (settings.delivery_days || 7).toString(),
-        amount: formatCurrency(gallery.appointment.total_amount),
-        session_type: sessionType?.label || gallery.appointment.session_type,
-        appointment_date: appointmentDate.toLocaleDateString('pt-BR', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
-        appointment_time: appointmentDate.toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        studio_address: settings.studio_address || '',
-        studio_maps_url: settings.studio_maps_url || '',
-        price_per_photo: formatCurrency(settings.price_commercial_hour || 30),
-        minimum_photos: (gallery.appointment.minimum_photos || 5).toString(),
-        studio_name: settings.studio_name || '',
-        studio_phone: settings.studio_phone || ''
-      };
-
-      // Get gallery ready template
-      const { data: template } = await supabase
-        .from('notification_templates')
-        .select('message_template')
-        .eq('type', 'gallery_ready')
-        .eq('is_active', true)
-        .single();
-
-      if (template) {
-        // Process template with variables
-        let message = template.message_template;
-        Object.entries(variables).forEach(([key, value]) => {
-          message = message.replace(new RegExp(`{{${key}}}`, 'g'), value);
-        });
-
-        // Schedule gallery ready notification (immediate)
-        await supabase
-          .from('notification_queue')
-          .insert({
-            appointment_id: gallery.appointment.id,
-            template_type: 'gallery_ready',
-            recipient_phone: clientPhone,
-            recipient_name: clientName,
-            message,
-            scheduled_for: new Date().toISOString()
-          });
-
-        // Schedule selection reminder (6 days after gallery creation)
-        const selectionReminder = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000);
-        const reminderTemplate = await supabase
-          .from('notification_templates')
-          .select('message_template')
-          .eq('type', 'selection_reminder')
-          .eq('is_active', true)
-          .single();
-
-        if (reminderTemplate.data) {
-          let reminderMessage = reminderTemplate.data.message_template;
-          Object.entries(variables).forEach(([key, value]) => {
-            reminderMessage = reminderMessage.replace(new RegExp(`{{${key}}}`, 'g'), value);
-          });
-
-          await supabase
-            .from('notification_queue')
-            .insert({
-              appointment_id: gallery.appointment.id,
-              template_type: 'selection_reminder',
-              recipient_phone: clientPhone,
-              recipient_name: clientName,
-              message: reminderMessage,
-              scheduled_for: selectionReminder.toISOString()
-            });
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error scheduling gallery notifications:', error);
-      return false;
     }
   };
 
