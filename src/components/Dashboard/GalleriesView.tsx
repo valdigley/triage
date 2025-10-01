@@ -5,6 +5,7 @@ import { formatCurrency } from '../../utils/pricing';
 import { useGalleries } from '../../hooks/useGalleries';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useClients } from '../../hooks/useClients';
+import { useSettings } from '../../hooks/useSettings';
 import { PhotoUpload } from '../Gallery/PhotoUpload';
 import { Gallery, Photo } from '../../types';
 
@@ -12,6 +13,7 @@ export function GalleriesView() {
   const { galleries, loading, updateGalleryStatus, createGallery, deleteGallery } = useGalleries();
   const { sendGalleryLink } = useWhatsApp();
   const { clients } = useClients();
+  const { settings } = useSettings();
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
@@ -26,12 +28,22 @@ export function GalleriesView() {
     client_phone: '',
     client_email: '',
     password: '',
-    expiration_days: 30,
+    expiration_days: settings?.link_validity_days || 30,
     session_type: 'tematico' as 'aniversario' | 'gestante' | 'formatura' | 'comercial' | 'pre_wedding' | 'tematico'
   });
   const [creating, setCreating] = useState(false);
   const [createStep, setCreateStep] = useState(1); // 1: Select Client, 2: Gallery Details
   const [clientSearchTerm, setClientSearchTerm] = useState('');
+
+  // Update expiration_days when settings change
+  useEffect(() => {
+    if (settings?.link_validity_days && newGallery.expiration_days === 30) {
+      setNewGallery(prev => ({
+        ...prev,
+        expiration_days: settings.link_validity_days
+      }));
+    }
+  }, [settings]);
 
   const fetchPhotos = async (galleryId: string) => {
     try {
@@ -194,6 +206,9 @@ export function GalleriesView() {
       // Use selected client
       const clientId = newGallery.selected_client_id;
 
+      // Get minimum_photos from settings
+      const minimumPhotos = settings?.minimum_photos || 5;
+
       // Create manual appointment with selected session type
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
@@ -203,7 +218,7 @@ export function GalleriesView() {
           session_details: { theme: 'Galeria Manual' },
           scheduled_date: new Date().toISOString(),
           total_amount: 0,
-          minimum_photos: 5,
+          minimum_photos: minimumPhotos,
           status: 'confirmed',
           payment_status: 'approved',
           terms_accepted: true
@@ -241,7 +256,7 @@ export function GalleriesView() {
         client_phone: '',
         client_email: '',
         password: '',
-        expiration_days: 30,
+        expiration_days: settings?.link_validity_days || 30,
         session_type: 'tematico'
       });
       
@@ -280,7 +295,7 @@ export function GalleriesView() {
       client_phone: '',
       client_email: '',
       password: '',
-      expiration_days: 30,
+      expiration_days: settings?.link_validity_days || 30,
       session_type: 'tematico'
     });
   };

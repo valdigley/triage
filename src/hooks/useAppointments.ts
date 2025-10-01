@@ -133,20 +133,28 @@ export function useAppointments() {
 
   const createAppointment = async (formData: BookingFormData, totalAmount: number) => {
     try {
+      // Get settings for minimum_photos
+      const { data: settings } = await supabase
+        .from('settings')
+        .select('minimum_photos')
+        .single();
+
+      const minimumPhotos = settings?.minimum_photos || 5;
+
       // First, create or get client
       let existingClient = null;
-      
+
       try {
         const { data, error } = await supabase
           .from('clients')
           .select('*')
           .eq('phone', formData.clientPhone)
           .single();
-        
+
         if (error && error.code !== 'PGRST116') {
           throw error;
         }
-        
+
         existingClient = data;
       } catch (error: any) {
         if (error.code !== 'PGRST116') {
@@ -193,7 +201,7 @@ export function useAppointments() {
           session_details: formData.sessionDetails,
           scheduled_date: formData.scheduledDate,
           total_amount: totalAmount,
-          minimum_photos: 5, // Default minimum photos
+          minimum_photos: minimumPhotos,
           terms_accepted: formData.termsAccepted
         }])
         .select()

@@ -156,7 +156,13 @@ export function useGalleries() {
     try {
       const { data: gallery, error: galleryError } = await supabase
         .from('galleries_triage')
-        .select('*')
+        .select(`
+          *,
+          appointment:appointments(
+            *,
+            client:clients(*)
+          )
+        `)
         .eq('gallery_token', token)
         .maybeSingle();
 
