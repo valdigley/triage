@@ -259,30 +259,8 @@ export function useGalleries() {
 
       if (galleryError) throw galleryError;
 
-      console.log('📋 Dados da galeria obtidos:', galleryData.name);
-      
-      // Verificar se o pagamento inicial foi aprovado
-      if (galleryData.appointment?.payment_status !== 'approved') {
-        console.log('⚠️ Pagamento inicial não aprovado, não enviando notificação');
-        
-        // Salvar seleção sem notificação
-        const { error } = await supabase
-          .from('galleries_triage')
-          .update({
-            photos_selected: photoIds,
-            selection_completed: true,
-            selection_submitted_at: new Date().toISOString(),
-            status: 'completed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', galleryId);
-
-        if (error) throw error;
-        await fetchGalleries();
-        return true;
-      }
-
-      const { error } = await supabase
+      // Salvar seleção primeiro
+      const { error: updateError } = await supabase
         .from('galleries_triage')
         .update({
           photos_selected: photoIds,
@@ -293,148 +271,93 @@ export function useGalleries() {
         })
         .eq('id', galleryId);
 
-      if (error) throw error;
-
-      console.log('✅ Seleção salva no banco de dados');
+      if (updateError) throw updateError;
+      console.log('✅ Seleção salva');
       
-      // Agendar notificação de confirmação da seleção
-      try {
-        if (galleryData.appointment?.client) {
-          console.log('📱 Agendando notificação de seleção para:', galleryData.appointment.client.name);
-          
-          // Verificar se já existe notificação (pendente OU enviada recentemente)
-          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      // Agendar notificações apenas se pagamento aprovado
+      if (galleryData.appointment?.payment_status === 'approved' && galleryData.appointment?.client) {
+        const { data: settings } = await supabase
+          .from('settings')
+          .select('*')
+          .single();
 
-          const { data: existingNotification } = await supabase
-            .from('notification_queue')
-            .select('id, status, sent_at')
-            .eq('appointment_id', galleryData.appointment.id)
-            .eq('template_type', 'selection_received')
-            .or(`status.eq.pending,and(status.eq.sent,sent_at.gte.${fiveMinutesAgo})`)
-            .maybeSingle();
+        const { data: sessionType } = await supabase
+          .from('session_types')
+          .select('*')
+          .eq('name', galleryData.appointment.session_type)
+          .maybeSingle();
 
-          if (existingNotification) {
-            console.log('⚠️ Notificação já existe (pendente ou enviada recentemente), pulando duplicata');
-            return true;
-          }
+        const pricePerPhoto = settings?.price_commercial_hour || 30;
+        const minimumPhotos = galleryData.appointment.minimum_photos || 5;
+        const extraPhotos = Math.max(0, photoIds.length - minimumPhotos);
+        const extraCost = extraPhotos * pricePerPhoto;
+        const appointmentDate = new Date(galleryData.appointment.scheduled_date);
 
-          // Buscar configurações para preços
-          const { data: settings } = await supabase
-            .from('settings')
-            .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
-            .single();
+        const formatCurrency = (amount: number): string => {
+          return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+          }).format(amount);
+        };
 
-          if (!settings) {
-            console.warn('⚠️ Configurações não encontradas, usando valores padrão');
-          }
+        const variables = {
+          client_name: galleryData.appointment.client.name,
+          selected_count: photoIds.length.toString(),
+          minimum_photos: minimumPhotos.toString(),
+          extra_photos: extraPhotos.toString(),
+          extra_cost: formatCurrency(extraCost),
+          price_per_photo: formatCurrency(pricePerPhoto),
+          amount: formatCurrency(galleryData.appointment.total_amount),
+          session_type: sessionType?.label || galleryData.appointment.session_type,
+          appointment_date: appointmentDate.toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }),
+          appointment_time: appointmentDate.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          studio_address: settings?.studio_address || '',
+          studio_maps_url: settings?.studio_maps_url || '',
+          delivery_days: (settings?.delivery_days || 7).toString(),
+          studio_name: settings?.studio_name || '',
+          studio_phone: settings?.studio_phone || ''
+        };
 
-          // Buscar tipo de sessão
-          const { data: sessionType } = await supabase
-            .from('session_types')
-            .select('*')
-            .eq('name', galleryData.appointment.session_type)
-            .single();
+        // Confirmação de seleção
+        await scheduleNotificationSafe(
+          galleryData.appointment.id,
+          'selection_received',
+          galleryData.appointment.client.phone,
+          galleryData.appointment.client.name,
+          new Date().toISOString(),
+          variables
+        );
 
-          const pricePerPhoto = settings?.price_commercial_hour || 30;
-          const minimumPhotos = galleryData.appointment.minimum_photos || 5;
-          const extraPhotos = Math.max(0, photoIds.length - minimumPhotos);
-          const extraCost = extraPhotos * pricePerPhoto;
-          const appointmentDate = new Date(galleryData.appointment.scheduled_date);
-          
-          // Formatação de valores
-          const formatCurrency = (amount: number): string => {
-            return new Intl.NumberFormat('pt-BR', {
-              style: 'currency',
-              currency: 'BRL'
-            }).format(amount);
-          };
-          
-          const formattedExtraCost = formatCurrency(extraCost);
-          const formattedPricePerPhoto = formatCurrency(pricePerPhoto);
-          const formattedTotalAmount = formatCurrency(galleryData.appointment.total_amount);
-          
-          // Variáveis para o template
-          const variables = {
-            client_name: galleryData.appointment.client.name,
-            selected_count: photoIds.length.toString(),
-            minimum_photos: minimumPhotos.toString(),
-            extra_photos: extraPhotos.toString(),
-            extra_cost: formattedExtraCost,
-            price_per_photo: formattedPricePerPhoto,
-            amount: formattedTotalAmount,
-            session_type: sessionType?.label || galleryData.appointment.session_type,
-            appointment_date: appointmentDate.toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            }),
-            appointment_time: appointmentDate.toLocaleTimeString('pt-BR', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            studio_address: settings?.studio_address || '',
-            studio_maps_url: settings?.studio_maps_url || '',
-            delivery_days: (settings?.delivery_days || 7).toString(),
-            studio_name: settings?.studio_name || '',
-            studio_phone: settings?.studio_phone || ''
-          };
+        // Lembrete de entrega
+        const deliveryReminderDate = new Date();
+        deliveryReminderDate.setDate(deliveryReminderDate.getDate() + (settings?.delivery_days || 7) - 1);
 
-          console.log('📊 Variáveis do template preparadas:', {
-            selected_count: variables.selected_count,
-            extra_photos: variables.extra_photos,
-            extra_cost: variables.extra_cost
-          });
+        await scheduleNotificationSafe(
+          galleryData.appointment.id,
+          'delivery_reminder',
+          galleryData.appointment.client.phone,
+          galleryData.appointment.client.name,
+          deliveryReminderDate.toISOString(),
+          variables
+        );
 
-          // Agendar notificação imediata (única)
-          const notificationSuccess = await scheduleNotificationSafe(
-            galleryData.appointment.id,
-            'selection_received',
-            galleryData.appointment.client.phone,
-            galleryData.appointment.client.name,
-            new Date().toISOString(),
-            variables
-          );
-
-          if (notificationSuccess) {
-            console.log('✅ Notificação agendada com sucesso');
-            // NÃO processar a fila aqui - será processada pelo ClientGallery
-          } else {
-            console.error('❌ Falha ao agendar notificação');
-          }
-
-          // Agendar lembrete de entrega (delivery_days - 1)
-          const deliveryReminderDate = new Date();
-          deliveryReminderDate.setDate(deliveryReminderDate.getDate() + (settings?.delivery_days || 7) - 1);
-          
-          await scheduleNotificationSafe(
-            galleryData.appointment.id,
-            'delivery_reminder',
-            galleryData.appointment.client.phone,
-            galleryData.appointment.client.name,
-            deliveryReminderDate.toISOString(),
-            variables
-          );
-
-        } else {
-          console.warn('⚠️ Dados do cliente não encontrados para notificação');
-        }
-      } catch (notificationError) {
-        console.error('❌ Erro ao agendar notificações (não crítico):', notificationError);
+        console.log('✅ Notificações agendadas');
       }
 
       await fetchGalleries();
-      console.log('✅ Processo de submissão concluído com sucesso');
       return true;
     } catch (err) {
-      console.error('❌ Erro crítico ao submeter seleção:', err);
-      // Mesmo com erro, tentar atualizar a lista
-      try {
-        await fetchGalleries();
-      } catch (fetchError) {
-        console.error('❌ Erro ao atualizar lista de galerias:', fetchError);
-      }
-      return true; // Retorna true porque a seleção foi salva
+      console.error('❌ Erro ao submeter seleção:', err);
+      await fetchGalleries();
+      return true;
     }
   };
 
