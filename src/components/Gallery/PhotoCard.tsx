@@ -117,7 +117,7 @@ export function PhotoCard({
       >
         {/* Photo */}
         <img
-          src={photo.thumbnail || photo.url}
+          src={photo.url}
           alt={photo.filename}
           className="w-full h-auto object-contain transition-transform duration-200 sm:group-hover:scale-105 touch-manipulation"
           onError={(e) => {
