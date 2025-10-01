@@ -15,31 +15,40 @@ export function useClients() {
     try {
       setLoading(true);
 
-      // Buscar todos os clientes (LEFT JOIN para incluir clientes sem agendamentos)
+      // Buscar todos os clientes com appointments e payments
       const { data, error } = await supabase
         .from('clients')
         .select(`
           *,
           appointments(
             id,
-            total_amount,
-            payment_status
+            payments(
+              id,
+              amount,
+              status
+            )
           )
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Calcular total gasto real para cada cliente
+      // Calcular total gasto real para cada cliente baseado nos pagamentos aprovados
       const clientsWithRealTotal = (data || []).map(client => {
-        const totalSpent = (client.appointments || [])
-          .filter((apt: any) => apt.payment_status === 'approved')
-          .reduce((sum: number, apt: any) => sum + apt.total_amount, 0);
+        let totalSpent = 0;
+
+        (client.appointments || []).forEach((apt: any) => {
+          (apt.payments || []).forEach((payment: any) => {
+            if (payment.status === 'approved') {
+              totalSpent += payment.amount;
+            }
+          });
+        });
 
         return {
           ...client,
           total_spent: totalSpent,
-          appointments: undefined // Remove appointments do objeto final
+          appointments: undefined
         };
       });
 
@@ -56,15 +65,18 @@ export function useClients() {
     try {
       setLoading(true);
 
-      // Buscar todos os clientes (LEFT JOIN para incluir clientes sem agendamentos)
+      // Buscar todos os clientes com appointments e payments
       let query = supabase
         .from('clients')
         .select(`
           *,
           appointments(
             id,
-            total_amount,
-            payment_status
+            payments(
+              id,
+              amount,
+              status
+            )
           )
         `)
         .order('created_at', { ascending: false });
@@ -77,16 +89,22 @@ export function useClients() {
 
       if (error) throw error;
 
-      // Calcular total gasto real para cada cliente
+      // Calcular total gasto real para cada cliente baseado nos pagamentos aprovados
       const clientsWithRealTotal = (data || []).map(client => {
-        const totalSpent = (client.appointments || [])
-          .filter((apt: any) => apt.payment_status === 'approved')
-          .reduce((sum: number, apt: any) => sum + apt.total_amount, 0);
+        let totalSpent = 0;
+
+        (client.appointments || []).forEach((apt: any) => {
+          (apt.payments || []).forEach((payment: any) => {
+            if (payment.status === 'approved') {
+              totalSpent += payment.amount;
+            }
+          });
+        });
 
         return {
           ...client,
           total_spent: totalSpent,
-          appointments: undefined // Remove appointments do objeto final
+          appointments: undefined
         };
       });
 

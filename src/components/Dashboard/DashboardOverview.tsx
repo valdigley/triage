@@ -21,9 +21,8 @@ export function DashboardOverview() {
     .filter(apt => new Date(apt.scheduled_date) > today && apt.status === 'confirmed')
     .slice(0, 5);
 
-  const totalRevenue = appointments
-    .filter(apt => apt.payment_status === 'approved')
-    .reduce((sum, apt) => sum + apt.total_amount, 0);
+  // Calcular receita total baseado nos pagamentos aprovados
+  const totalRevenue = clients.reduce((sum, client) => sum + (client.total_spent || 0), 0);
 
   const pendingPayments = appointments
     .filter(apt => apt.payment_status === 'pending')
