@@ -4,38 +4,75 @@ import { supabase } from '../../lib/supabase';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useNotifications } from '../../hooks/useNotifications';
 
-// Função para redimensionar imagem
+// Função para redimensionar imagem mantendo proporção
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<Blob> => {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
     const img = new window.Image();
-    
+
     img.onload = () => {
-      // Calcular dimensões mantendo proporção
+      // Calcular dimensões mantendo proporção baseado na aresta mais longa
       let { width, height } = img;
-      
-      if (width > height) {
+
+      // Se largura é maior (paisagem) ou igual
+      if (width >= height) {
         if (width > maxWidth) {
           height = (height * maxWidth) / width;
           width = maxWidth;
         }
       } else {
+        // Se altura é maior (retrato)
         if (height > maxHeight) {
           width = (width * maxHeight) / height;
           height = maxHeight;
         }
       }
-      
+
       canvas.width = width;
       canvas.height = height;
-      
+
       // Desenhar imagem redimensionada
       ctx.drawImage(img, 0, 0, width, height);
-      
+
       canvas.toBlob(resolve, 'image/jpeg', quality);
     };
-    
+
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+// Função para redimensionar imagem com base na aresta mais longa
+const resizeImageMaxSide = (file: File, maxLongSide: number, quality: number = 0.85): Promise<Blob> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    const img = new window.Image();
+
+    img.onload = () => {
+      let { width, height } = img;
+
+      // Encontrar qual é a aresta mais longa
+      const longestSide = Math.max(width, height);
+
+      // Se a aresta mais longa for maior que o máximo, redimensionar
+      if (longestSide > maxLongSide) {
+        const scale = maxLongSide / longestSide;
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Desenhar imagem redimensionada com boa qualidade
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(resolve, 'image/jpeg', quality);
+    };
+
     img.src = URL.createObjectURL(file);
   });
 };
@@ -190,36 +227,45 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
         try {
           // Upload para Supabase Storage
           const fileExt = uploadFile.file.name.split('.').pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`; // Always save as jpg
           const filePath = `galleries/${galleryId}/${fileName}`;
-          
-          // Upload arquivo original
-          setFiles(prev => prev.map(f => 
-            f.id === uploadFile.id 
-              ? { ...f, progress: 30 }
+
+          // Redimensionar foto principal para 1920px na aresta mais longa
+          setFiles(prev => prev.map(f =>
+            f.id === uploadFile.id
+              ? { ...f, progress: 20 }
               : f
           ));
-          
+
+          const resizedMainBlob = await resizeImageMaxSide(uploadFile.file, 1920, 0.85);
+
+          // Upload foto redimensionada (1920px)
+          setFiles(prev => prev.map(f =>
+            f.id === uploadFile.id
+              ? { ...f, progress: 40 }
+              : f
+          ));
+
           const { error: uploadError } = await supabase.storage
             .from('photos')
-            .upload(filePath, uploadFile.file);
-          
+            .upload(filePath, resizedMainBlob);
+
           if (uploadError) throw uploadError;
-          
+
           // Criar thumbnail
-          setFiles(prev => prev.map(f => 
-            f.id === uploadFile.id 
-              ? { ...f, progress: 60 }
+          setFiles(prev => prev.map(f =>
+            f.id === uploadFile.id
+              ? { ...f, progress: 70 }
               : f
           ));
-          
+
           const thumbnailBlob = await resizeImage(uploadFile.file, 400, 300, 0.7);
           const thumbnailPath = `galleries/${galleryId}/thumbs/${fileName}`;
-          
+
           const { error: thumbError } = await supabase.storage
             .from('photos')
             .upload(thumbnailPath, thumbnailBlob);
-          
+
           if (thumbError) throw thumbError;
           
           // Obter URLs públicas
