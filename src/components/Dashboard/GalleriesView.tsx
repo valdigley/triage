@@ -29,10 +29,13 @@ export function GalleriesView() {
     client_email: '',
     password: '',
     expiration_days: settings?.link_validity_days || 30,
-    session_type: 'tematico' as 'aniversario' | 'gestante' | 'formatura' | 'comercial' | 'pre_wedding' | 'tematico'
+    session_type: 'tematico' as 'aniversario' | 'gestante' | 'formatura' | 'comercial' | 'pre_wedding' | 'tematico',
+    is_public: false,
+    event_name: '',
+    price_per_photo: settings?.price_commercial_hour || 30
   });
   const [creating, setCreating] = useState(false);
-  const [createStep, setCreateStep] = useState(1); // 1: Select Client, 2: Gallery Details
+  const [createStep, setCreateStep] = useState(0); // 0: Choose Type, 1: Select Client, 2: Gallery Details
   const [clientSearchTerm, setClientSearchTerm] = useState('');
 
   // Update expiration_days when settings change
@@ -195,6 +198,44 @@ export function GalleriesView() {
     alert('Link copiado para a área de transferência!');
   };
 
+  const handleCreatePublicGallery = async () => {
+    if (!newGallery.event_name) {
+      alert('Nome do evento é obrigatório');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const expirationDate = new Date();
+      expirationDate.setDate(expirationDate.getDate() + newGallery.expiration_days);
+
+      const { data: gallery, error: galleryError } = await supabase
+        .from('galleries_triage')
+        .insert([{
+          name: newGallery.event_name,
+          event_name: newGallery.event_name,
+          is_public: true,
+          price_per_photo: newGallery.price_per_photo,
+          password: newGallery.password || null,
+          link_expires_at: expirationDate.toISOString(),
+          status: 'pending'
+        }])
+        .select()
+        .single();
+
+      if (galleryError) throw galleryError;
+
+      alert('Galeria pública criada com sucesso!');
+      resetCreateGallery();
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao criar galeria pública:', error);
+      alert('Erro ao criar galeria pública. Tente novamente.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleCreateManualGallery = async () => {
     if (!newGallery.name || !newGallery.selected_client_id) {
       alert('Nome da galeria e cliente são obrigatórios');
@@ -203,13 +244,9 @@ export function GalleriesView() {
 
     setCreating(true);
     try {
-      // Use selected client
       const clientId = newGallery.selected_client_id;
-
-      // Get minimum_photos from settings
       const minimumPhotos = settings?.minimum_photos || 5;
 
-      // Create manual appointment with selected session type
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([{
@@ -228,7 +265,6 @@ export function GalleriesView() {
 
       if (appointmentError) throw appointmentError;
 
-      // Create gallery
       const expirationDate = new Date();
       expirationDate.setDate(expirationDate.getDate() + newGallery.expiration_days);
 
@@ -247,20 +283,7 @@ export function GalleriesView() {
       if (galleryError) throw galleryError;
 
       alert('Galeria criada com sucesso!');
-      setShowCreateGallery(false);
-      setCreateStep(1);
-      setNewGallery({
-        name: '',
-        selected_client_id: '',
-        client_name: '',
-        client_phone: '',
-        client_email: '',
-        password: '',
-        expiration_days: settings?.link_validity_days || 30,
-        session_type: 'tematico'
-      });
-      
-      // Refresh galleries list
+      resetCreateGallery();
       window.location.reload();
     } catch (error) {
       console.error('Erro ao criar galeria:', error);
@@ -286,7 +309,7 @@ export function GalleriesView() {
 
   const resetCreateGallery = () => {
     setShowCreateGallery(false);
-    setCreateStep(1);
+    setCreateStep(0);
     setClientSearchTerm('');
     setNewGallery({
       name: '',
@@ -296,7 +319,10 @@ export function GalleriesView() {
       client_email: '',
       password: '',
       expiration_days: settings?.link_validity_days || 30,
-      session_type: 'tematico'
+      session_type: 'tematico',
+      is_public: false,
+      event_name: '',
+      price_per_photo: settings?.price_commercial_hour || 30
     });
   };
 
