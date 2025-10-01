@@ -164,9 +164,10 @@ export function useWhatsApp() {
   };
 
   const sendGalleryLink = async (clientName: string, clientPhone: string, galleryToken: string, expirationDate: string): Promise<boolean> => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    // Use the edge function URL for WhatsApp preview - it returns HTML with meta tags
-    const galleryUrl = `${supabaseUrl}/functions/v1/gallery-og-image?token=${galleryToken}`;
+    // Use short URL path /g/ for WhatsApp preview
+    // This should be configured in your VPS Nginx to proxy to Edge Function for bots
+    const appUrl = 'https://triagem.online';
+    const galleryUrl = `${appUrl}/g/${galleryToken}`;
 
     const message = `📸 *Suas Fotos Estão Prontas!*\n\n` +
                    `Olá ${clientName}!\n\n` +

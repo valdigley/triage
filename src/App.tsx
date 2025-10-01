@@ -132,7 +132,8 @@ function App() {
           />
           <Route path="/agendamento" element={<BookingForm />} />
           <Route path="/gallery/:token" element={<ClientGallery />} />
-          
+          <Route path="/g/:token" element={<ClientGallery />} />
+
           {/* Redirect unknown routes */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
