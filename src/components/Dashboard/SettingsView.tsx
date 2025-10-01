@@ -52,17 +52,32 @@ export function SettingsView() {
   // Google Calendar form state
   const [googleCalendarForm, setGoogleCalendarForm] = useState({
     calendar_id: '',
-    service_account_email: '',
-    service_account_key: ''
+    project_id: '',
+    private_key_id: '',
+    private_key: '',
+    client_email: '',
+    client_id: '',
+    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+    token_uri: 'https://oauth2.googleapis.com/token',
+    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+    client_x509_cert_url: ''
   });
 
   // Update form when Google Calendar settings change
   useEffect(() => {
     if (googleCalendarSettings) {
+      const key = googleCalendarSettings.service_account_key;
       setGoogleCalendarForm({
         calendar_id: googleCalendarSettings.calendar_id || '',
-        service_account_email: googleCalendarSettings.service_account_email || '',
-        service_account_key: '' // Não mostrar a key por segurança
+        project_id: key?.project_id || '',
+        private_key_id: key?.private_key_id || '',
+        private_key: '', // Não mostrar a key por segurança
+        client_email: key?.client_email || '',
+        client_id: key?.client_id || '',
+        auth_uri: key?.auth_uri || 'https://accounts.google.com/o/oauth2/auth',
+        token_uri: key?.token_uri || 'https://oauth2.googleapis.com/token',
+        auth_provider_x509_cert_url: key?.auth_provider_x509_cert_url || 'https://www.googleapis.com/oauth2/v1/certs',
+        client_x509_cert_url: key?.client_x509_cert_url || ''
       });
     }
   }, [googleCalendarSettings]);
@@ -876,55 +891,113 @@ export function SettingsView() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Calendar ID
+                  Calendar ID *
                 </label>
                 <input
                   type="text"
                   value={googleCalendarForm.calendar_id}
                   onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, calendar_id: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="seu-email@gmail.com ou calendar-id"
+                  placeholder="seu-email@gmail.com"
                 />
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Encontre em: Configurações do Calendário → Integrar calendário
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Service Account Email
-                </label>
-                <input
-                  type="email"
-                  value={googleCalendarForm.service_account_email}
-                  onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, service_account_email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="service-account@projeto.iam.gserviceaccount.com"
-                />
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Email da Service Account criada no Google Cloud
+              <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <h3 className="font-medium text-gray-800 dark:text-white mb-3">Dados da Service Account</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Preencha com os dados do arquivo JSON baixado do Google Cloud
                 </p>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Service Account Key (JSON)
-                </label>
-                <textarea
-                  value={googleCalendarForm.service_account_key}
-                  onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, service_account_key: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
-                  placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", ...}'
-                  rows={8}
-                />
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Cole o conteúdo completo do arquivo JSON baixado
-                  {googleCalendarSettings && !googleCalendarForm.service_account_key && (
-                    <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
-                      Deixe em branco para manter a chave atual
-                    </span>
-                  )}
-                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Project ID *
+                    </label>
+                    <input
+                      type="text"
+                      value={googleCalendarForm.project_id}
+                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, project_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="meu-projeto-123456"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Private Key ID *
+                    </label>
+                    <input
+                      type="text"
+                      value={googleCalendarForm.private_key_id}
+                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, private_key_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="abc123def456..."
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Client Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={googleCalendarForm.client_email}
+                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, client_email: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="service-account@projeto.iam.gserviceaccount.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Client ID *
+                    </label>
+                    <input
+                      type="text"
+                      value={googleCalendarForm.client_id}
+                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, client_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="123456789012345678901"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Client Cert URL
+                    </label>
+                    <input
+                      type="url"
+                      value={googleCalendarForm.client_x509_cert_url}
+                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, client_x509_cert_url: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="https://www.googleapis.com/robot/v1/metadata/x509/..."
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Private Key *
+                    </label>
+                    <textarea
+                      value={googleCalendarForm.private_key}
+                      onChange={(e) => setGoogleCalendarForm(prev => ({ ...prev, private_key: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-xs"
+                      placeholder="-----BEGIN PRIVATE KEY-----&#10;MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...&#10;-----END PRIVATE KEY-----"
+                      rows={6}
+                    />
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Cole a private key completa incluindo as linhas BEGIN e END
+                      {googleCalendarSettings && !googleCalendarForm.private_key && (
+                        <span className="block mt-1 text-yellow-600 dark:text-yellow-400">
+                          Deixe em branco para manter a chave atual
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex space-x-4">
@@ -933,20 +1006,39 @@ export function SettingsView() {
                     setSaving(true);
                     setTestResult(null);
                     try {
-                      const success = googleCalendarSettings
+                      // Construir o JSON da Service Account
+                      const serviceAccountJson = {
+                        type: "service_account",
+                        project_id: googleCalendarForm.project_id,
+                        private_key_id: googleCalendarForm.private_key_id,
+                        private_key: googleCalendarForm.private_key,
+                        client_email: googleCalendarForm.client_email,
+                        client_id: googleCalendarForm.client_id,
+                        auth_uri: googleCalendarForm.auth_uri,
+                        token_uri: googleCalendarForm.token_uri,
+                        auth_provider_x509_cert_url: googleCalendarForm.auth_provider_x509_cert_url,
+                        client_x509_cert_url: googleCalendarForm.client_x509_cert_url,
+                        universe_domain: "googleapis.com"
+                      };
+
+                      const jsonString = JSON.stringify(serviceAccountJson);
+
+                      const success = googleCalendarSettings && !googleCalendarForm.private_key
                         ? await updateGoogleCalendarSettings(
                             googleCalendarForm.calendar_id,
-                            googleCalendarForm.service_account_email,
-                            googleCalendarForm.service_account_key
+                            googleCalendarForm.client_email,
+                            '' // Mantém a key existente
                           )
                         : await saveGoogleCalendarSettings(
                             googleCalendarForm.calendar_id,
-                            googleCalendarForm.service_account_email,
-                            googleCalendarForm.service_account_key
+                            googleCalendarForm.client_email,
+                            jsonString
                           );
 
                       if (success) {
                         setTestResult({ success: true, message: 'Configurações salvas com sucesso!' });
+                        // Limpar private key do formulário por segurança
+                        setGoogleCalendarForm(prev => ({ ...prev, private_key: '' }));
                       } else {
                         const errorMsg = googleCalendarError || 'Erro ao salvar configurações. Verifique os dados no console do navegador.';
                         setTestResult({ success: false, message: errorMsg });
@@ -955,7 +1047,15 @@ export function SettingsView() {
                       setSaving(false);
                     }
                   }}
-                  disabled={saving || !googleCalendarForm.calendar_id || !googleCalendarForm.service_account_email || (!googleCalendarSettings && !googleCalendarForm.service_account_key)}
+                  disabled={
+                    saving ||
+                    !googleCalendarForm.calendar_id ||
+                    !googleCalendarForm.client_email ||
+                    !googleCalendarForm.project_id ||
+                    !googleCalendarForm.private_key_id ||
+                    !googleCalendarForm.client_id ||
+                    (!googleCalendarSettings && !googleCalendarForm.private_key)
+                  }
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
                   {saving ? (
