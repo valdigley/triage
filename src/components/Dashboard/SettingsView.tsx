@@ -387,6 +387,22 @@ export function SettingsView() {
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  URL do Aplicativo
+                </label>
+                <input
+                  type="url"
+                  value={settings.app_url || ''}
+                  onChange={(e) => updateSettings({ app_url: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="https://triagem.online"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  URL base do seu aplicativo (necessário para preview de links no WhatsApp)
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Endereço do Estúdio
                 </label>
                 <input

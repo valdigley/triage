@@ -5,6 +5,7 @@ export interface Settings {
   studio_phone?: string;
   studio_address?: string;
   studio_maps_url?: string;
+  app_url?: string;
   evolution_api_instance?: string;
   price_commercial_hour: number;
   price_after_hours: number;

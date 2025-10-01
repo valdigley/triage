@@ -86,7 +86,14 @@ Deno.serve(async (req: Request) => {
     const clientName = gallery.appointment?.client?.name || 'Cliente';
     const title = gallery.og_title || `Galeria de Fotos - ${clientName}`;
     const description = gallery.og_description || `Confira as fotos da sua sessão e selecione suas favoritas!`;
-    const appUrl = Deno.env.get('APP_URL') || 'https://triagem.valdigleysantos.com.br';
+
+    // Get app URL from settings or use environment variable
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('app_url')
+      .single();
+
+    const appUrl = settings?.app_url || Deno.env.get('APP_URL') || 'https://triagem.online';
     const galleryUrl = `${appUrl}/gallery/${token}`;
 
     // If format is 'json' or Accept header is application/json, return JSON
