@@ -770,9 +770,9 @@ export function GalleriesView() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-800 dark:text-white">
-                  Fotos da Galeria ({photos.length})
+                  Fotos da Galeria ({selectedGallery.photos_selected && selectedGallery.photos_selected.length > 0 ? selectedGallery.photos_selected.length : photos.length})
                 </h3>
-                
+
                 {selectedGallery.photos_selected && selectedGallery.photos_selected.length > 0 && (
                   <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                     <span className="font-medium">{selectedGallery.photos_selected.length}</span> fotos selecionadas pelo cliente
@@ -781,7 +781,10 @@ export function GalleriesView() {
               </div>
 
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
-                {photos.map((photo) => (
+                {(selectedGallery.photos_selected && selectedGallery.photos_selected.length > 0
+                  ? photos.filter(p => selectedGallery.photos_selected?.includes(p.id))
+                  : photos
+                ).map((photo) => (
                   <div
                     key={photo.id}
                     className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
