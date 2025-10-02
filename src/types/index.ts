@@ -1,5 +1,55 @@
+export interface Tenant {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  business_name?: string;
+  cpf_cnpj?: string;
+  owner_user_id: string;
+  status: 'trial' | 'active' | 'suspended' | 'canceled';
+  trial_ends_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  tenant_id: string;
+  plan_name: 'monthly' | 'yearly';
+  amount: number;
+  status: 'pending' | 'active' | 'expired' | 'canceled';
+  starts_at?: string;
+  expires_at?: string;
+  payment_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionPayment {
+  id: string;
+  subscription_id?: string;
+  tenant_id: string;
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  payment_method: string;
+  external_payment_id?: string;
+  qr_code?: string;
+  qr_code_base64?: string;
+  paid_at?: string;
+  created_at: string;
+}
+
+export interface TenantUser {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'user';
+  created_at: string;
+}
+
 export interface Settings {
   id: string;
+  tenant_id?: string;
   studio_name: string;
   studio_logo_url?: string;
   studio_phone?: string;
