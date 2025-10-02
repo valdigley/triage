@@ -13,7 +13,7 @@ export function useTenant() {
     fetchTenant();
   }, []);
 
-  const fetchTenant = async () => {
+  const fetchTenant = async (retryCount = 0) => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -29,14 +29,26 @@ export function useTenant() {
       }
 
       // Get tenant for current user
-      const { data: tenantUsers } = await supabase
+      const { data: tenantUsers, error: tenantUsersError } = await supabase
         .from('triagem_tenant_users')
         .select('tenant_id')
         .eq('user_id', user.id)
         .limit(1)
         .maybeSingle();
 
+      if (tenantUsersError && tenantUsersError.code !== 'PGRST116') {
+        throw tenantUsersError;
+      }
+
       if (!tenantUsers) {
+        // Retry up to 3 times with delay for new users
+        if (retryCount < 3) {
+          console.log(`Tenant not found, retrying... (${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return fetchTenant(retryCount + 1);
+        }
+
+        console.warn('Tenant not found after retries');
         setLoading(false);
         return;
       }
