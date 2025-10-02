@@ -1,17 +1,19 @@
 import React from 'react';
-import { 
-  Calendar, 
-  Users, 
-  Camera, 
-  CreditCard, 
-  Settings, 
+import {
+  Calendar,
+  Users,
+  Camera,
+  CreditCard,
+  Settings,
   BarChart3,
   LogOut,
   Moon,
-  Sun
+  Sun,
+  Shield
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSettings } from '../../hooks/useSettings';
+import { useTenant } from '../../hooks/useTenant';
 
 function LogoDisplay() {
   const { settings } = useSettings();
@@ -45,7 +47,7 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-const menuItems = [
+const baseMenuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'appointments', label: 'Agendamentos', icon: Calendar },
   { id: 'galleries', label: 'Galerias', icon: Camera },
@@ -54,8 +56,19 @@ const menuItems = [
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
+const adminMenuItem = {
+  id: 'admin',
+  label: 'Gestão de Tenants',
+  icon: Shield
+};
+
 export function Sidebar({ currentView, onViewChange, onLogout, isOpen, onToggle }: SidebarProps) {
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { isMasterAdmin } = useTenant();
+
+  const menuItems = isMasterAdmin
+    ? [adminMenuItem, ...baseMenuItems]
+    : baseMenuItems;
 
   return (
     <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg h-full flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
@@ -110,6 +123,24 @@ export function Sidebar({ currentView, onViewChange, onLogout, isOpen, onToggle 
       </nav>
 
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        {/* Subscription Link */}
+        {!isMasterAdmin && (
+          <button
+            onClick={() => {
+              onViewChange('subscription');
+              onToggle();
+            }}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+              currentView === 'subscription'
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white'
+            }`}
+          >
+            <CreditCard className="h-5 w-5" />
+            <span>Minha Assinatura</span>
+          </button>
+        )}
+
         {/* Theme Toggle */}
         <button
           onClick={toggleDarkMode}
@@ -118,7 +149,7 @@ export function Sidebar({ currentView, onViewChange, onLogout, isOpen, onToggle 
           {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           <span>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>
         </button>
-        
+
         {/* Logout */}
         <button
           onClick={onLogout}

@@ -29,9 +29,10 @@ function LoginLogo() {
 
 interface LoginFormProps {
   onLogin: () => void;
+  onSwitchToRegister?: () => void;
 }
 
-export function LoginForm({ onLogin }: LoginFormProps) {
+export function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -141,6 +142,21 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               <span>Entrar</span>
             )}
           </button>
+
+          {onSwitchToRegister && (
+            <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                Ainda não tem uma conta?
+              </p>
+              <button
+                type="button"
+                onClick={onSwitchToRegister}
+                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                Criar conta grátis - 7 dias de trial
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

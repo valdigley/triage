@@ -10,14 +10,19 @@ import { GalleriesView } from './components/Dashboard/GalleriesView';
 import { ClientsView } from './components/Dashboard/ClientsView';
 import { PaymentsView } from './components/Dashboard/PaymentsView';
 import { SettingsView } from './components/Dashboard/SettingsView';
+import { AdminTenantsView } from './components/Dashboard/AdminTenantsView';
+import { SubscriptionView } from './components/Dashboard/SubscriptionView';
+import { SubscriptionBanner } from './components/Dashboard/SubscriptionBanner';
 import { ClientGallery } from './components/Gallery/ClientGallery';
 import { LoginForm } from './components/Auth/LoginForm';
+import { RegisterForm } from './components/Auth/RegisterForm';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -64,6 +69,10 @@ function App() {
 
   const renderCurrentView = () => {
     switch (currentView) {
+      case 'admin':
+        return <AdminTenantsView />;
+      case 'subscription':
+        return <SubscriptionView />;
       case 'dashboard':
         return <DashboardOverview />;
       case 'appointments':
@@ -121,12 +130,23 @@ function App() {
                   
                   <main className="flex-1 overflow-y-auto">
                     <div className="p-4 sm:p-6 lg:p-8">
+                      <SubscriptionBanner />
                       {renderCurrentView()}
                     </div>
                   </main>
                 </div>
+              ) : showRegister ? (
+                <div className="min-h-screen bg-gradient-to-br from-blue-900 to-gray-900 flex items-center justify-center p-4">
+                  <RegisterForm
+                    onSuccess={handleLogin}
+                    onSwitchToLogin={() => setShowRegister(false)}
+                  />
+                </div>
               ) : (
-                <LoginForm onLogin={handleLogin} />
+                <LoginForm
+                  onLogin={handleLogin}
+                  onSwitchToRegister={() => setShowRegister(true)}
+                />
               )
             } 
           />
