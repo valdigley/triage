@@ -237,7 +237,10 @@ export function SettingsView() {
   };
 
   const handleSendTestMessage = async () => {
-    if (!settings?.phone) {
+    console.log('📋 Settings completo:', settings);
+    console.log('📞 Telefone do estúdio:', settings?.studio_phone);
+
+    if (!settings?.studio_phone) {
       setTestResult({
         success: false,
         message: 'Configure o telefone do estúdio primeiro em Configurações Gerais'
@@ -249,7 +252,7 @@ export function SettingsView() {
     setTestResult(null);
 
     try {
-      const result = await sendTestMessage(settings.phone);
+      const result = await sendTestMessage(settings.studio_phone);
       setTestResult(result);
     } catch (error) {
       setTestResult({
