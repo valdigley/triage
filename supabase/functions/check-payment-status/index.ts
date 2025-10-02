@@ -17,7 +17,7 @@ async function schedulePaymentConfirmationNotification(supabase, appointmentId) 
     
     // Get appointment details
     const { data: appointment, error: appointmentError } = await supabase
-      .from('triagem_appointments')
+      .from('appointments')
       .select(`
         *,
         client_id (
@@ -35,7 +35,7 @@ async function schedulePaymentConfirmationNotification(supabase, appointmentId) 
 
     // Get notification template
     const { data: template, error: templateError } = await supabase
-      .from('triagem_notification_templates')
+      .from('notification_templates')
       .select('*')
       .eq('type', 'payment_confirmation')
       .eq('is_active', true)
@@ -64,7 +64,7 @@ async function schedulePaymentConfirmationNotification(supabase, appointmentId) 
 
     // Schedule notification for immediate sending
     const { error: notificationError } = await supabase
-      .from('triagem_notification_queue')
+      .from('notification_queue')
       .insert({
         appointment_id: appointmentId,
         template_type: 'payment_confirmation',
@@ -123,7 +123,7 @@ Deno.serve(async (req: Request) => {
 
     // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabase
-      .from('triagem_mercadopago_settings')
+      .from('mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .limit(1)
@@ -188,7 +188,7 @@ Deno.serve(async (req: Request) => {
         
         // Update payment status for extra photos
         const { error: paymentUpdateError } = await supabase
-          .from('triagem_payments')
+          .from('payments')
           .update({
             status: paymentData.status,
             webhook_data: paymentData,
@@ -224,7 +224,7 @@ Deno.serve(async (req: Request) => {
         
         // Update payment status in database
         const { error: paymentUpdateError } = await supabase
-          .from('triagem_payments')
+          .from('payments')
           .update({
             status: paymentData.status,
             webhook_data: paymentData,
@@ -240,7 +240,7 @@ Deno.serve(async (req: Request) => {
 
         // Update appointment payment status
         const { error: appointmentPaymentError } = await supabase
-          .from('triagem_appointments')
+          .from('appointments')
           .update({
             payment_status: paymentData.status,
             updated_at: new Date().toISOString()
@@ -258,7 +258,7 @@ Deno.serve(async (req: Request) => {
           console.log('✅ Pagamento aprovado - confirmando appointment...');
           
           const { error: appointmentStatusError } = await supabase
-            .from('triagem_appointments')
+            .from('appointments')
             .update({
               status: 'confirmed',
               updated_at: new Date().toISOString()

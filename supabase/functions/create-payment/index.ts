@@ -20,22 +20,22 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: false, error: 'formData e amount são obrigatórios' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    const { data: existingClient } = await supabase.from('triagem_clients').select('*').eq('phone', formData.clientPhone).maybeSingle();
+    const { data: existingClient } = await supabase.from('clients').select('*').eq('phone', formData.clientPhone).maybeSingle();
     let clientId: string;
 
     if (existingClient) {
       clientId = existingClient.id;
-      await supabase.from('triagem_clients').update({ name: formData.clientName, email: formData.clientEmail, updated_at: new Date().toISOString() }).eq('id', clientId);
+      await supabase.from('clients').update({ name: formData.clientName, email: formData.clientEmail, updated_at: new Date().toISOString() }).eq('id', clientId);
     } else {
-      const { data: newClient, error: clientError } = await supabase.from('triagem_clients').insert([{ name: formData.clientName, email: formData.clientEmail, phone: formData.clientPhone }]).select().single();
+      const { data: newClient, error: clientError } = await supabase.from('clients').insert([{ name: formData.clientName, email: formData.clientEmail, phone: formData.clientPhone }]).select().single();
       if (clientError) throw clientError;
       clientId = newClient.id;
     }
 
-    const { data: appointment, error: appointmentError } = await supabase.from('triagem_appointments').insert([{ client_id: clientId, session_type: formData.sessionType, session_details: formData.sessionDetails, scheduled_date: formData.scheduledDate, total_amount: amount, minimum_photos: 5, terms_accepted: formData.termsAccepted, status: 'pending', payment_status: 'pending' }]).select().single();
+    const { data: appointment, error: appointmentError } = await supabase.from('appointments').insert([{ client_id: clientId, session_type: formData.sessionType, session_details: formData.sessionDetails, scheduled_date: formData.scheduledDate, total_amount: amount, minimum_photos: 5, terms_accepted: formData.termsAccepted, status: 'pending', payment_status: 'pending' }]).select().single();
     if (appointmentError) throw appointmentError;
 
-    const { data: mpSettings, error: mpError } = await supabase.from('triagem_mercadopago_settings').select('*').eq('is_active', true).limit(1).maybeSingle();
+    const { data: mpSettings, error: mpError } = await supabase.from('mercadopago_settings').select('*').eq('is_active', true).limit(1).maybeSingle();
     if (mpError || !mpSettings || !mpSettings.access_token) {
       return new Response(JSON.stringify({ success: false, error: 'Configurações do MercadoPago não encontradas' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
     const qrCode = pixData.point_of_interaction?.transaction_data?.qr_code;
     const qrCodeBase64 = pixData.point_of_interaction?.transaction_data?.qr_code_base64;
 
-    await supabase.from('triagem_payments').insert({ appointment_id: appointment.id, mercadopago_id: pixData.id.toString(), amount: amount, status: pixData.status, payment_type: 'initial' });
+    await supabase.from('payments').insert({ appointment_id: appointment.id, mercadopago_id: pixData.id.toString(), amount: amount, status: pixData.status, payment_type: 'initial' });
 
     try {
       const { scheduleNotifications } = await import('./notifications.ts');

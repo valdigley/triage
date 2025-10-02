@@ -191,7 +191,7 @@ Deno.serve(async (req: Request) => {
 
     // Get settings for pricing
     const { data: settings } = await supabase
-      .from('triagem_settings')
+      .from('settings')
       .select('price_commercial_hour')
       .limit(1)
       .maybeSingle();
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
     
     // Get notification template
     const { data: template, error: templateError } = await supabase
-      .from('triagem_notification_templates')
+      .from('notification_templates')
       .select('message_template')
       .eq('type', 'selection_received')
       .eq('is_active', true)
@@ -247,7 +247,7 @@ Deno.serve(async (req: Request) => {
 
     // Get settings for delivery_days
     const { data: deliverySettings } = await supabase
-      .from('triagem_settings')
+      .from('settings')
       .select('delivery_days')
       .limit(1)
       .maybeSingle();
@@ -258,7 +258,7 @@ Deno.serve(async (req: Request) => {
     
     // Get active WhatsApp instance
     const { data: instances } = await supabase
-      .from('triagem_whatsapp_instances')
+      .from('whatsapp_instances')
       .select('*')
       .order('created_at', { ascending: false });
 

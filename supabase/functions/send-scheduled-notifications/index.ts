@@ -27,7 +27,7 @@ async function processTemplate(
   try {
     // Get template
     const { data: template } = await supabase
-      .from('triagem_notification_templates')
+      .from('notification_templates')
       .select('message_template')
       .eq('type', templateType)
       .eq('is_active', true)
@@ -40,7 +40,7 @@ async function processTemplate(
 
     // Get appointment details
     const { data: appointment } = await supabase
-      .from('triagem_appointments')
+      .from('appointments')
       .select(`
         *,
         client:clients(*)
@@ -55,14 +55,14 @@ async function processTemplate(
 
     // Get settings
     const { data: settings } = await supabase
-      .from('triagem_settings')
+      .from('settings')
       .select('*')
       .limit(1)
       .maybeSingle();
 
     // Get session type
     const { data: sessionType } = await supabase
-      .from('triagem_session_types')
+      .from('session_types')
       .select('*')
       .eq('name', appointment.session_type)
       .maybeSingle();
@@ -208,7 +208,7 @@ Deno.serve(async (req: Request) => {
 
     // Buscar apenas notificações pendentes agendadas para o passado
     const { data: notifications, error: notificationsError } = await supabase
-      .from('triagem_notification_queue')
+      .from('notification_queue')
       .select('*')
       .eq('status', 'pending')
       .lte('scheduled_for', nowISO)
@@ -242,7 +242,7 @@ Deno.serve(async (req: Request) => {
     // Get active WhatsApp instance
     console.log('🔍 Buscando instâncias WhatsApp...');
     const { data: instances } = await supabase
-      .from('triagem_whatsapp_instances')
+      .from('whatsapp_instances')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -317,7 +317,7 @@ Deno.serve(async (req: Request) => {
         
         // Marcar como processando para evitar duplicatas
         await supabase
-          .from('triagem_notification_queue')
+          .from('notification_queue')
           .update({
             status: 'processing'
           })
@@ -346,7 +346,7 @@ Deno.serve(async (req: Request) => {
           console.error('❌ Dados da notificação inválidos');
           failed++;
           await supabase
-            .from('triagem_notification_queue')
+            .from('notification_queue')
             .update({
               status: 'failed',
               error_message: 'Dados da notificação inválidos'
@@ -369,7 +369,7 @@ Deno.serve(async (req: Request) => {
           sent++;
           console.log(`✅ Notificação enviada com sucesso (${processingTime}ms)`);
           await supabase
-            .from('triagem_notification_queue')
+            .from('notification_queue')
             .update({
               status: 'sent',
               sent_at: new Date().toISOString()
@@ -385,7 +385,7 @@ Deno.serve(async (req: Request) => {
           failed++;
           console.log(`❌ Falha ao enviar notificação (${processingTime}ms)`);
           await supabase
-            .from('triagem_notification_queue')
+            .from('notification_queue')
             .update({
               status: 'failed',
               error_message: 'Falha ao enviar via WhatsApp API'
@@ -410,7 +410,7 @@ Deno.serve(async (req: Request) => {
         failed++;
         console.error(`❌ Erro ao processar notificação (${processingTime}ms):`, error);
         await supabase
-          .from('triagem_notification_queue')
+          .from('notification_queue')
           .update({
             status: 'failed',
             error_message: error instanceof Error ? error.message : 'Unknown error'

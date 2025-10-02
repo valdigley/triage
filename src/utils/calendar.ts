@@ -1,24 +1,18 @@
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+import { Appointment } from '../types';
 
-function generateICalendar(appointments: any[]): string {
+export function generateICalendar(appointments: Appointment[]): string {
   const now = new Date();
   const timestamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   
   let icalContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Triagem Studio//Calendar Feed//PT',
+    'PRODID:-//Triagem//Studio Calendar//PT',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Agenda do Estúdio - Triagem',
-    'X-WR-CALDESC:Agendamentos de sessões fotográficas atualizados automaticamente',
-    'X-WR-TIMEZONE:America/Sao_Paulo',
-    'X-PUBLISHED-TTL:PT1H', // Refresh every hour
-    'REFRESH-INTERVAL;VALUE=DURATION:PT1H'
+    'X-WR-CALNAME:Agenda do Estúdio',
+    'X-WR-CALDESC:Agendamentos de sessões fotográficas',
+    'X-WR-TIMEZONE:America/Sao_Paulo'
   ];
 
   appointments.forEach(appointment => {
@@ -77,28 +71,23 @@ function generateICalendar(appointments: any[]): string {
         : ''
     ].filter(Boolean).join('\\n');
 
-    // Determinar status do evento baseado no status do appointment
-    let eventStatus = 'TENTATIVE';
+    // Determinar cor do evento baseado no status
+    let color = '';
     switch (appointment.status) {
       case 'confirmed':
-        eventStatus = appointment.payment_status === 'approved' ? 'CONFIRMED' : 'TENTATIVE';
+        color = appointment.payment_status === 'approved' ? 'GREEN' : 'YELLOW';
+        break;
+      case 'pending':
+        color = 'ORANGE';
         break;
       case 'completed':
-        eventStatus = 'CONFIRMED';
+        color = 'BLUE';
         break;
       case 'cancelled':
-        eventStatus = 'CANCELLED';
+        color = 'RED';
         break;
       default:
-        eventStatus = 'TENTATIVE';
-    }
-
-    // Determinar prioridade
-    let priority = '5'; // Normal
-    if (appointment.status === 'confirmed' && appointment.payment_status === 'approved') {
-      priority = '1'; // High
-    } else if (appointment.status === 'pending') {
-      priority = '9'; // Low
+        color = 'GRAY';
     }
 
     icalContent.push(
@@ -110,9 +99,10 @@ function generateICalendar(appointments: any[]): string {
       `SUMMARY:${summary}`,
       `DESCRIPTION:${description}`,
       `LOCATION:${appointment.session_details?.location || 'Estúdio'}`,
-      `STATUS:${eventStatus}`,
+      `STATUS:${appointment.status.toUpperCase()}`,
       `CATEGORIES:SESSAO_FOTOGRAFICA,${appointment.session_type.toUpperCase()}`,
-      `PRIORITY:${priority}`,
+      `COLOR:${color}`,
+      `PRIORITY:${appointment.status === 'confirmed' ? '1' : '5'}`,
       `CREATED:${new Date(appointment.created_at).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'}`,
       `LAST-MODIFIED:${new Date(appointment.updated_at).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'}`,
       'END:VEVENT'
@@ -124,61 +114,22 @@ function generateICalendar(appointments: any[]): string {
   return icalContent.join('\r\n');
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
-  }
+export function downloadICalendar(appointments: Appointment[], filename: string = 'agenda-estudio.ics') {
+  const icalContent = generateICalendar(appointments);
+  const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
-  try {
-    // Get Supabase client
-    const { createClient } = await import('npm:@supabase/supabase-js@2');
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Get all appointments with client data
-    const { data: appointments, error } = await supabase
-      .from('appointments')
-      .select(`
-        *,
-        client:clients(*)
-      `)
-      .order('scheduled_date', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching appointments:', error);
-      throw error;
-    }
-
-    // Generate iCal content
-    const icalContent = generateICalendar(appointments || []);
-
-    // Return iCal file with proper headers
-    return new Response(icalContent, {
-      headers: {
-        'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': 'inline; filename="agenda-estudio.ics"',
-        'Cache-Control': 'no-cache, must-revalidate',
-        'Expires': '0',
-        ...corsHeaders,
-      },
-    });
-
-  } catch (error) {
-    console.error('Error generating calendar feed:', error);
-    return new Response(
-      'Error generating calendar feed',
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'text/plain',
-          ...corsHeaders,
-        },
-      }
-    );
-  }
-});
+export function getICalendarUrl(appointments: Appointment[]): string {
+  const icalContent = generateICalendar(appointments);
+  const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
+  return URL.createObjectURL(blob);
+}

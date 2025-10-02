@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
 
     // Verify user owns this tenant
     const { data: tenant, error: tenantError } = await supabaseClient
-      .from('triagem_tenants')
+      .from('tenants')
       .select('*')
       .eq('id', tenantId)
       .eq('owner_user_id', user.id)
@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
 
     // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabaseClient
-      .from('triagem_mercadopago_settings')
+      .from('mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .limit(1)
@@ -155,7 +155,7 @@ Deno.serve(async (req: Request) => {
 
     // Save payment info
     const { error: paymentError } = await supabaseClient
-      .from('triagem_subscription_payments')
+      .from('subscription_payments')
       .insert([{
         subscription_id: subscription.id,
         tenant_id: tenantId,

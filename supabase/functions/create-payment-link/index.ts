@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
     // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabase
-      .from('triagem_mercadopago_settings')
+      .from('mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .single();
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
 
     // Update payment with new MercadoPago ID
     await supabase
-      .from('triagem_payments')
+      .from('payments')
       .update({
         mercadopago_id: pixResult.id.toString(),
         updated_at: new Date().toISOString()
