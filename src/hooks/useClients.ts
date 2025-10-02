@@ -15,40 +15,28 @@ export function useClients() {
     try {
       setLoading(true);
 
-      // Buscar todos os clientes com appointments e payments
+      // Buscar todos os clientes
       const { data, error } = await supabase
         .from('clients')
-        .select(`
-          *,
-          appointments(
-            id,
-            payments(
-              id,
-              amount,
-              status
-            )
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Calcular total gasto real para cada cliente baseado nos pagamentos aprovados
-      const clientsWithRealTotal = (data || []).map(client => {
-        let totalSpent = 0;
+      // Buscar todos os pagamentos aprovados agrupados por cliente
+      const { data: allPayments } = await supabase
+        .from('payments')
+        .select('client_id, amount, status')
+        .eq('status', 'approved');
 
-        (client.appointments || []).forEach((apt: any) => {
-          (apt.payments || []).forEach((payment: any) => {
-            if (payment.status === 'approved') {
-              totalSpent += payment.amount;
-            }
-          });
-        });
+      // Calcular total gasto real para cada cliente
+      const clientsWithRealTotal = (data || []).map(client => {
+        const clientPayments = allPayments?.filter(p => p.client_id === client.id) || [];
+        const totalSpent = clientPayments.reduce((sum, p) => sum + p.amount, 0);
 
         return {
           ...client,
-          total_spent: totalSpent,
-          appointments: undefined
+          total_spent: totalSpent
         };
       });
 
@@ -65,20 +53,10 @@ export function useClients() {
     try {
       setLoading(true);
 
-      // Buscar todos os clientes com appointments e payments
+      // Buscar todos os clientes
       let query = supabase
         .from('clients')
-        .select(`
-          *,
-          appointments(
-            id,
-            payments(
-              id,
-              amount,
-              status
-            )
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (searchTerm.trim()) {
@@ -89,22 +67,20 @@ export function useClients() {
 
       if (error) throw error;
 
-      // Calcular total gasto real para cada cliente baseado nos pagamentos aprovados
-      const clientsWithRealTotal = (data || []).map(client => {
-        let totalSpent = 0;
+      // Buscar todos os pagamentos aprovados agrupados por cliente
+      const { data: allPayments } = await supabase
+        .from('payments')
+        .select('client_id, amount, status')
+        .eq('status', 'approved');
 
-        (client.appointments || []).forEach((apt: any) => {
-          (apt.payments || []).forEach((payment: any) => {
-            if (payment.status === 'approved') {
-              totalSpent += payment.amount;
-            }
-          });
-        });
+      // Calcular total gasto real para cada cliente
+      const clientsWithRealTotal = (data || []).map(client => {
+        const clientPayments = allPayments?.filter(p => p.client_id === client.id) || [];
+        const totalSpent = clientPayments.reduce((sum, p) => sum + p.amount, 0);
 
         return {
           ...client,
-          total_spent: totalSpent,
-          appointments: undefined
+          total_spent: totalSpent
         };
       });
 
