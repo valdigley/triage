@@ -314,7 +314,7 @@ export function useWhatsApp() {
 
   const testConnection = async (): Promise<{ success: boolean; message: string }> => {
     const activeInstance = getActiveInstance();
-    
+
     if (!activeInstance) {
       return {
         success: false,
@@ -323,7 +323,7 @@ export function useWhatsApp() {
     }
 
     const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
-    
+
     if (!evolution_api_url || !evolution_api_key) {
       return {
         success: false,
@@ -333,15 +333,21 @@ export function useWhatsApp() {
 
     try {
       setLoading(true);
-      
-      const { supabase } = await import('../lib/supabase');
+
+      console.log('🧪 Testando conexão WhatsApp...');
+      console.log('📡 URL:', evolution_api_url);
+      console.log('🏷️ Instance:', activeInstance.instance_name);
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-selection-confirmation`;
-      
+
+      console.log('🔗 Chamando Edge Function:', apiUrl);
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
           action: 'test-connection',
@@ -350,21 +356,26 @@ export function useWhatsApp() {
           instance_name: activeInstance.instance_name
         })
       });
-      
+
+      console.log('📊 Response status:', response.status);
+
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Resultado:', result);
         return {
           success: result.success,
           message: result.message
         };
       } else {
         const errorText = await response.text();
+        console.error('❌ Erro:', errorText);
         return {
           success: false,
           message: `Erro HTTP ${response.status}: ${errorText}`
         };
       }
     } catch (error) {
+      console.error('❌ Erro de conexão:', error);
       return {
         success: false,
         message: `Erro de conexão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
