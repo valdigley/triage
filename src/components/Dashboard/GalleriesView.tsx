@@ -54,7 +54,7 @@ export function GalleriesView() {
     try {
       // Buscar a galeria para verificar se tem parent_gallery_id
       const { data: galleryData, error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .select('parent_gallery_id')
         .eq('id', galleryId)
         .single();
@@ -65,7 +65,7 @@ export function GalleriesView() {
       const targetGalleryId = galleryData.parent_gallery_id || galleryId;
 
       const { data, error } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('*')
         .eq('gallery_id', targetGalleryId)
         .order('created_at', { ascending: true });
@@ -105,7 +105,7 @@ export function GalleriesView() {
       
       // Delete from database
       const { error: dbError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .delete()
         .eq('id', photo.id);
       
@@ -118,7 +118,7 @@ export function GalleriesView() {
       if (selectedGallery) {
         const newCount = photos.length - 1;
         await supabase
-          .from('galleries_triage')
+          .from('triagem_galleries')
           .update({ 
             photos_uploaded: newCount,
             updated_at: new Date().toISOString()
@@ -229,7 +229,7 @@ export function GalleriesView() {
       }
 
       const { data: gallery, error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .insert([{
           tenant_id: tenant.id,
           name: newGallery.event_name,
@@ -273,7 +273,7 @@ export function GalleriesView() {
       }
 
       const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .insert([{
           tenant_id: tenant.id,
           client_id: clientId,
@@ -295,7 +295,7 @@ export function GalleriesView() {
       expirationDate.setDate(expirationDate.getDate() + newGallery.expiration_days);
 
       const { data: gallery, error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .insert([{
           tenant_id: tenant.id,
           appointment_id: appointment.id,

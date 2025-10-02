@@ -35,7 +35,7 @@ export function useGoogleCalendar() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('google_calendar_settings')
+        .from('triagem_google_calendar_settings')
         .select('*')
         .eq('tenant_id', tenant.id)
         .eq('is_active', true)
@@ -149,7 +149,7 @@ export function useGoogleCalendar() {
         // Apenas atualizar calendar_id
         console.log('🔄 Atualizando calendar_id...');
         const { data, error } = await supabase
-          .from('google_calendar_settings')
+          .from('triagem_google_calendar_settings')
           .update(updateData)
           .eq('id', settings.id)
           .select()
@@ -172,7 +172,7 @@ export function useGoogleCalendar() {
         if (settings) {
           console.log('🔄 Desativando configuração antiga...');
           await supabase
-            .from('google_calendar_settings')
+            .from('triagem_google_calendar_settings')
             .update({ is_active: false })
             .eq('id', settings.id);
         }
@@ -182,7 +182,7 @@ export function useGoogleCalendar() {
         updateData.tenant_id = tenant.id;
 
         const { data, error } = await supabase
-          .from('google_calendar_settings')
+          .from('triagem_google_calendar_settings')
           .insert(updateData)
           .select()
           .single();
@@ -218,7 +218,7 @@ export function useGoogleCalendar() {
       if (!settings) return false;
 
       const { error } = await supabase
-        .from('google_calendar_settings')
+        .from('triagem_google_calendar_settings')
         .delete()
         .eq('id', settings.id);
 

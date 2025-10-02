@@ -29,12 +29,12 @@ export function PaymentsView() {
 
     try {
       const { data, error } = await supabase
-        .from('payments')
+        .from('triagem_payments')
         .select(`
           *,
-          appointment:appointments(
+          appointment:triagem_appointments(
             *,
-            client:clients(*)
+            client:triagem_clients(*)
           ),
           client:client_id(
             id,

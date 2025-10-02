@@ -15,7 +15,7 @@ export function useSessionTypes() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('session_types')
+        .from('triagem_session_types')
         .select('*')
         .order('sort_order', { ascending: true });
 
@@ -32,7 +32,7 @@ export function useSessionTypes() {
   const createSessionType = async (sessionType: Omit<SessionTypeData, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
-        .from('session_types')
+        .from('triagem_session_types')
         .insert([sessionType])
         .select()
         .single();
@@ -51,7 +51,7 @@ export function useSessionTypes() {
   const updateSessionType = async (id: string, updates: Partial<SessionTypeData>) => {
     try {
       const { error } = await supabase
-        .from('session_types')
+        .from('triagem_session_types')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id);
 
@@ -69,7 +69,7 @@ export function useSessionTypes() {
   const deleteSessionType = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('session_types')
+        .from('triagem_session_types')
         .delete()
         .eq('id', id);
 

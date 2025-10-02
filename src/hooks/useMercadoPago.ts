@@ -25,7 +25,7 @@ export function useMercadoPago() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('mercadopago_settings')
+        .from('triagem_mercadopago_settings')
         .select('*')
         .eq('tenant_id', tenant.id)
         .eq('is_active', true)
@@ -53,7 +53,7 @@ export function useMercadoPago() {
       if (settings) {
         // Update existing settings
         const { error } = await supabase
-          .from('mercadopago_settings')
+          .from('triagem_mercadopago_settings')
           .update({ ...updates, updated_at: new Date().toISOString() })
           .eq('id', settings.id);
 
@@ -63,7 +63,7 @@ export function useMercadoPago() {
       } else {
         // Create new settings
         const { data, error } = await supabase
-          .from('mercadopago_settings')
+          .from('triagem_mercadopago_settings')
           .insert([{
             ...updates,
             tenant_id: tenant.id,

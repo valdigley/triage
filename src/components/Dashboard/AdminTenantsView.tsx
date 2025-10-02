@@ -20,7 +20,7 @@ export function AdminTenantsView() {
       setLoading(true);
 
       const { data: tenantsData, error: tenantsError } = await supabase
-        .from('tenants')
+        .from('triagem_tenants')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -30,7 +30,7 @@ export function AdminTenantsView() {
       if (tenantsData) {
         const subsPromises = tenantsData.map(tenant =>
           supabase
-            .from('subscriptions')
+            .from('triagem_subscriptions')
             .select('*')
             .eq('tenant_id', tenant.id)
             .order('created_at', { ascending: false })
@@ -47,7 +47,7 @@ export function AdminTenantsView() {
 
         const paymentsPromises = tenantsData.map(tenant =>
           supabase
-            .from('subscription_payments')
+            .from('triagem_subscription_payments')
             .select('*')
             .eq('tenant_id', tenant.id)
             .order('created_at', { ascending: false })
@@ -70,7 +70,7 @@ export function AdminTenantsView() {
   const updateTenantStatus = async (tenantId: string, newStatus: 'trial' | 'active' | 'suspended' | 'canceled') => {
     try {
       const { error } = await supabase
-        .from('tenants')
+        .from('triagem_tenants')
         .update({ status: newStatus })
         .eq('id', tenantId);
 

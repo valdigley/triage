@@ -25,7 +25,7 @@ export function useSettings() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('settings')
+        .from('triagem_settings')
         .select('*')
         .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: true })
@@ -36,7 +36,7 @@ export function useSettings() {
 
       if (!data) {
         const { data: newSettings, error: createError } = await supabase
-          .from('settings')
+          .from('triagem_settings')
           .insert([{
             tenant_id: tenant.id,
             studio_name: tenant.business_name || tenant.name,
@@ -84,7 +84,7 @@ export function useSettings() {
       if (!settings) return false;
 
       const { error } = await supabase
-        .from('settings')
+        .from('triagem_settings')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', settings.id);
 

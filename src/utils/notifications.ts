@@ -5,7 +5,7 @@ export async function scheduleNotifications(appointmentId: string) {
   try {
     // Get appointment details
     const { data: appointment, error: appointmentError } = await supabase
-      .from('appointments')
+      .from('triagem_appointments')
       .select(`
         *,
         client:clients(*)
@@ -19,7 +19,7 @@ export async function scheduleNotifications(appointmentId: string) {
 
     // Get settings
     const { data: settings } = await supabase
-      .from('settings')
+      .from('triagem_settings')
       .select('delivery_days, studio_address, studio_maps_url, price_commercial_hour')
       .limit(1)
       .maybeSingle();
@@ -30,7 +30,7 @@ export async function scheduleNotifications(appointmentId: string) {
 
     // Get session type details
     const { data: sessionType } = await supabase
-      .from('session_types')
+      .from('triagem_session_types')
       .select('*')
       .eq('name', appointment.session_type)
       .single();
@@ -63,7 +63,7 @@ export async function scheduleNotifications(appointmentId: string) {
     // Schedule reminder 1 day before
     const oneDayBefore = new Date(appointmentDate.getTime() - 24 * 60 * 60 * 1000);
     await supabase
-      .from('notification_queue')
+      .from('triagem_notification_queue')
       .insert({
         appointment_id: appointmentId,
         template_type: 'reminder_1_day_before',
@@ -76,7 +76,7 @@ export async function scheduleNotifications(appointmentId: string) {
     // Schedule reminder 2 hours before session
     const twoHoursBefore = new Date(appointmentDate.getTime() - 2 * 60 * 60 * 1000);
     await supabase
-      .from('notification_queue')
+      .from('triagem_notification_queue')
       .insert({
         appointment_id: appointmentId,
         template_type: 'reminder_day_of_session',
@@ -97,7 +97,7 @@ export async function scheduleGalleryNotifications(galleryId: string, galleryTok
   try {
     // Get gallery with appointment details from galleries_triage
     const { data: gallery, error: galleryError } = await supabase
-      .from('galleries_triage')
+      .from('triagem_galleries')
       .select(`
         *,
         appointment:appointments(
@@ -119,7 +119,7 @@ export async function scheduleGalleryNotifications(galleryId: string, galleryTok
 
     // Get settings
     const { data: settings } = await supabase
-      .from('settings')
+      .from('triagem_settings')
       .select('*')
       .limit(1)
       .maybeSingle();
@@ -130,7 +130,7 @@ export async function scheduleGalleryNotifications(galleryId: string, galleryTok
 
     // Get session type details
     const { data: sessionType } = await supabase
-      .from('session_types')
+      .from('triagem_session_types')
       .select('*')
       .eq('name', appointment.session_type)
       .single();
@@ -174,7 +174,7 @@ export async function scheduleGalleryNotifications(galleryId: string, galleryTok
 
     // Schedule gallery ready notification (immediate)
     await supabase
-      .from('notification_queue')
+      .from('triagem_notification_queue')
       .insert({
         appointment_id: appointment.id,
         template_type: 'gallery_ready',
@@ -187,7 +187,7 @@ export async function scheduleGalleryNotifications(galleryId: string, galleryTok
     // Schedule selection reminder (6 days after gallery creation)
     const selectionReminder = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000);
     await supabase
-      .from('notification_queue')
+      .from('triagem_notification_queue')
       .insert({
         appointment_id: appointment.id,
         template_type: 'selection_reminder',
@@ -208,7 +208,7 @@ export async function scheduleSelectionConfirmation(appointmentId: string) {
   try {
     // Get appointment details
     const { data: appointment, error: appointmentError } = await supabase
-      .from('appointments')
+      .from('triagem_appointments')
       .select(`
         *,
         client:clients(*)
@@ -222,7 +222,7 @@ export async function scheduleSelectionConfirmation(appointmentId: string) {
 
     // Get settings
     const { data: settings } = await supabase
-      .from('settings')
+      .from('triagem_settings')
       .select('*')
       .limit(1)
       .maybeSingle();
@@ -233,7 +233,7 @@ export async function scheduleSelectionConfirmation(appointmentId: string) {
 
     // Get session type details
     const { data: sessionType } = await supabase
-      .from('session_types')
+      .from('triagem_session_types')
       .select('*')
       .eq('name', appointment.session_type)
       .single();
@@ -274,7 +274,7 @@ export async function scheduleSelectionConfirmation(appointmentId: string) {
 
     // Schedule selection received notification (immediate)
     await supabase
-      .from('notification_queue')
+      .from('triagem_notification_queue')
       .insert({
         appointment_id: appointmentId,
         template_type: 'selection_received',
@@ -287,7 +287,7 @@ export async function scheduleSelectionConfirmation(appointmentId: string) {
     // Schedule delivery reminder (delivery_days - 1 from now)
     const deliveryReminder = new Date(Date.now() + (settings.delivery_days - 1) * 24 * 60 * 60 * 1000);
     await supabase
-      .from('notification_queue')
+      .from('triagem_notification_queue')
       .insert({
         appointment_id: appointmentId,
         template_type: 'delivery_reminder',
@@ -307,7 +307,7 @@ export async function scheduleSelectionConfirmation(appointmentId: string) {
 async function processTemplate(templateType: string, variables: Record<string, string>): Promise<string> {
   try {
     const { data: template } = await supabase
-      .from('notification_templates')
+      .from('triagem_notification_templates')
       .select('message_template')
       .eq('type', templateType)
       .eq('is_active', true)

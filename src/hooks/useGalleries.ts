@@ -27,12 +27,12 @@ export function useGalleries() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .select(`
           *,
-          appointment:appointments(
+          appointment:triagem_appointments(
             *,
-            client:clients(*)
+            client:triagem_clients(*)
           )
         `)
         .eq('tenant_id', tenant.id)
@@ -56,7 +56,7 @@ export function useGalleries() {
       expirationDate.setDate(expirationDate.getDate() + expirationDays);
 
       const { data, error } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .insert([{
           tenant_id: tenant.id,
           appointment_id: appointmentId,
@@ -91,7 +91,7 @@ export function useGalleries() {
       }
       
       const { error } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update(updateData)
         .eq('id', id);
 
@@ -125,7 +125,7 @@ export function useGalleries() {
           .getPublicUrl(filePath);
 
         return supabase
-          .from('photos_triage')
+          .from('triagem_photos')
           .insert({
             gallery_id: galleryId,
             filename: file.name,
@@ -145,12 +145,12 @@ export function useGalleries() {
 
       // Update gallery photo count
       const { data: photos } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('id')
         .eq('gallery_id', galleryId);
 
       await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update({ 
           photos_uploaded: photos?.length || 0,
           updated_at: new Date().toISOString()
@@ -169,12 +169,12 @@ export function useGalleries() {
   const getGalleryByToken = async (token: string) => {
     try {
       const { data: gallery, error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .select(`
           *,
-          appointment:appointments(
+          appointment:triagem_appointments(
             *,
-            client:clients(*)
+            client:triagem_clients(*)
           )
         `)
         .eq('gallery_token', token)
@@ -188,7 +188,7 @@ export function useGalleries() {
       }
 
       const { data: photos, error: photosError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('*')
         .eq('gallery_id', gallery.id)
         .order('created_at', { ascending: true });
@@ -206,7 +206,7 @@ export function useGalleries() {
     try {
       // Update gallery with selected photos
       const { error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update({
           photos_selected: photoIds,
           status: photoIds.length > 0 ? 'started' : 'pending',
@@ -218,13 +218,13 @@ export function useGalleries() {
 
       // Update individual photos
       await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .update({ is_selected: false })
         .eq('gallery_id', galleryId);
 
       if (photoIds.length > 0) {
         await supabase
-          .from('photos_triage')
+          .from('triagem_photos')
           .update({ is_selected: true })
           .in('id', photoIds);
       }
@@ -242,7 +242,7 @@ export function useGalleries() {
       
       // Verificar se já foi submetido recentemente (últimos 30 segundos)
       const { data: recentSubmission } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .select('selection_submitted_at')
         .eq('id', galleryId)
         .single();
@@ -260,12 +260,12 @@ export function useGalleries() {
 
       // Get gallery data first to access appointment info
       const { data: galleryData, error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .select(`
           *,
-          appointment:appointments(
+          appointment:triagem_appointments(
             *,
-            client:clients(*)
+            client:triagem_clients(*)
           )
         `)
         .eq('id', galleryId)
@@ -275,7 +275,7 @@ export function useGalleries() {
 
       // Salvar seleção primeiro
       const { error: updateError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update({
           photos_selected: photoIds,
           selection_completed: true,
@@ -291,12 +291,12 @@ export function useGalleries() {
       // Agendar notificações apenas se pagamento aprovado
       if (galleryData.appointment?.payment_status === 'approved' && galleryData.appointment?.client) {
         const { data: settings } = await supabase
-          .from('settings')
+          .from('triagem_settings')
           .select('*')
           .single();
 
         const { data: sessionType } = await supabase
-          .from('session_types')
+          .from('triagem_session_types')
           .select('*')
           .eq('name', galleryData.appointment.session_type)
           .maybeSingle();
@@ -391,7 +391,7 @@ export function useGalleries() {
       console.log('🔄 Executando fallback - salvando apenas seleção...');
       
       const { error } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update({
           photos_selected: photoIds,
           selection_completed: true,
@@ -434,7 +434,7 @@ export function useGalleries() {
       
       try {
       const { data: pendingNotifications } = await supabase
-        .from('notification_queue')
+        .from('triagem_notification_queue')
         .select('*')
         .eq('status', 'pending')
         .lte('scheduled_for', new Date().toISOString())
@@ -470,12 +470,12 @@ export function useGalleries() {
     try {
       // Get gallery data first to access appointment info
       const { data: galleryData, error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .select(`
           *,
-          appointment:appointments(
+          appointment:triagem_appointments(
             *,
-            client:clients(*)
+            client:triagem_clients(*)
           )
         `)
         .eq('id', galleryId)
@@ -484,7 +484,7 @@ export function useGalleries() {
       if (galleryError) throw galleryError;
 
       const { error } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update({
           photos_selected: photoIds,
           selection_completed: true,
@@ -503,7 +503,7 @@ export function useGalleries() {
           
           // Get settings for pricing
           const { data: settings } = await supabase
-            .from('settings')
+            .from('triagem_settings')
             .select('price_commercial_hour')
             .single();
 
@@ -535,7 +535,7 @@ export function useGalleries() {
 
           // Get selection received template
           const { data: template } = await supabase
-            .from('notification_templates')
+            .from('triagem_notification_templates')
             .select('message_template')
             .eq('type', 'selection_received')
             .eq('is_active', true)
@@ -550,7 +550,7 @@ export function useGalleries() {
 
             // Schedule selection received notification (immediate)
             await supabase
-              .from('notification_queue')
+              .from('triagem_notification_queue')
               .insert({
                 appointment_id: galleryData.appointment.id,
                 template_type: 'selection_received',
@@ -580,7 +580,7 @@ export function useGalleries() {
   const processTemplate = async (templateType: string, variables: Record<string, string>): Promise<string> => {
     try {
       const { data: template } = await supabase
-        .from('notification_templates')
+        .from('triagem_notification_templates')
         .select('message_template')
         .eq('type', templateType)
         .eq('is_active', true)
@@ -612,7 +612,7 @@ export function useGalleries() {
     try {
       // Get photo details first
       const { data: photo, error: photoError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('*')
         .eq('id', photoId)
         .single();
@@ -635,7 +635,7 @@ export function useGalleries() {
       
       // Delete from database
       const { error: dbError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .delete()
         .eq('id', photoId);
       
@@ -643,12 +643,12 @@ export function useGalleries() {
       
       // Update gallery photo count
       const { data: photos } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('id')
         .eq('gallery_id', photo.gallery_id);
         
       await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update({ 
           photos_uploaded: photos?.length || 0,
           updated_at: new Date().toISOString()
@@ -668,7 +668,7 @@ export function useGalleries() {
     try {
       // Get all photos from the gallery first
       const { data: photos, error: photosError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('*')
         .eq('gallery_id', galleryId);
 
@@ -705,7 +705,7 @@ export function useGalleries() {
 
       // Delete gallery from database (this will cascade delete photos_triage due to foreign key)
       const { error: galleryError } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .delete()
         .eq('id', galleryId);
 

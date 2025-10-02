@@ -30,7 +30,7 @@ export function useTenant() {
 
       // Get tenant for current user
       const { data: tenantUsers } = await supabase
-        .from('tenant_users')
+        .from('triagem_tenant_users')
         .select('tenant_id')
         .eq('user_id', user.id)
         .limit(1)
@@ -43,7 +43,7 @@ export function useTenant() {
 
       // Fetch tenant details
       const { data: tenantData, error: tenantError } = await supabase
-        .from('tenants')
+        .from('triagem_tenants')
         .select('*')
         .eq('id', tenantUsers.tenant_id)
         .single();
@@ -53,7 +53,7 @@ export function useTenant() {
 
       // Fetch active subscription
       const { data: subData } = await supabase
-        .from('subscriptions')
+        .from('triagem_subscriptions')
         .select('*')
         .eq('tenant_id', tenantUsers.tenant_id)
         .eq('status', 'active')

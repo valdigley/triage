@@ -165,7 +165,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
       
       // Delete from database
       const { error: dbError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .delete()
         .eq('id', photoId);
       
@@ -173,12 +173,12 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
       
       // Update gallery photo count
       const { data: photos } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('id')
         .eq('gallery_id', galleryId);
 
       await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update({ 
           photos_uploaded: photos?.length || 0,
           updated_at: new Date().toISOString()
@@ -293,13 +293,13 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
           
           const { data: { user } } = await supabase.auth.getUser();
           const { data: tenantUser } = await supabase
-            .from('tenant_users')
+            .from('triagem_tenant_users')
             .select('tenant_id')
             .eq('user_id', user?.id)
             .single();
 
           const { error } = await supabase
-            .from('photos_triage')
+            .from('triagem_photos')
             .insert({
               tenant_id: tenantUser?.tenant_id,
               gallery_id: galleryId,
@@ -338,14 +338,14 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
 
       // Update gallery photo count and set preview image
       const { data: photos } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('id, url, thumbnail')
         .eq('gallery_id', galleryId)
         .order('created_at', { ascending: true });
 
       // Get current gallery to check if preview already set
       const { data: currentGallery } = await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .select('preview_image_url')
         .eq('id', galleryId)
         .maybeSingle();
@@ -362,7 +362,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
       }
 
       await supabase
-        .from('galleries_triage')
+        .from('triagem_galleries')
         .update(updateData)
         .eq('id', galleryId);
 

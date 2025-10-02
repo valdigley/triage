@@ -15,7 +15,7 @@ export function useNotifications() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('notification_templates')
+        .from('triagem_notification_templates')
         .select('*')
         .order('type', { ascending: true });
 
@@ -32,7 +32,7 @@ export function useNotifications() {
   const updateTemplate = async (id: string, updates: Partial<NotificationTemplate>) => {
     try {
       const { error } = await supabase
-        .from('notification_templates')
+        .from('triagem_notification_templates')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id);
 
@@ -59,7 +59,7 @@ export function useNotifications() {
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       const { data, error } = await supabase
-        .from('notification_queue')
+        .from('triagem_notification_queue')
         .select('id, status, sent_at, created_at')
         .eq('appointment_id', appointmentId)
         .eq('template_type', templateType)
@@ -93,7 +93,7 @@ export function useNotifications() {
     try {
       // Buscar template
       const { data: template, error } = await supabase
-        .from('notification_templates')
+        .from('triagem_notification_templates')
         .select('message_template')
         .eq('type', templateType)
         .eq('is_active', true)
@@ -158,7 +158,7 @@ export function useNotifications() {
 
       // Inserir na fila
       const { error } = await supabase
-        .from('notification_queue')
+        .from('triagem_notification_queue')
         .insert({
           appointment_id: appointmentId,
           template_type: templateType,
@@ -189,7 +189,7 @@ export function useNotifications() {
       console.log('📋 Agendando lembretes para:', appointment.client?.name);
 
       const { data: settings } = await supabase
-        .from('settings')
+        .from('triagem_settings')
         .select('*')
         .single();
 
@@ -203,7 +203,7 @@ export function useNotifications() {
       const clientPhone = appointment.client?.phone || '';
 
       const { data: sessionType } = await supabase
-        .from('session_types')
+        .from('triagem_session_types')
         .select('*')
         .eq('name', appointment.session_type)
         .maybeSingle();
@@ -291,8 +291,8 @@ export function useNotifications() {
       console.log('📸 Agendando notificações de galeria');
 
       const { data: appointment } = await supabase
-        .from('appointments')
-        .select('*, client:clients(*)')
+        .from('triagem_appointments')
+        .select('*, client:triagem_clients(*)')
         .eq('id', appointmentId)
         .single();
 
@@ -302,7 +302,7 @@ export function useNotifications() {
       }
 
       const { data: settings } = await supabase
-        .from('settings')
+        .from('triagem_settings')
         .select('delivery_days')
         .single();
 

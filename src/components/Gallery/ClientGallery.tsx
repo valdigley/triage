@@ -211,7 +211,7 @@ export function ClientGallery() {
       
       // Get existing photo data
       const { data: photo, error: fetchError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .select('metadata')
         .eq('id', photoId)
         .single();
@@ -225,7 +225,7 @@ export function ClientGallery() {
       };
 
       const { error: updateError } = await supabase
-        .from('photos_triage')
+        .from('triagem_photos')
         .update({ metadata: updatedMetadata })
         .eq('id', photoId);
 
@@ -431,7 +431,7 @@ export function ClientGallery() {
 
           // Verificar quantas fotos estão carregadas na galeria
           const { data: currentPhotos } = await (await import('../../lib/supabase')).supabase
-            .from('photos_triage')
+            .from('triagem_photos')
             .select('id')
             .eq('gallery_id', gallery.id);
 

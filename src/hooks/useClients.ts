@@ -26,7 +26,7 @@ export function useClients() {
       setLoading(true);
 
       const { data, error } = await supabase
-        .from('clients')
+        .from('triagem_clients')
         .select('*')
         .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
@@ -34,7 +34,7 @@ export function useClients() {
       if (error) throw error;
 
       const { data: allPayments } = await supabase
-        .from('payments')
+        .from('triagem_payments')
         .select('client_id, amount, status')
         .eq('tenant_id', tenant.id)
         .eq('status', 'approved');
@@ -66,7 +66,7 @@ export function useClients() {
       setLoading(true);
 
       let query = supabase
-        .from('clients')
+        .from('triagem_clients')
         .select('*')
         .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
@@ -80,7 +80,7 @@ export function useClients() {
       if (error) throw error;
 
       const { data: allPayments } = await supabase
-        .from('payments')
+        .from('triagem_payments')
         .select('client_id, amount, status')
         .eq('tenant_id', tenant.id)
         .eq('status', 'approved');
@@ -108,13 +108,13 @@ export function useClients() {
   const getClientDetails = async (clientId: string) => {
     try {
       const { data: client, error: clientError } = await supabase
-        .from('clients')
+        .from('triagem_clients')
         .select('*')
         .eq('id', clientId)
         .single();
 
       const { data: appointments, error: appointmentsError } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .select('*')
         .eq('client_id', clientId)
         .order('scheduled_date', { ascending: false });

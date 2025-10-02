@@ -28,10 +28,10 @@ export function useAppointments() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .select(`
           *,
-          client:clients(*)
+          client:triagem_clients(*)
         `)
         .eq('tenant_id', tenant.id)
         .order('scheduled_date', { ascending: true });
@@ -148,7 +148,7 @@ export function useAppointments() {
     try {
       // Get settings for minimum_photos
       const { data: settings } = await supabase
-        .from('settings')
+        .from('triagem_settings')
         .select('minimum_photos')
         .eq('tenant_id', tenant.id)
         .single();
@@ -160,7 +160,7 @@ export function useAppointments() {
 
       try {
         const { data, error } = await supabase
-          .from('clients')
+          .from('triagem_clients')
           .select('*')
           .eq('tenant_id', tenant.id)
           .eq('phone', formData.clientPhone)
@@ -185,7 +185,7 @@ export function useAppointments() {
         clientId = existingClient.id;
         // Update client info if needed
         await supabase
-          .from('clients')
+          .from('triagem_clients')
           .update({
             name: formData.clientName,
             email: formData.clientEmail,
@@ -194,7 +194,7 @@ export function useAppointments() {
           .eq('id', clientId);
       } else {
         const { data: newClient, error: clientError } = await supabase
-          .from('clients')
+          .from('triagem_clients')
           .insert([{
             tenant_id: tenant.id,
             name: formData.clientName,
@@ -210,7 +210,7 @@ export function useAppointments() {
 
       // Create appointment
       const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .insert([{
           tenant_id: tenant.id,
           client_id: clientId,
@@ -265,7 +265,7 @@ export function useAppointments() {
 
       // Get all existing appointments to check for conflicts
       const { data, error } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .select('scheduled_date')
         .in('status', ['pending', 'confirmed']);
 
@@ -273,7 +273,7 @@ export function useAppointments() {
 
       // Get settings for commercial hours
       const { data: settings } = await supabase
-        .from('settings')
+        .from('triagem_settings')
         .select('commercial_hours')
         .limit(1)
         .maybeSingle();
@@ -291,7 +291,7 @@ export function useAppointments() {
   const updateAppointmentStatus = async (id: string, status: Appointment['status']) => {
     try {
       const { error } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .update({ status })
         .eq('id', id);
 
@@ -304,10 +304,10 @@ export function useAppointments() {
         // Tentar agendar notificações se ainda não foram agendadas
         try {
           const { data: appointment } = await supabase
-            .from('appointments')
+            .from('triagem_appointments')
             .select(`
               *,
-              client:clients(*)
+              client:triagem_clients(*)
             `)
             .eq('id', id)
             .single();
@@ -331,7 +331,7 @@ export function useAppointments() {
   const deleteAppointment = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .delete()
         .eq('id', id);
 

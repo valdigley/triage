@@ -25,7 +25,7 @@ export function useWhatsApp() {
 
     try {
       const { data, error } = await supabase
-        .from('whatsapp_instances')
+        .from('triagem_whatsapp_instances')
         .select('*')
         .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
