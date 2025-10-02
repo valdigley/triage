@@ -51,6 +51,14 @@ export function SettingsView() {
     instance_name: ''
   });
 
+  // Generate instance name from studio phone
+  const generateInstanceName = (phone: string) => {
+    // Remove all non-numeric characters
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Use phone as prefix for instance name
+    return `studio_${cleanPhone}`;
+  };
+
   // Google Calendar form state (campo único para JSON)
   const [googleCalendarForm, setGoogleCalendarForm] = useState({
     calendar_id: '',
@@ -72,7 +80,7 @@ export function SettingsView() {
     instance.status === 'connected' || instance.status === 'created'
   ) || instances[0];
 
-  // Update form when active instance changes
+  // Update form when active instance changes or settings change
   useEffect(() => {
     if (activeWhatsAppInstance) {
       setWhatsappSettings({
@@ -80,8 +88,14 @@ export function SettingsView() {
         evolution_api_key: activeWhatsAppInstance.instance_data.evolution_api_key || '',
         instance_name: activeWhatsAppInstance.instance_name || ''
       });
+    } else if (settings?.studio_phone) {
+      // If no instance exists, generate name from studio phone
+      setWhatsappSettings(prev => ({
+        ...prev,
+        instance_name: generateInstanceName(settings.studio_phone)
+      }));
     }
-  }, [activeWhatsAppInstance]);
+  }, [activeWhatsAppInstance, settings?.studio_phone]);
   const handleSave = async () => {
     if (!settings) return;
     
@@ -288,8 +302,13 @@ export function SettingsView() {
   };
 
   const saveWhatsAppSettings = async () => {
-    if (!whatsappSettings.evolution_api_url || !whatsappSettings.evolution_api_key || !whatsappSettings.instance_name) {
-      alert('Todos os campos são obrigatórios');
+    if (!whatsappSettings.evolution_api_url || !whatsappSettings.evolution_api_key) {
+      alert('URL e API Key são obrigatórios');
+      return;
+    }
+
+    if (!settings?.studio_phone) {
+      alert('Configure o telefone do estúdio nas configurações gerais primeiro');
       return;
     }
 
@@ -300,47 +319,28 @@ export function SettingsView() {
 
     setSaving(true);
     try {
-      // Check if instance already exists for this tenant
-      const { data: existingInstance } = await supabase
+      // Generate unique instance name from studio phone
+      const instanceName = generateInstanceName(settings.studio_phone);
+
+      // Use upsert to handle both create and update
+      const { error } = await supabase
         .from('triagem_whatsapp_instances')
-        .select('id')
-        .eq('instance_name', whatsappSettings.instance_name)
-        .eq('tenant_id', tenant.id)
-        .maybeSingle();
+        .upsert({
+          tenant_id: tenant.id,
+          instance_name: instanceName,
+          status: 'created',
+          instance_data: {
+            evolution_api_url: whatsappSettings.evolution_api_url,
+            evolution_api_key: whatsappSettings.evolution_api_key,
+            saved_at: new Date().toISOString()
+          },
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'instance_name',
+          ignoreDuplicates: false
+        });
 
-      if (existingInstance) {
-        // Update existing instance
-        const { error } = await supabase
-          .from('triagem_whatsapp_instances')
-          .update({
-            status: 'created',
-            instance_data: {
-              evolution_api_url: whatsappSettings.evolution_api_url,
-              evolution_api_key: whatsappSettings.evolution_api_key,
-              saved_at: new Date().toISOString()
-            },
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingInstance.id);
-
-        if (error) throw error;
-      } else {
-        // Create new instance
-        const { error } = await supabase
-          .from('triagem_whatsapp_instances')
-          .insert({
-            tenant_id: tenant.id,
-            instance_name: whatsappSettings.instance_name,
-            status: 'created',
-            instance_data: {
-              evolution_api_url: whatsappSettings.evolution_api_url,
-              evolution_api_key: whatsappSettings.evolution_api_key,
-              saved_at: new Date().toISOString()
-            }
-          });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       alert('Configurações do WhatsApp salvas com sucesso!');
 
@@ -1107,7 +1107,20 @@ export function SettingsView() {
         {activeTab === 'whatsapp' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Configurações WhatsApp</h2>
-            
+
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+              <div className="flex items-start">
+                <Check className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="font-medium text-green-800 dark:text-green-200 mb-1">Instância Única por Estúdio</h3>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Cada estúdio possui sua própria instância WhatsApp, gerada automaticamente a partir do telefone configurado.
+                    Isso garante que cada usuário utilize seu próprio número de WhatsApp de forma isolada.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Evolution API</h3>
               <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -1158,15 +1171,14 @@ export function SettingsView() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nome da Instância
+                  Nome da Instância (gerado automaticamente)
                 </label>
-                <input
-                  type="text"
-                  value={whatsappSettings.instance_name}
-                  onChange={(e) => setWhatsappSettings(prev => ({ ...prev, instance_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="nome-da-instancia"
-                />
+                <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                  {settings?.studio_phone ? generateInstanceName(settings.studio_phone) : 'Configure o telefone do estúdio primeiro'}
+                </div>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Cada estúdio tem sua própria instância baseada no número de telefone
+                </p>
               </div>
 
               <div className="flex space-x-4">
