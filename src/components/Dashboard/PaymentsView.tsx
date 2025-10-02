@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, DollarSign, TrendingUp, Calendar, Clock, Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
+import { useTenant } from '../../hooks/useTenant';
 import { Payment, Appointment } from '../../types';
 import { formatCurrency } from '../../utils/pricing';
 
@@ -11,12 +12,17 @@ export function PaymentsView() {
   const [sendingPaymentRequest, setSendingPaymentRequest] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('all');
   const { sendMessage } = useWhatsApp();
+  const { tenant } = useTenant();
 
   useEffect(() => {
-    fetchPayments();
-  }, []);
+    if (tenant) {
+      fetchPayments();
+    }
+  }, [tenant]);
 
   const fetchPayments = async () => {
+    if (!tenant) return;
+
     try {
       const { data, error } = await supabase
         .from('payments')
@@ -37,6 +43,7 @@ export function PaymentsView() {
             name
           )
         `)
+        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

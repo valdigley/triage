@@ -3,6 +3,7 @@ import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useClients } from '../../hooks/useClients';
+import { useTenant } from '../../hooks/useTenant';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
 import { supabase } from '../../lib/supabase';
@@ -11,18 +12,24 @@ import { supabase } from '../../lib/supabase';
 export function DashboardOverview() {
   const { appointments } = useAppointments();
   const { clients } = useClients();
+  const { tenant } = useTenant();
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [pendingPayments, setPendingPayments] = useState(0);
 
   useEffect(() => {
-    fetchPaymentStats();
-  }, []);
+    if (tenant) {
+      fetchPaymentStats();
+    }
+  }, [tenant]);
 
   const fetchPaymentStats = async () => {
+    if (!tenant) return;
+
     try {
       const { data: payments, error } = await supabase
         .from('payments')
-        .select('amount, status');
+        .select('amount, status')
+        .eq('tenant_id', tenant.id);
 
       if (error) throw error;
 

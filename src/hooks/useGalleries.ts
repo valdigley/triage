@@ -45,6 +45,8 @@ export function useGalleries() {
   };
 
   const createGallery = async (appointmentId: string, name: string, expirationDays: number = 30) => {
+    if (!tenant) throw new Error('Tenant não encontrado');
+
     try {
       const expirationDate = new Date();
       expirationDate.setDate(expirationDate.getDate() + expirationDays);
@@ -52,6 +54,7 @@ export function useGalleries() {
       const { data, error } = await supabase
         .from('galleries_triage')
         .insert([{
+          tenant_id: tenant.id,
           appointment_id: appointmentId,
           name,
           link_expires_at: expirationDate.toISOString()

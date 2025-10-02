@@ -139,11 +139,14 @@ export function useAppointments() {
   };
 
   const createAppointment = async (formData: BookingFormData, totalAmount: number) => {
+    if (!tenant) throw new Error('Tenant não encontrado');
+
     try {
       // Get settings for minimum_photos
       const { data: settings } = await supabase
         .from('settings')
         .select('minimum_photos')
+        .eq('tenant_id', tenant.id)
         .single();
 
       const minimumPhotos = settings?.minimum_photos || 5;
@@ -155,6 +158,7 @@ export function useAppointments() {
         const { data, error } = await supabase
           .from('clients')
           .select('*')
+          .eq('tenant_id', tenant.id)
           .eq('phone', formData.clientPhone)
           .single();
 
@@ -188,6 +192,7 @@ export function useAppointments() {
         const { data: newClient, error: clientError } = await supabase
           .from('clients')
           .insert([{
+            tenant_id: tenant.id,
             name: formData.clientName,
             email: formData.clientEmail,
             phone: formData.clientPhone
@@ -203,6 +208,7 @@ export function useAppointments() {
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([{
+          tenant_id: tenant.id,
           client_id: clientId,
           session_type: formData.sessionType,
           session_details: formData.sessionDetails,

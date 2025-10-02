@@ -29,7 +29,44 @@ export function useSettings() {
         .maybeSingle();
 
       if (error) throw error;
-      setSettings(data);
+
+      if (!data) {
+        const { data: newSettings, error: createError } = await supabase
+          .from('settings')
+          .insert([{
+            tenant_id: tenant.id,
+            studio_name: tenant.business_name || tenant.name,
+            studio_phone: tenant.phone,
+            price_commercial_hour: 150,
+            price_after_hours: 200,
+            minimum_photos: 5,
+            delivery_days: 7,
+            link_validity_days: 30,
+            cleanup_days: 60,
+            commercial_hours: {
+              monday: { start: '09:00', end: '18:00' },
+              tuesday: { start: '09:00', end: '18:00' },
+              wednesday: { start: '09:00', end: '18:00' },
+              thursday: { start: '09:00', end: '18:00' },
+              friday: { start: '09:00', end: '18:00' },
+              saturday: { start: '09:00', end: '13:00' },
+              sunday: { start: '', end: '' }
+            },
+            terms_conditions: 'Termos e condições padrão',
+            watermark_enabled: true,
+            watermark_text: tenant.business_name || tenant.name,
+            watermark_opacity: 0.5,
+            watermark_position: 'bottom-right',
+            watermark_size: 'medium'
+          }])
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        setSettings(newSettings);
+      } else {
+        setSettings(data);
+      }
     } catch (err) {
       console.error('Erro ao buscar configurações:', err);
       setError(err instanceof Error ? err.message : 'Falha ao buscar configurações');
