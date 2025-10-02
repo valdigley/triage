@@ -161,10 +161,11 @@ export function PaymentsView() {
   const getPaymentTypeBadge = (type: string) => {
     const typeConfig = {
       initial: { label: 'Inicial', className: 'bg-blue-100 text-blue-800' },
-      extra_photos: { label: 'Fotos Extras', className: 'bg-purple-100 text-purple-800' }
+      extra_photos: { label: 'Fotos Extras', className: 'bg-purple-100 text-purple-800' },
+      public_gallery: { label: 'Galeria Pública', className: 'bg-green-100 text-green-800' }
     };
 
-    const config = typeConfig[type as keyof typeof typeConfig];
+    const config = typeConfig[type as keyof typeof typeConfig] || { label: type, className: 'bg-gray-100 text-gray-800' };
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
         {config.label}

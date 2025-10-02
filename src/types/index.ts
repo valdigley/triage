@@ -159,7 +159,7 @@ export interface Photo {
   created_at: string;
 }
 
-export type PaymentType = 'initial' | 'extra_photos';
+export type PaymentType = 'initial' | 'extra_photos' | 'public_gallery';
 
 export interface Payment {
   id: string;
