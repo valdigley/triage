@@ -64,13 +64,14 @@ const adminMenuItem = {
 
 export function Sidebar({ currentView, onViewChange, onLogout, isOpen, onToggle }: SidebarProps) {
   const { isDarkMode, toggleDarkMode } = useTheme();
-  const { isMasterAdmin, tenant } = useTenant();
+  const { isMasterAdmin } = useTenant();
+  const { settings } = useSettings();
 
   const menuItems = isMasterAdmin
     ? [adminMenuItem, ...baseMenuItems]
     : baseMenuItems;
 
-  const displayName = tenant?.name || 'Usuário';
+  const displayName = settings?.studio_name || 'Studio';
 
   return (
     <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg h-full flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
