@@ -440,7 +440,7 @@ export function SettingsView() {
                 </label>
                 <input
                   type="tel"
-                  value={settings.studio_phone || ''}
+                  value={settings.studio_phone ?? ''}
                   onChange={(e) => updateSettings({ studio_phone: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="(11) 99999-9999"
@@ -453,7 +453,7 @@ export function SettingsView() {
                 </label>
                 <input
                   type="url"
-                  value={settings.app_url || ''}
+                  value={settings.app_url ?? ''}
                   onChange={(e) => updateSettings({ app_url: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="https://triagem.online"
@@ -1265,7 +1265,7 @@ export function SettingsView() {
                 <div className="relative">
                   <input
                     type={showAccessToken ? 'text' : 'password'}
-                    value={mpSettings?.access_token || ''}
+                    value={mpSettings?.access_token ?? ''}
                     onChange={(e) => updateMPSettings({ access_token: e.target.value })}
                     className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="APP_USR-... ou TEST-..."
@@ -1286,7 +1286,7 @@ export function SettingsView() {
                 </label>
                 <input
                   type="text"
-                  value={mpSettings?.public_key || ''}
+                  value={mpSettings?.public_key ?? ''}
                   onChange={(e) => updateMPSettings({ public_key: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="APP_USR-... ou TEST-..."
@@ -1298,7 +1298,7 @@ export function SettingsView() {
                   Ambiente
                 </label>
                 <select
-                  value={mpSettings?.environment || 'sandbox'}
+                  value={mpSettings?.environment ?? 'sandbox'}
                   onChange={(e) => updateMPSettings({ environment: e.target.value as 'sandbox' | 'production' })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
