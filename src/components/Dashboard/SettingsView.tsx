@@ -392,14 +392,26 @@ export function SettingsView() {
       return;
     }
 
+    if (!globalSettings?.evolution_api_url || !globalSettings?.evolution_api_key) {
+      alert('Configurações globais da Evolution API não encontradas. Entre em contato com o administrador.');
+      return;
+    }
+
     setLoadingQR(true);
     setQrCode(null);
     setQrCountdown(15);
 
     try {
+      console.log('🔄 Salvando configurações WhatsApp...');
       await saveWhatsAppSettings();
 
+      console.log('🔄 Recarregando instâncias...');
+      await refetchWhatsApp();
+
+      console.log('📱 Gerando QR Code...');
       const result = await getQRCode();
+
+      console.log('📊 Resultado:', result);
 
       if (result.success && result.qrCode) {
         setQrCode(result.qrCode);
@@ -440,9 +452,10 @@ export function SettingsView() {
         alert('WhatsApp já está conectado!');
         await refetchWhatsApp();
       } else {
-        alert(result.message);
+        alert(`Erro ao gerar QR Code: ${result.message}`);
       }
     } catch (error) {
+      console.error('❌ Erro ao gerar QR Code:', error);
       alert('Erro ao gerar QR Code');
     } finally {
       setLoadingQR(false);
