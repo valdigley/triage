@@ -163,7 +163,9 @@ export type PaymentType = 'initial' | 'extra_photos';
 
 export interface Payment {
   id: string;
-  appointment_id: string;
+  appointment_id?: string;
+  client_id?: string;
+  gallery_id?: string;
   mercadopago_id?: string;
   amount: number;
   status: PaymentStatus;
@@ -171,6 +173,9 @@ export interface Payment {
   webhook_data?: any;
   created_at: string;
   updated_at: string;
+  appointment?: Appointment;
+  client?: Client;
+  gallery?: Gallery;
 }
 
 export interface BookingFormData {

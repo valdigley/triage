@@ -25,6 +25,16 @@ export function PaymentsView() {
           appointment:appointments(
             *,
             client:clients(*)
+          ),
+          client:client_id(
+            id,
+            name,
+            email,
+            phone
+          ),
+          gallery:gallery_id(
+            id,
+            name
           )
         `)
         .order('created_at', { ascending: false });
@@ -38,8 +48,14 @@ export function PaymentsView() {
     }
   };
 
+  const getPaymentClient = (payment: Payment) => {
+    return payment.appointment?.client || payment.client;
+  };
+
   const handleSendPaymentRequest = async (payment: Payment) => {
-    if (!payment.appointment?.client) {
+    const client = getPaymentClient(payment);
+
+    if (!client) {
       alert('Dados do cliente não encontrados');
       return;
     }
@@ -57,29 +73,29 @@ export function PaymentsView() {
           paymentId: payment.id,
           appointmentId: payment.appointment_id,
           amount: payment.amount,
-          clientName: payment.appointment.client.name,
-          clientEmail: payment.appointment.client.email,
-          clientPhone: payment.appointment.client.phone,
+          clientName: client.name,
+          clientEmail: client.email,
+          clientPhone: client.phone,
           paymentType: payment.payment_type
         })
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         // Send PIX code via WhatsApp
         const paymentTypeLabel = payment.payment_type === 'initial' ? 'Sessão Fotográfica' : 'Fotos Extras';
-        const formattedAmount = new Intl.NumberFormat('pt-BR', { 
-          style: 'currency', 
-          currency: 'BRL' 
+        const formattedAmount = new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
         }).format(payment.amount);
-        
+
         // Primeira mensagem - apenas a chave PIX
         const firstMessage = result.qr_code || 'Código PIX não disponível';
 
         // Segunda mensagem - informações e instruções
         const secondMessage = `💳 *PIX para Pagamento - ${paymentTypeLabel}*\n\n` +
-                             `Olá ${payment.appointment.client.name}!\n\n` +
+                             `Olá ${client.name}!\n\n` +
                              `💰 *Valor:* ${formattedAmount}\n\n` +
                              `⏰ *Válido até:* ${new Date(result.expires_at).toLocaleString('pt-BR')}\n\n` +
                              `💡 *Como pagar:*\n` +
@@ -94,13 +110,13 @@ export function PaymentsView() {
                              `_Mensagem automática do sistema_`;
 
         // Enviar primeira mensagem (chave PIX)
-        const firstMessageSuccess = await sendMessage(payment.appointment.client.phone, firstMessage);
-        
+        const firstMessageSuccess = await sendMessage(client.phone, firstMessage);
+
         // Aguardar 2 segundos antes de enviar a segunda mensagem
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         // Enviar segunda mensagem (informações)
-        const secondMessageSuccess = await sendMessage(payment.appointment.client.phone, secondMessage);
+        const secondMessageSuccess = await sendMessage(client.phone, secondMessage);
         
         const whatsappSuccess = firstMessageSuccess && secondMessageSuccess;
         
@@ -262,7 +278,7 @@ export function PaymentsView() {
                 <tr key={payment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {payment.appointment?.client?.name}
+                      {getPaymentClient(payment)?.name || 'Cliente não identificado'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -281,7 +297,7 @@ export function PaymentsView() {
                     {payment.mercadopago_id || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {payment.status === 'pending' && payment.appointment?.client && (
+                    {payment.status === 'pending' && getPaymentClient(payment) && (
                       <button
                         onClick={() => handleSendPaymentRequest(payment)}
                         disabled={sendingPaymentRequest === payment.id}
@@ -311,7 +327,7 @@ export function PaymentsView() {
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
-                  {payment.appointment?.client?.name || 'Cliente não identificado'}
+                  {getPaymentClient(payment)?.name || 'Cliente não identificado'}
                 </h3>
                 <div className="mb-2">
                   {getPaymentTypeBadge(payment.payment_type)}
@@ -356,7 +372,7 @@ export function PaymentsView() {
             )}
 
             {/* Payment Request Button */}
-            {payment.status === 'pending' && payment.appointment?.client && (
+            {payment.status === 'pending' && getPaymentClient(payment) && (
               <div className="mb-3">
                 <button
                   onClick={() => handleSendPaymentRequest(payment)}
