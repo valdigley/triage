@@ -464,86 +464,46 @@ export function ClientGallery() {
 
     setSubmitting(true);
     try {
-      const { supabase } = await import('../../lib/supabase');
-
-      // Buscar configurações do MercadoPago
-      const { data: mpSettings } = await supabase
-        .from('mercadopago_settings')
-        .select('*')
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle();
-
-      if (!mpSettings || !mpSettings.access_token) {
-        throw new Error('Configurações de pagamento não encontradas');
-      }
-
-      // Gerar pagamento PIX diretamente
       const totalAmount = selectedPhotos.length * (gallery.price_per_photo || 0);
-      const nameParts = clientData.name.trim().split(' ');
-      const firstName = nameParts[0] || 'Cliente';
-      const lastName = nameParts.slice(1).join(' ') || 'Sobrenome';
 
-      const pixPaymentData = {
-        transaction_amount: totalAmount,
-        date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-        payment_method_id: "pix",
-        external_reference: `public-${gallery.id}-${Date.now()}`,
-        notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`,
-        description: `${selectedPhotos.length} fotos - ${gallery.event_name || gallery.name}`,
-        metadata: {
-          parent_gallery_id: gallery.id,
-          client_name: clientData.name,
-          client_phone: clientData.phone,
-          client_email: clientData.email || '',
-          selected_photos: JSON.stringify(selectedPhotos),
-          photos_count: selectedPhotos.length,
-          event_name: gallery.event_name || gallery.name
-        },
-        payer: {
-          first_name: firstName,
-          last_name: lastName,
-          email: clientData.email || 'cliente@exemplo.com',
-          identification: {
-            type: "CPF",
-            number: "11111111111"
-          }
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-public-gallery-payment`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            parentGalleryId: gallery.id,
+            clientName: clientData.name,
+            clientPhone: clientData.phone,
+            clientEmail: clientData.email || null,
+            selectedPhotos: selectedPhotos,
+            totalAmount: totalAmount,
+            eventName: gallery.event_name || gallery.name
+          })
         }
-      };
+      );
 
-      const pixResponse = await fetch('https://api.mercadopago.com/v1/payments', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${mpSettings.access_token}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': `public-${gallery.id}-${Date.now()}`
-        },
-        body: JSON.stringify(pixPaymentData)
-      });
-
-      if (!pixResponse.ok) {
-        const errorData = await pixResponse.json();
-        console.error('MercadoPago Error:', errorData);
-        throw new Error('Erro ao gerar pagamento PIX');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Payment error:', errorData);
+        throw new Error(errorData.error || 'Erro ao gerar pagamento');
       }
 
-      const pixData = await pixResponse.json();
-      const qrCode = pixData.point_of_interaction?.transaction_data?.qr_code;
-      const qrCodeBase64 = pixData.point_of_interaction?.transaction_data?.qr_code_base64;
+      const payment = await response.json();
 
-      setPaymentData({
-        payment_id: pixData.id.toString(),
-        status: pixData.status,
-        qr_code: qrCode,
-        qr_code_base64: qrCodeBase64,
-        expires_at: pixPaymentData.date_of_expiration
-      });
+      if (!payment.success) {
+        throw new Error(payment.error || 'Erro ao gerar pagamento');
+      }
 
+      setPaymentData(payment);
       setShowIdentificationForm(false);
       setShowPayment(true);
 
       // Iniciar polling do status do pagamento
-      startPaymentPolling(pixData.id.toString());
+      startPaymentPolling(payment.payment_id);
 
     } catch (error) {
       console.error('Erro ao processar identificação:', error);
