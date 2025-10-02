@@ -64,11 +64,13 @@ const adminMenuItem = {
 
 export function Sidebar({ currentView, onViewChange, onLogout, isOpen, onToggle }: SidebarProps) {
   const { isDarkMode, toggleDarkMode } = useTheme();
-  const { isMasterAdmin } = useTenant();
+  const { isMasterAdmin, tenant } = useTenant();
 
   const menuItems = isMasterAdmin
     ? [adminMenuItem, ...baseMenuItems]
     : baseMenuItems;
+
+  const displayName = tenant?.name || 'Usuário';
 
   return (
     <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg h-full flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
@@ -85,14 +87,14 @@ export function Sidebar({ currentView, onViewChange, onLogout, isOpen, onToggle 
           </svg>
         </button>
       </div>
-      
+
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-col items-center text-center">
           <div className="mb-3 flex justify-center">
             <LogoDisplay />
           </div>
           <h1 className="text-lg lg:text-xl font-bold text-gray-800 dark:text-white">Triagem</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">By Valdigley Santos</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{displayName}</p>
         </div>
       </div>
 
