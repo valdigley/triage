@@ -12,13 +12,17 @@ export function PaymentsView() {
   const [sendingPaymentRequest, setSendingPaymentRequest] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState('all');
   const { sendMessage } = useWhatsApp();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
+    if (tenantLoading) return;
+
     if (tenant) {
       fetchPayments();
+    } else {
+      setLoading(false);
     }
-  }, [tenant]);
+  }, [tenant, tenantLoading]);
 
   const fetchPayments = async () => {
     if (!tenant) return;

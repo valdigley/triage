@@ -10,13 +10,17 @@ export function useAppointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { scheduleAllAppointmentNotifications } = useNotifications();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
+    if (tenantLoading) return;
+
     if (tenant) {
       fetchAppointments();
+    } else {
+      setLoading(false);
     }
-  }, [tenant]);
+  }, [tenant, tenantLoading]);
 
   const fetchAppointments = async () => {
     if (!tenant) return;

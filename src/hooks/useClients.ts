@@ -7,13 +7,17 @@ export function useClients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
+    if (tenantLoading) return;
+
     if (tenant) {
       fetchClients();
+    } else {
+      setLoading(false);
     }
-  }, [tenant]);
+  }, [tenant, tenantLoading]);
 
   const fetchClients = async () => {
     if (!tenant) return;

@@ -7,13 +7,17 @@ export function useSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
+    if (tenantLoading) return;
+
     if (tenant) {
       fetchSettings();
+    } else {
+      setLoading(false);
     }
-  }, [tenant]);
+  }, [tenant, tenantLoading]);
 
   const fetchSettings = async () => {
     if (!tenant) return;

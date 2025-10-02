@@ -12,15 +12,17 @@ import { supabase } from '../../lib/supabase';
 export function DashboardOverview() {
   const { appointments } = useAppointments();
   const { clients } = useClients();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [pendingPayments, setPendingPayments] = useState(0);
 
   useEffect(() => {
+    if (tenantLoading) return;
+
     if (tenant) {
       fetchPaymentStats();
     }
-  }, [tenant]);
+  }, [tenant, tenantLoading]);
 
   const fetchPaymentStats = async () => {
     if (!tenant) return;

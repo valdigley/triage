@@ -9,13 +9,17 @@ export function useGalleries() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { scheduleNotificationSafe, processNotificationQueue } = useNotifications();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
+    if (tenantLoading) return;
+
     if (tenant) {
       fetchGalleries();
+    } else {
+      setLoading(false);
     }
-  }, [tenant]);
+  }, [tenant, tenantLoading]);
 
   const fetchGalleries = async () => {
     if (!tenant) return;
