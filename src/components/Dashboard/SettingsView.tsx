@@ -7,6 +7,7 @@ import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { useTenant } from '../../hooks/useTenant';
+import { useGlobalSettings } from '../../hooks/useGlobalSettings';
 import { supabase } from '../../lib/supabase';
 import { CommercialHours, SessionTypeData, NotificationTemplate } from '../../types';
 
@@ -17,6 +18,7 @@ export function SettingsView() {
   const { instances, getQRCode, testConnection: testWhatsAppConnection, sendTestMessage, refetch: refetchWhatsApp } = useWhatsApp();
   const { templates, updateTemplate } = useNotifications();
   const { tenant } = useTenant();
+  const { settings: globalSettings } = useGlobalSettings();
   const {
     settings: googleCalendarSettings,
     loading: googleCalendarLoading,
@@ -306,8 +308,8 @@ export function SettingsView() {
   };
 
   const saveWhatsAppSettings = async () => {
-    if (!whatsappSettings.evolution_api_url || !whatsappSettings.evolution_api_key) {
-      alert('URL e API Key são obrigatórios');
+    if (!globalSettings?.evolution_api_url || !globalSettings?.evolution_api_key) {
+      alert('Configurações globais da Evolution API não encontradas. Entre em contato com o administrador.');
       return;
     }
 
@@ -334,8 +336,8 @@ export function SettingsView() {
           instance_name: instanceName,
           status: 'created',
           instance_data: {
-            evolution_api_url: whatsappSettings.evolution_api_url,
-            evolution_api_key: whatsappSettings.evolution_api_key,
+            evolution_api_url: globalSettings.evolution_api_url,
+            evolution_api_key: globalSettings.evolution_api_key,
             saved_at: new Date().toISOString()
           },
           updated_at: new Date().toISOString()
@@ -1267,53 +1269,11 @@ export function SettingsView() {
               )}
             </div>
 
-            {!activeWhatsAppInstance && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    URL da Evolution API
-                  </label>
-                  <input
-                    type="url"
-                    value={whatsappSettings.evolution_api_url}
-                    onChange={(e) => setWhatsappSettings(prev => ({ ...prev, evolution_api_url: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="https://sua-evolution-api.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    API Key
-                  </label>
-                  <input
-                    type="password"
-                    value={whatsappSettings.evolution_api_key}
-                    onChange={(e) => setWhatsappSettings(prev => ({ ...prev, evolution_api_key: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Sua API Key"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nome da Instância (gerado automaticamente)
-                  </label>
-                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                    {settings?.studio_phone ? generateInstanceName(settings.studio_phone) : 'Configure o telefone do estúdio primeiro'}
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Cada estúdio tem sua própria instância baseada no número de telefone
-                  </p>
-                </div>
-              </div>
-            )}
-
             <div className="flex flex-wrap gap-4">
               {!activeWhatsAppInstance ? (
                 <button
                   onClick={handleGenerateQR}
-                  disabled={loadingQR || !whatsappSettings.evolution_api_url || !whatsappSettings.evolution_api_key}
+                  disabled={loadingQR || !globalSettings}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
                   {loadingQR ? (

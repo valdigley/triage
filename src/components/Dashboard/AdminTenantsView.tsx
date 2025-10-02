@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Tenant, Subscription, SubscriptionPayment } from '../../types';
-import { Shield, Search, CheckCircle, XCircle, Clock, AlertCircle, DollarSign, Calendar } from 'lucide-react';
+import { Shield, Search, CheckCircle, XCircle, Clock, AlertCircle, DollarSign, Calendar, Save, Settings } from 'lucide-react';
+import { useGlobalSettings } from '../../hooks/useGlobalSettings';
 
 export function AdminTenantsView() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -10,10 +11,47 @@ export function AdminTenantsView() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'tenants' | 'settings'>('tenants');
+  const [saving, setSaving] = useState(false);
+
+  const { settings: globalSettings, saveSettings: saveGlobalSettings } = useGlobalSettings();
+  const [evolutionForm, setEvolutionForm] = useState({
+    evolution_api_url: '',
+    evolution_api_key: ''
+  });
 
   useEffect(() => {
     fetchTenants();
   }, []);
+
+  useEffect(() => {
+    if (globalSettings) {
+      setEvolutionForm({
+        evolution_api_url: globalSettings.evolution_api_url,
+        evolution_api_key: globalSettings.evolution_api_key
+      });
+    }
+  }, [globalSettings]);
+
+  const handleSaveEvolutionSettings = async () => {
+    setSaving(true);
+    try {
+      const success = await saveGlobalSettings(
+        evolutionForm.evolution_api_url,
+        evolutionForm.evolution_api_key
+      );
+
+      if (success) {
+        alert('Configurações salvas com sucesso!');
+      } else {
+        alert('Erro ao salvar configurações');
+      }
+    } catch (error) {
+      alert('Erro ao salvar configurações');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fetchTenants = async () => {
     try {
@@ -166,17 +204,107 @@ export function AdminTenantsView() {
           <Shield className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           <div>
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-              Gestão de Tenants
+              Painel Administrativo
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Painel administrativo master
+              Gestão master do sistema
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('tenants')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'tenants'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Shield className="h-4 w-4" />
+              <span>Tenants</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'settings'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span>Configurações Globais</span>
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+              Evolution API - Configuração Global
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Estas configurações serão usadas por todos os estúdios para criar suas instâncias WhatsApp.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  URL do Servidor Evolution API
+                </label>
+                <input
+                  type="url"
+                  value={evolutionForm.evolution_api_url}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_url: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="https://sua-evolution-api.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  API Key Global
+                </label>
+                <input
+                  type="password"
+                  value={evolutionForm.evolution_api_key}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_key: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Sua API Key"
+                />
+              </div>
+
+              <button
+                onClick={handleSaveEvolutionSettings}
+                disabled={saving}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                {saving ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{saving ? 'Salvando...' : 'Salvar Configurações'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tenants Tab */}
+      {activeTab === 'tenants' && (
+        <>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
@@ -237,9 +365,9 @@ export function AdminTenantsView() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div className="mb-4 flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -374,7 +502,9 @@ export function AdminTenantsView() {
             </div>
           )}
         </div>
-      </div>
+        </div>
+        </>
+      )}
     </div>
   );
 }
