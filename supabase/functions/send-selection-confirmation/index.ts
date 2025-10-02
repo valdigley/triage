@@ -1,7 +1,7 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
 async function sendWhatsAppMessage(
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Credenciais obrigatórias não fornecidas' 
+            message: 'Credenciais obrigatórias não fornecidas' 
           }),
           {
             status: 400,
@@ -117,8 +117,7 @@ Deno.serve(async (req: Request) => {
             return new Response(
               JSON.stringify({
                 success: true,
-                message: `Conexão OK! Instância "${instance_name}" encontrada com status: ${targetInstance.instance.status}`,
-                instance_status: targetInstance.instance.status
+                message: `✅ Conexão OK! Instância "${instance_name}" encontrada com status: ${targetInstance.instance.status}`
               }),
               {
                 headers: {
@@ -131,7 +130,7 @@ Deno.serve(async (req: Request) => {
             return new Response(
               JSON.stringify({
                 success: false,
-                message: `Instância "${instance_name}" não encontrada. Instâncias disponíveis: ${instances.map((i: any) => i.instance.instanceName).join(', ')}`
+                message: `❌ Instância "${instance_name}" não encontrada. Instâncias disponíveis: ${instances.map((i: any) => i.instance.instanceName).join(', ')}`
               }),
               {
                 headers: {
@@ -148,7 +147,7 @@ Deno.serve(async (req: Request) => {
           return new Response(
             JSON.stringify({
               success: false,
-              message: `Erro HTTP ${testResponse.status}: ${errorText}`
+              message: `❌ Erro HTTP ${testResponse.status}: ${errorText}`
             }),
             {
               headers: {
@@ -164,7 +163,7 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({
             success: false,
-            message: `Erro de conexão: ${testError instanceof Error ? testError.message : 'Erro desconhecido'}`
+            message: `❌ Erro de conexão: ${testError instanceof Error ? testError.message : 'Erro desconhecido'}`
           }),
           {
             headers: {
@@ -182,6 +181,13 @@ Deno.serve(async (req: Request) => {
       selectedCount,
       minimumPhotos
     });
+
+    // Get Supabase client
+    const { createClient } = await import('npm:@supabase/supabase-js@2');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
     // Get settings for pricing
     const { data: settings } = await supabase
@@ -209,13 +215,6 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
-
-    // Get Supabase client
-    const { createClient } = await import('npm:@supabase/supabase-js@2');
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     console.log('📝 Buscando template de notificação...');
     
@@ -247,13 +246,13 @@ Deno.serve(async (req: Request) => {
     console.log('✅ Template encontrado');
 
     // Get settings for delivery_days
-    const { data: settings } = await supabase
+    const { data: deliverySettings } = await supabase
       .from('settings')
       .select('delivery_days')
       .limit(1)
       .maybeSingle();
 
-    const deliveryDays = settings?.delivery_days || 7;
+    const deliveryDays = deliverySettings?.delivery_days || 7;
 
     console.log('🔍 Buscando instâncias WhatsApp...');
     
@@ -330,8 +329,8 @@ Deno.serve(async (req: Request) => {
       extra_cost: formattedExtraCost,
       price_per_photo: formattedPricePerPhoto,
       delivery_days: (deliveryDays || 7).toString(),
-      studio_name: 'Estúdio', // Fallback since settings not available in this context
-      studio_phone: '' // Fallback since settings not available in this context
+      studio_name: 'Estúdio',
+      studio_phone: ''
     };
 
     // Process template by replacing variables
@@ -357,14 +356,13 @@ Deno.serve(async (req: Request) => {
       );
     } catch (whatsappError) {
       console.error('❌ Erro ao enviar WhatsApp:', whatsappError);
-      // WhatsApp failure doesn't affect the main process
       whatsappSuccess = false;
     }
 
     console.log(whatsappSuccess ? '✅ Mensagem enviada com sucesso!' : '❌ Falha ao enviar mensagem (processo continua)');
     return new Response(
       JSON.stringify({
-        success: true, // Main process always succeeds
+        success: true,
         whatsapp_sent: whatsappSuccess,
         message: whatsappSuccess ? 'Seleção confirmada e WhatsApp enviado' : 'Seleção confirmada (WhatsApp indisponível)'
       }),
