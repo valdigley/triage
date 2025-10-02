@@ -151,14 +151,14 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
     try {
       // Delete from storage
       const { error: deleteError } = await supabase.storage
-        .from('photos')
+        .from('triagem_photos')
         .remove([storagePath]);
       
       if (deleteError) throw deleteError;
       
       // Delete thumbnail from storage
       const { error: thumbDeleteError } = await supabase.storage
-        .from('photos')
+        .from('triagem_photos')
         .remove([thumbnailPath]);
       
       if (thumbDeleteError) console.warn('Erro ao deletar thumbnail:', thumbDeleteError);
@@ -248,7 +248,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
           ));
 
           const { error: uploadError } = await supabase.storage
-            .from('photos')
+            .from('triagem_photos')
             .upload(filePath, resizedMainBlob);
 
           if (uploadError) throw uploadError;
@@ -264,7 +264,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
           const thumbnailPath = `galleries/${galleryId}/thumbs/${fileName}`;
 
           const { error: thumbError } = await supabase.storage
-            .from('photos')
+            .from('triagem_photos')
             .upload(thumbnailPath, thumbnailBlob);
 
           if (thumbError) throw thumbError;
@@ -277,11 +277,11 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
           ));
           
           const { data: urlData } = supabase.storage
-            .from('photos')
+            .from('triagem_photos')
             .getPublicUrl(filePath);
           
           const { data: thumbUrlData } = supabase.storage
-            .from('photos')
+            .from('triagem_photos')
             .getPublicUrl(thumbnailPath);
           
           // Create photo record
@@ -293,7 +293,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
           
           const { data: { user } } = await supabase.auth.getUser();
           const { data: tenantUser } = await supabase
-            .from('tenant_users')
+            .from('triagem_tenant_users')
             .select('tenant_id')
             .eq('user_id', user?.id)
             .single();

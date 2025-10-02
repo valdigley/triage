@@ -29,7 +29,7 @@ export function PaymentsView() {
 
     try {
       const { data, error } = await supabase
-        .from('payments')
+        .from('triagem_payments')
         .select(`
           *,
           appointment:appointments(

@@ -1,6 +1,6 @@
 export async function scheduleNotifications(appointmentId: string, supabase: any) {
   console.log('📅 Scheduling notifications for:', appointmentId);
-  const { data: appointment, error } = await supabase.from('appointments').select('*, client:clients(*)').eq('id', appointmentId).single();
+  const { data: appointment, error } = await supabase.from('triagem_appointments').select('*, client:clients(*)').eq('id', appointmentId).single();
   if (error || !appointment) {
     console.error('❌ Error fetching appointment:', error);
     return;

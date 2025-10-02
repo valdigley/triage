@@ -35,7 +35,7 @@ Deno.serve(async (req: Request) => {
 
       // Get MercadoPago settings
       const { data: mpSettings } = await supabaseClient
-        .from('mercadopago_settings')
+        .from('triagem_mercadopago_settings')
         .select('*')
         .eq('is_active', true)
         .limit(1)
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
       const paymentStatus = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending';
       
       await supabaseClient
-        .from('subscription_payments')
+        .from('triagem_subscription_payments')
         .update({
           status: paymentStatus,
           paid_at: status === 'approved' ? new Date().toISOString() : null
@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
 
           // Update tenant status to active
           await supabaseClient
-            .from('tenants')
+            .from('triagem_tenants')
             .update({
               status: 'active'
             })

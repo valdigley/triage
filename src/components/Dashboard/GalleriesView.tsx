@@ -88,7 +88,7 @@ export function GalleriesView() {
       // Delete from storage
       if (photo.metadata?.storage_path) {
         const { error: deleteError } = await supabase.storage
-          .from('photos')
+          .from('triagem_photos')
           .remove([photo.metadata.storage_path]);
         
         if (deleteError) console.warn('Erro ao deletar do storage:', deleteError);
@@ -97,7 +97,7 @@ export function GalleriesView() {
       // Delete thumbnail from storage
       if (photo.metadata?.thumbnail_path) {
         const { error: thumbDeleteError } = await supabase.storage
-          .from('photos')
+          .from('triagem_photos')
           .remove([photo.metadata.thumbnail_path]);
         
         if (thumbDeleteError) console.warn('Erro ao deletar thumbnail:', thumbDeleteError);
@@ -273,7 +273,7 @@ export function GalleriesView() {
       }
 
       const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .insert([{
           tenant_id: tenant.id,
           client_id: clientId,

@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
 
     // Get all appointments with client data
     const { data: appointments, error } = await supabase
-      .from('appointments')
+      .from('triagem_appointments')
       .select(`
         *,
         client:clients(*)

@@ -29,7 +29,7 @@ async function generateOGPages() {
   console.log('🔍 Fetching galleries from database...');
 
   const { data: galleries, error } = await supabase
-    .from('galleries_triage')
+    .from('triagem_galleries')
     .select(`
       id,
       gallery_token,
@@ -37,8 +37,8 @@ async function generateOGPages() {
       preview_image_url,
       og_title,
       og_description,
-      appointment:appointments(
-        client:clients(name)
+      appointment:triagem_appointments(
+        client:triagem_clients(name)
       )
     `);
 
