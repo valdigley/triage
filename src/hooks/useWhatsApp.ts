@@ -385,6 +385,81 @@ export function useWhatsApp() {
     }
   };
 
+  const sendTestMessage = async (phone: string): Promise<{ success: boolean; message: string }> => {
+    const activeInstance = getActiveInstance();
+
+    if (!activeInstance) {
+      return {
+        success: false,
+        message: 'Nenhuma instância WhatsApp configurada'
+      };
+    }
+
+    const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
+
+    if (!evolution_api_url || !evolution_api_key) {
+      return {
+        success: false,
+        message: 'Credenciais da Evolution API não configuradas'
+      };
+    }
+
+    try {
+      setLoading(true);
+
+      console.log('🧪 Enviando mensagem de teste...');
+      console.log('📱 Para:', phone);
+
+      // Clean phone number
+      let cleanPhone = phone.replace(/\D/g, '');
+      if (!cleanPhone.startsWith('55')) {
+        cleanPhone = '55' + cleanPhone;
+      }
+
+      console.log('📱 Telefone limpo:', cleanPhone);
+
+      const testMessage = `🧪 *Teste de Conexão WhatsApp*\n\nSua integração com a Evolution API está funcionando perfeitamente!\n\n✅ Instância: ${activeInstance.instance_name}\n⏰ ${new Date().toLocaleString('pt-BR')}`;
+
+      const response = await fetch(`${evolution_api_url}/message/sendText/${activeInstance.instance_name}`, {
+        method: 'POST',
+        headers: {
+          'apikey': evolution_api_key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          number: cleanPhone,
+          text: testMessage
+        })
+      });
+
+      console.log('📊 Response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Resultado:', result);
+        return {
+          success: true,
+          message: '✅ Mensagem de teste enviada com sucesso!'
+        };
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Erro:', errorText);
+        return {
+          success: false,
+          message: `❌ Erro HTTP ${response.status}: ${errorText}`
+        };
+      }
+    } catch (error) {
+      console.error('❌ Erro ao enviar:', error);
+      return {
+        success: false,
+        message: `❌ Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (tenantLoading) return;
 
@@ -404,6 +479,7 @@ export function useWhatsApp() {
     sendSelectionConfirmation,
     getActiveInstance,
     testConnection,
+    sendTestMessage,
     refetch: fetchInstances
   };
 }

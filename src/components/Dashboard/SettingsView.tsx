@@ -14,7 +14,7 @@ export function SettingsView() {
   const { settings, updateSettings } = useSettings();
   const { sessionTypes, createSessionType, updateSessionType, deleteSessionType, toggleSessionTypeStatus } = useSessionTypes();
   const { settings: mpSettings, updateSettings: updateMPSettings, testConnection } = useMercadoPago();
-  const { instances, testConnection: testWhatsAppConnection, refetch: refetchWhatsApp } = useWhatsApp();
+  const { instances, testConnection: testWhatsAppConnection, sendTestMessage, refetch: refetchWhatsApp } = useWhatsApp();
   const { templates, updateTemplate } = useNotifications();
   const { tenant } = useTenant();
   const {
@@ -222,7 +222,7 @@ export function SettingsView() {
   const handleTestWhatsApp = async () => {
     setTesting(true);
     setTestResult(null);
-    
+
     try {
       const result = await testWhatsAppConnection();
       setTestResult(result);
@@ -230,6 +230,31 @@ export function SettingsView() {
       setTestResult({
         success: false,
         message: 'Erro ao testar conexão WhatsApp'
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSendTestMessage = async () => {
+    if (!settings?.phone) {
+      setTestResult({
+        success: false,
+        message: 'Configure o telefone do estúdio primeiro em Configurações Gerais'
+      });
+      return;
+    }
+
+    setTesting(true);
+    setTestResult(null);
+
+    try {
+      const result = await sendTestMessage(settings.phone);
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: 'Erro ao enviar mensagem de teste'
       });
     } finally {
       setTesting(false);
@@ -1166,6 +1191,19 @@ export function SettingsView() {
                     <TestTube className="h-4 w-4" />
                   )}
                   <span>{testing ? 'Testando...' : 'Testar Conexão'}</span>
+                </button>
+
+                <button
+                  onClick={handleSendTestMessage}
+                  disabled={testing}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {testing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Smartphone className="h-4 w-4" />
+                  )}
+                  <span>{testing ? 'Enviando...' : 'Enviar Mensagem de Teste'}</span>
                 </button>
               </div>
             </div>
