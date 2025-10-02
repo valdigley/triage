@@ -68,16 +68,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
       if (tenantError) throw tenantError;
 
-      // Create tenant_user relationship
-      const { error: tenantUserError } = await supabase
-        .from('triagem_tenant_users')
-        .insert([{
-          tenant_id: tenant.id,
-          user_id: authData.user.id,
-          role: 'owner'
-        }]);
-
-      if (tenantUserError) throw tenantUserError;
+      // Note: tenant_user is created automatically by database trigger
 
       // Create default settings for tenant
       const { error: settingsError } = await supabase
