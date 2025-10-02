@@ -312,6 +312,73 @@ export function useWhatsApp() {
     }
   };
 
+  const getQRCode = async (): Promise<{ success: boolean; qrCode?: string; message: string }> => {
+    const activeInstance = getActiveInstance();
+
+    if (!activeInstance) {
+      return {
+        success: false,
+        message: 'Nenhuma instância WhatsApp configurada'
+      };
+    }
+
+    const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
+
+    if (!evolution_api_url || !evolution_api_key) {
+      return {
+        success: false,
+        message: 'Credenciais da Evolution API não configuradas'
+      };
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${evolution_api_url}/instance/connect/${activeInstance.instance_name}`, {
+        method: 'GET',
+        headers: {
+          'apikey': evolution_api_key,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        if (result.base64) {
+          return {
+            success: true,
+            qrCode: result.base64,
+            message: 'QR Code gerado com sucesso'
+          };
+        } else if (result.instance?.state === 'open') {
+          return {
+            success: true,
+            message: 'WhatsApp já está conectado'
+          };
+        } else {
+          return {
+            success: false,
+            message: 'QR Code não disponível'
+          };
+        }
+      } else {
+        const errorText = await response.text();
+        return {
+          success: false,
+          message: `Erro: ${errorText}`
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Erro de conexão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const testConnection = async (): Promise<{ success: boolean; message: string }> => {
     const activeInstance = getActiveInstance();
 
@@ -478,6 +545,7 @@ export function useWhatsApp() {
     sendPaymentReminder,
     sendSelectionConfirmation,
     getActiveInstance,
+    getQRCode,
     testConnection,
     sendTestMessage,
     refetch: fetchInstances

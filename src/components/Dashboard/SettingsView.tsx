@@ -14,7 +14,7 @@ export function SettingsView() {
   const { settings, updateSettings } = useSettings();
   const { sessionTypes, createSessionType, updateSessionType, deleteSessionType, toggleSessionTypeStatus } = useSessionTypes();
   const { settings: mpSettings, updateSettings: updateMPSettings, testConnection } = useMercadoPago();
-  const { instances, testConnection: testWhatsAppConnection, sendTestMessage, refetch: refetchWhatsApp } = useWhatsApp();
+  const { instances, getQRCode, testConnection: testWhatsAppConnection, sendTestMessage, refetch: refetchWhatsApp } = useWhatsApp();
   const { templates, updateTemplate } = useNotifications();
   const { tenant } = useTenant();
   const {
@@ -33,6 +33,8 @@ export function SettingsView() {
   const [showAccessToken, setShowAccessToken] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingWatermark, setUploadingWatermark] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [loadingQR, setLoadingQR] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const watermarkInputRef = useRef<HTMLInputElement>(null);
 
@@ -351,6 +353,23 @@ export function SettingsView() {
       alert('Erro ao salvar configurações do WhatsApp');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGenerateQR = async () => {
+    setLoadingQR(true);
+    setQrCode(null);
+    try {
+      const result = await getQRCode();
+      if (result.success && result.qrCode) {
+        setQrCode(result.qrCode);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      alert('Erro ao gerar QR Code');
+    } finally {
+      setLoadingQR(false);
     }
   };
 
@@ -1181,7 +1200,7 @@ export function SettingsView() {
                 </p>
               </div>
 
-              <div className="flex space-x-4">
+              <div className="flex flex-wrap gap-4">
                 <button
                   onClick={saveWhatsAppSettings}
                   disabled={saving}
@@ -1193,6 +1212,19 @@ export function SettingsView() {
                     <Save className="h-4 w-4" />
                   )}
                   <span>{saving ? 'Salvando...' : 'Salvar'}</span>
+                </button>
+
+                <button
+                  onClick={handleGenerateQR}
+                  disabled={loadingQR || !whatsappSettings.evolution_api_url || !whatsappSettings.evolution_api_key}
+                  className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {loadingQR ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Smartphone className="h-4 w-4" />
+                  )}
+                  <span>{loadingQR ? 'Gerando...' : 'Conectar WhatsApp'}</span>
                 </button>
 
                 <button
@@ -1221,6 +1253,44 @@ export function SettingsView() {
                   <span>{testing ? 'Enviando...' : 'Enviar Mensagem de Teste'}</span>
                 </button>
               </div>
+
+              {/* QR Code Display */}
+              {qrCode && (
+                <div className="mt-6 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 text-center">
+                    Escaneie o QR Code com o WhatsApp do Estúdio
+                  </h3>
+                  <div className="flex flex-col items-center">
+                    <div className="bg-white p-4 rounded-lg shadow-lg">
+                      <img
+                        src={qrCode}
+                        alt="QR Code WhatsApp"
+                        className="w-64 h-64"
+                      />
+                    </div>
+                    <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400 max-w-md">
+                      <p className="mb-2">
+                        1. Abra o WhatsApp no celular do estúdio
+                      </p>
+                      <p className="mb-2">
+                        2. Toque em "Mais opções" ou "Configurações"
+                      </p>
+                      <p className="mb-2">
+                        3. Selecione "Aparelhos conectados"
+                      </p>
+                      <p>
+                        4. Toque em "Conectar um aparelho" e escaneie este QR Code
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleGenerateQR}
+                      className="mt-4 text-purple-600 dark:text-purple-400 hover:underline text-sm"
+                    >
+                      Gerar novo QR Code
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
