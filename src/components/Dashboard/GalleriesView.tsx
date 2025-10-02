@@ -1038,16 +1038,10 @@ export function GalleriesView() {
                 <div className="space-y-4">
                   <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
                     <p className="text-sm text-purple-800 dark:text-purple-200">
-                      Selecione um cliente existente para criar a galeria. Se o cliente não existir, 
-                      <button 
-                        onClick={() => {
-                          resetCreateGallery();
-                          setShowCreateClient(true);
-                        }}
-                        className="text-purple-600 dark:text-purple-400 underline ml-1"
-                      >
-                        crie um novo cliente primeiro
-                      </button>.
+                      Selecione um cliente existente para criar a galeria. Se o cliente não existir,
+                      <span className="ml-1">
+                        vá para a aba "Clientes" e crie um novo cliente primeiro
+                      </span>.
                     </p>
                   </div>
 
@@ -1080,16 +1074,9 @@ export function GalleriesView() {
                       {clients.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                           <p>Nenhum cliente cadastrado.</p>
-                          <button
-                            onClick={() => {
-                              resetCreateGallery();
-                              // Note: setShowCreateClient is not defined in this component
-                              // User should navigate to clients view to create one
-                            }}
-                            className="text-purple-600 dark:text-purple-400 underline mt-2"
-                          >
-                            Ir para Clientes
-                          </button>
+                          <p className="text-sm mt-2">
+                            Vá para a aba "Clientes" para criar um novo cliente.
+                          </p>
                         </div>
                       ) : filteredClients.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 dark:text-gray-400">
