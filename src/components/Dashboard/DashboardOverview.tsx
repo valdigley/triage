@@ -1,15 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Camera, Users, DollarSign, Clock, CheckCircle } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useClients } from '../../hooks/useClients';
 import { formatCurrency } from '../../utils/pricing';
 import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
+import { supabase } from '../../lib/supabase';
 
 
 export function DashboardOverview() {
   const { appointments } = useAppointments();
   const { clients } = useClients();
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState(0);
+
+  useEffect(() => {
+    fetchPaymentStats();
+  }, []);
+
+  const fetchPaymentStats = async () => {
+    try {
+      const { data: payments, error } = await supabase
+        .from('payments')
+        .select('amount, status');
+
+      if (error) throw error;
+
+      const approved = payments
+        ?.filter(p => p.status === 'approved')
+        .reduce((sum, p) => sum + p.amount, 0) || 0;
+
+      const pending = payments
+        ?.filter(p => p.status === 'pending')
+        .reduce((sum, p) => sum + p.amount, 0) || 0;
+
+      setTotalRevenue(approved);
+      setPendingPayments(pending);
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas de pagamentos:', error);
+    }
+  };
 
   const today = new Date();
   const todayAppointments = appointments.filter(apt => {
@@ -20,13 +50,6 @@ export function DashboardOverview() {
   const upcomingAppointments = appointments
     .filter(apt => new Date(apt.scheduled_date) > today && apt.status === 'confirmed')
     .slice(0, 5);
-
-  // Calcular receita total baseado nos pagamentos aprovados
-  const totalRevenue = clients.reduce((sum, client) => sum + (client.total_spent || 0), 0);
-
-  const pendingPayments = appointments
-    .filter(apt => apt.payment_status === 'pending')
-    .reduce((sum, apt) => sum + apt.total_amount, 0);
 
   const stats = [
     {
