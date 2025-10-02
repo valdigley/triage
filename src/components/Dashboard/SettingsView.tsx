@@ -35,6 +35,8 @@ export function SettingsView() {
   const [uploadingWatermark, setUploadingWatermark] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loadingQR, setLoadingQR] = useState(false);
+  const [qrCountdown, setQrCountdown] = useState(0);
+  const qrIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const watermarkInputRef = useRef<HTMLInputElement>(null);
 
@@ -356,13 +358,85 @@ export function SettingsView() {
     }
   };
 
+  const checkConnectionStatus = async () => {
+    if (!activeWhatsAppInstance) return false;
+
+    const { evolution_api_url, evolution_api_key } = activeWhatsAppInstance.instance_data;
+
+    if (!evolution_api_url || !evolution_api_key) return false;
+
+    try {
+      const response = await fetch(`${evolution_api_url}/instance/connectionState/${activeWhatsAppInstance.instance_name}`, {
+        method: 'GET',
+        headers: {
+          'apikey': evolution_api_key,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.state === 'open';
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status:', error);
+    }
+    return false;
+  };
+
   const handleGenerateQR = async () => {
+    if (!settings?.studio_phone) {
+      alert('Configure o telefone do estúdio nas configurações gerais primeiro');
+      return;
+    }
+
     setLoadingQR(true);
     setQrCode(null);
+    setQrCountdown(15);
+
     try {
+      await saveWhatsAppSettings();
+
       const result = await getQRCode();
+
       if (result.success && result.qrCode) {
         setQrCode(result.qrCode);
+
+        if (qrIntervalRef.current) {
+          clearInterval(qrIntervalRef.current);
+        }
+
+        let countdown = 15;
+        qrIntervalRef.current = setInterval(async () => {
+          countdown--;
+          setQrCountdown(countdown);
+
+          const isConnected = await checkConnectionStatus();
+
+          if (isConnected) {
+            if (qrIntervalRef.current) {
+              clearInterval(qrIntervalRef.current);
+            }
+            setQrCode(null);
+            setQrCountdown(0);
+
+            if (settings.studio_phone) {
+              await sendTestMessage(settings.studio_phone);
+              alert('WhatsApp conectado com sucesso! Uma mensagem de teste foi enviada.');
+            }
+
+            await refetchWhatsApp();
+          } else if (countdown <= 0) {
+            if (qrIntervalRef.current) {
+              clearInterval(qrIntervalRef.current);
+            }
+            setQrCode(null);
+            setQrCountdown(0);
+          }
+        }, 1000);
+      } else if (result.message === 'WhatsApp já está conectado') {
+        alert('WhatsApp já está conectado!');
+        await refetchWhatsApp();
       } else {
         alert(result.message);
       }
@@ -372,6 +446,38 @@ export function SettingsView() {
       setLoadingQR(false);
     }
   };
+
+  const handleDeleteInstance = async () => {
+    if (!activeWhatsAppInstance) return;
+
+    if (!confirm('Tem certeza que deseja excluir esta instância do WhatsApp?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('triagem_whatsapp_instances')
+        .delete()
+        .eq('id', activeWhatsAppInstance.id);
+
+      if (error) throw error;
+
+      alert('Instância excluída com sucesso!');
+      setQrCode(null);
+      await refetchWhatsApp();
+    } catch (error) {
+      console.error('Erro ao excluir instância:', error);
+      alert('Erro ao excluir instância');
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (qrIntervalRef.current) {
+        clearInterval(qrIntervalRef.current);
+      }
+    };
+  }, []);
 
   if (!settings) {
     return (
@@ -1161,137 +1267,107 @@ export function SettingsView() {
               )}
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  URL da Evolution API
-                </label>
-                <input
-                  type="url"
-                  value={whatsappSettings.evolution_api_url}
-                  onChange={(e) => setWhatsappSettings(prev => ({ ...prev, evolution_api_url: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="https://sua-evolution-api.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  API Key
-                </label>
-                <input
-                  type="password"
-                  value={whatsappSettings.evolution_api_key}
-                  onChange={(e) => setWhatsappSettings(prev => ({ ...prev, evolution_api_key: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Sua API Key"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nome da Instância (gerado automaticamente)
-                </label>
-                <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                  {settings?.studio_phone ? generateInstanceName(settings.studio_phone) : 'Configure o telefone do estúdio primeiro'}
+            {!activeWhatsAppInstance && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    URL da Evolution API
+                  </label>
+                  <input
+                    type="url"
+                    value={whatsappSettings.evolution_api_url}
+                    onChange={(e) => setWhatsappSettings(prev => ({ ...prev, evolution_api_url: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="https://sua-evolution-api.com"
+                  />
                 </div>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Cada estúdio tem sua própria instância baseada no número de telefone
-                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={whatsappSettings.evolution_api_key}
+                    onChange={(e) => setWhatsappSettings(prev => ({ ...prev, evolution_api_key: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Sua API Key"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome da Instância (gerado automaticamente)
+                  </label>
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                    {settings?.studio_phone ? generateInstanceName(settings.studio_phone) : 'Configure o telefone do estúdio primeiro'}
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Cada estúdio tem sua própria instância baseada no número de telefone
+                  </p>
+                </div>
               </div>
+            )}
 
-              <div className="flex flex-wrap gap-4">
-                <button
-                  onClick={saveWhatsAppSettings}
-                  disabled={saving}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-                >
-                  {saving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  <span>{saving ? 'Salvando...' : 'Salvar'}</span>
-                </button>
-
+            <div className="flex flex-wrap gap-4">
+              {!activeWhatsAppInstance ? (
                 <button
                   onClick={handleGenerateQR}
                   disabled={loadingQR || !whatsappSettings.evolution_api_url || !whatsappSettings.evolution_api_key}
-                  className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
                   {loadingQR ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
                     <Smartphone className="h-4 w-4" />
                   )}
-                  <span>{loadingQR ? 'Gerando...' : 'Conectar WhatsApp'}</span>
+                  <span>{loadingQR ? 'Conectando...' : 'Conectar WhatsApp'}</span>
                 </button>
-
+              ) : (
                 <button
-                  onClick={handleTestWhatsApp}
-                  disabled={testing}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                  onClick={handleDeleteInstance}
+                  className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
                 >
-                  {testing ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <TestTube className="h-4 w-4" />
-                  )}
-                  <span>{testing ? 'Testando...' : 'Testar Conexão'}</span>
+                  <X className="h-4 w-4" />
+                  <span>Excluir Instância</span>
                 </button>
-
-                <button
-                  onClick={handleSendTestMessage}
-                  disabled={testing}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-                >
-                  {testing ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <Smartphone className="h-4 w-4" />
-                  )}
-                  <span>{testing ? 'Enviando...' : 'Enviar Mensagem de Teste'}</span>
-                </button>
-              </div>
-
-              {/* QR Code Display */}
-              {qrCode && (
-                <div className="mt-6 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 text-center">
-                    Escaneie o QR Code com o WhatsApp do Estúdio
-                  </h3>
-                  <div className="flex flex-col items-center">
-                    <div className="bg-white p-4 rounded-lg shadow-lg">
-                      <img
-                        src={qrCode}
-                        alt="QR Code WhatsApp"
-                        className="w-64 h-64"
-                      />
-                    </div>
-                    <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400 max-w-md">
-                      <p className="mb-2">
-                        1. Abra o WhatsApp no celular do estúdio
-                      </p>
-                      <p className="mb-2">
-                        2. Toque em "Mais opções" ou "Configurações"
-                      </p>
-                      <p className="mb-2">
-                        3. Selecione "Aparelhos conectados"
-                      </p>
-                      <p>
-                        4. Toque em "Conectar um aparelho" e escaneie este QR Code
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleGenerateQR}
-                      className="mt-4 text-purple-600 dark:text-purple-400 hover:underline text-sm"
-                    >
-                      Gerar novo QR Code
-                    </button>
-                  </div>
-                </div>
               )}
             </div>
+
+            {/* QR Code Display */}
+            {qrCode && (
+              <div className="mt-6 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2 text-center">
+                  Escaneie o QR Code com o WhatsApp do Estúdio
+                </h3>
+                <p className="text-center text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  QR Code válido por {qrCountdown} segundos
+                </p>
+                <div className="flex flex-col items-center">
+                  <div className="bg-white p-4 rounded-lg shadow-lg">
+                    <img
+                      src={qrCode}
+                      alt="QR Code WhatsApp"
+                      className="w-64 h-64"
+                    />
+                  </div>
+                  <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400 max-w-md">
+                    <p className="mb-2">
+                      1. Abra o WhatsApp no celular do estúdio
+                    </p>
+                    <p className="mb-2">
+                      2. Toque em "Mais opções" ou "Configurações"
+                    </p>
+                    <p className="mb-2">
+                      3. Selecione "Aparelhos conectados"
+                    </p>
+                    <p>
+                      4. Toque em "Conectar um aparelho" e escaneie este QR Code
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
