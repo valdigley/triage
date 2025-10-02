@@ -52,7 +52,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
       // Create tenant with trial
       const { data: tenant, error: tenantError } = await supabase
-        .from('triagem_tenants')
+        .from('tenants')
         .insert([{
           name: formData.name,
           email: formData.email,
@@ -70,7 +70,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
       // Create tenant_user relationship
       const { error: tenantUserError } = await supabase
-        .from('triagem_tenant_users')
+        .from('tenant_users')
         .insert([{
           tenant_id: tenant.id,
           user_id: authData.user.id,
@@ -81,7 +81,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
       // Create default settings for tenant
       const { error: settingsError } = await supabase
-        .from('triagem_settings')
+        .from('settings')
         .insert([{
           tenant_id: tenant.id,
           studio_name: formData.businessName || formData.name,

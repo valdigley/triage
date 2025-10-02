@@ -89,7 +89,7 @@ Deno.serve(async (req: Request) => {
 
     // Get app URL from settings or use environment variable
     const { data: settings } = await supabase
-      .from('triagem_settings')
+      .from('settings')
       .select('app_url')
       .single();
 

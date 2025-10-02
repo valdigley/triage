@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
     // Buscar configurações do Google Calendar
     const { data: settings, error: settingsError } = await supabase
-      .from("triagem_google_calendar_settings")
+      .from("google_calendar_settings")
       .select("*")
       .eq("is_active", true)
       .limit(1)
@@ -224,7 +224,7 @@ Deno.serve(async (req: Request) => {
 
     // Atualizar appointment com o ID do evento do Google
     const { error: updateError } = await supabase
-      .from("triagem_appointments")
+      .from("appointments")
       .update({
         google_calendar_event_id: createdEvent.id,
         google_calendar_event_link: createdEvent.htmlLink,

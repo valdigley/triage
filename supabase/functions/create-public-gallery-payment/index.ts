@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: mpSettings, error: mpError } = await supabase
-      .from('triagem_mercadopago_settings')
+      .from('mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .limit(1)

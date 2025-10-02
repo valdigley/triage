@@ -60,7 +60,7 @@ export function ClientsView() {
     try {
       // Check if client already exists
       const { data: existingClient } = await supabase
-        .from('triagem_clients')
+        .from('clients')
         .select('*')
         .eq('phone', newClient.phone)
         .maybeSingle();
@@ -76,7 +76,7 @@ export function ClientsView() {
       }
 
       const { error } = await supabase
-        .from('triagem_clients')
+        .from('clients')
         .insert([{
           tenant_id: tenant.id,
           name: newClient.name,
@@ -119,7 +119,7 @@ export function ClientsView() {
     try {
       // Check if phone is being changed and already exists
       const { data: existingClient } = await supabase
-        .from('triagem_clients')
+        .from('clients')
         .select('*')
         .eq('phone', editingClient.phone)
         .neq('id', editingClient.id)
@@ -131,7 +131,7 @@ export function ClientsView() {
       }
 
       const { error } = await supabase
-        .from('triagem_clients')
+        .from('clients')
         .update({
           name: editingClient.name,
           phone: editingClient.phone,
@@ -172,7 +172,7 @@ export function ClientsView() {
     try {
       // The database will handle cascading deletes via foreign keys
       const { error } = await supabase
-        .from('triagem_clients')
+        .from('clients')
         .delete()
         .eq('id', client.id);
 
