@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTenant } from './useTenant';
 
 interface GoogleCalendarSettings {
   id: string;
@@ -7,6 +8,7 @@ interface GoogleCalendarSettings {
   service_account_email: string;
   service_account_key: any;
   is_active: boolean;
+  tenant_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -15,17 +17,27 @@ export function useGoogleCalendar() {
   const [settings, setSettings] = useState<GoogleCalendarSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    if (tenantLoading) return;
+
+    if (tenant) {
+      fetchSettings();
+    } else {
+      setLoading(false);
+    }
+  }, [tenant, tenantLoading]);
 
   const fetchSettings = async () => {
+    if (!tenant) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('google_calendar_settings')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .eq('is_active', true)
         .limit(1)
         .maybeSingle();
@@ -150,6 +162,12 @@ export function useGoogleCalendar() {
 
         setSettings(data);
       } else {
+        if (!tenant) {
+          console.error('❌ Tenant não encontrado');
+          setError('Tenant não encontrado');
+          return false;
+        }
+
         // Desativar configurações antigas e inserir nova
         if (settings) {
           console.log('🔄 Desativando configuração antiga...');
@@ -161,6 +179,7 @@ export function useGoogleCalendar() {
 
         console.log('💾 Inserindo nova configuração...');
         updateData.is_active = true;
+        updateData.tenant_id = tenant.id;
 
         const { data, error } = await supabase
           .from('google_calendar_settings')

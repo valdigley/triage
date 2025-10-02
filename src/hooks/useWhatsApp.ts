@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useTenant } from './useTenant';
 
 interface WhatsAppInstance {
   id: string;
   instance_name: string;
   status: string;
+  tenant_id: string;
   instance_data: {
     evolution_api_url?: string;
     evolution_api_key?: string;
@@ -16,12 +18,16 @@ interface WhatsAppInstance {
 export function useWhatsApp() {
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [loading, setLoading] = useState(false);
+  const { tenant, loading: tenantLoading } = useTenant();
 
   const fetchInstances = async () => {
+    if (!tenant) return;
+
     try {
       const { data, error } = await supabase
         .from('whatsapp_instances')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -369,8 +375,12 @@ export function useWhatsApp() {
   };
 
   useEffect(() => {
-    fetchInstances();
-  }, []);
+    if (tenantLoading) return;
+
+    if (tenant) {
+      fetchInstances();
+    }
+  }, [tenant, tenantLoading]);
 
   return {
     instances,

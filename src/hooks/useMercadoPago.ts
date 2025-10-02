@@ -1,22 +1,33 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MercadoPagoSettings } from '../types';
+import { useTenant } from './useTenant';
 
 export function useMercadoPago() {
   const [settings, setSettings] = useState<MercadoPagoSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    if (tenantLoading) return;
+
+    if (tenant) {
+      fetchSettings();
+    } else {
+      setLoading(false);
+    }
+  }, [tenant, tenantLoading]);
 
   const fetchSettings = async () => {
+    if (!tenant) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('mercadopago_settings')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -25,7 +36,7 @@ export function useMercadoPago() {
       if (error) {
         throw error;
       }
-      
+
       setSettings(data || null);
     } catch (err) {
       console.error('Erro ao buscar configurações MercadoPago:', err);
@@ -36,6 +47,8 @@ export function useMercadoPago() {
   };
 
   const updateSettings = async (updates: Partial<MercadoPagoSettings>) => {
+    if (!tenant) return false;
+
     try {
       if (settings) {
         // Update existing settings
@@ -45,7 +58,7 @@ export function useMercadoPago() {
           .eq('id', settings.id);
 
         if (error) throw error;
-        
+
         setSettings(prev => prev ? { ...prev, ...updates } : null);
       } else {
         // Create new settings
@@ -53,6 +66,7 @@ export function useMercadoPago() {
           .from('mercadopago_settings')
           .insert([{
             ...updates,
+            tenant_id: tenant.id,
             is_active: true
           }])
           .select()
@@ -61,7 +75,7 @@ export function useMercadoPago() {
         if (error) throw error;
         setSettings(data);
       }
-      
+
       return true;
     } catch (err) {
       console.error('Erro ao atualizar configurações MercadoPago:', err);
