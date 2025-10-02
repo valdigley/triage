@@ -50,10 +50,22 @@ export function GalleriesView() {
 
   const fetchPhotos = async (galleryId: string) => {
     try {
+      // Buscar a galeria para verificar se tem parent_gallery_id
+      const { data: galleryData, error: galleryError } = await supabase
+        .from('galleries_triage')
+        .select('parent_gallery_id')
+        .eq('id', galleryId)
+        .single();
+
+      if (galleryError) throw galleryError;
+
+      // Se a galeria tem um parent, buscar fotos do parent
+      const targetGalleryId = galleryData.parent_gallery_id || galleryId;
+
       const { data, error } = await supabase
         .from('photos_triage')
         .select('*')
-        .eq('gallery_id', galleryId)
+        .eq('gallery_id', targetGalleryId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -850,7 +862,7 @@ export function GalleriesView() {
                     <button
                       onClick={() => {
                         const selectedPhotosData = photos.filter(p => selectedGallery.photos_selected?.includes(p.id));
-                        const code = selectedPhotosData.map(p => p.photo_code).join(' OR ');
+                        const code = selectedPhotosData.map(p => p.filename).join(' OR ');
                         navigator.clipboard.writeText(code);
                         alert('Código copiado!');
                       }}
