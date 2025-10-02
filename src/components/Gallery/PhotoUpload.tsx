@@ -3,6 +3,7 @@ import { Upload, X, Image, CheckCircle, AlertCircle, Trash2 } from 'lucide-react
 import { supabase } from '../../lib/supabase';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useTenant } from '../../hooks/useTenant';
 
 // Função para redimensionar imagem mantendo proporção
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<Blob> => {
@@ -290,9 +291,17 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
               : f
           ));
           
+          const { data: { user } } = await supabase.auth.getUser();
+          const { data: tenantUser } = await supabase
+            .from('tenant_users')
+            .select('tenant_id')
+            .eq('user_id', user?.id)
+            .single();
+
           const { error } = await supabase
             .from('photos_triage')
             .insert({
+              tenant_id: tenantUser?.tenant_id,
               gallery_id: galleryId,
               filename: uploadFile.file.name,
               url: urlData.publicUrl,

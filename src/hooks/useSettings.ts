@@ -1,22 +1,29 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Settings } from '../types';
+import { useTenant } from './useTenant';
 
 export function useSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { tenant } = useTenant();
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    if (tenant) {
+      fetchSettings();
+    }
+  }, [tenant]);
 
   const fetchSettings = async () => {
+    if (!tenant) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('settings')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();

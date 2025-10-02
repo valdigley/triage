@@ -1,32 +1,38 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Client } from '../types';
+import { useTenant } from './useTenant';
 
 export function useClients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { tenant } = useTenant();
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    if (tenant) {
+      fetchClients();
+    }
+  }, [tenant]);
 
   const fetchClients = async () => {
+    if (!tenant) return;
+
     try {
       setLoading(true);
 
-      // Buscar todos os clientes
       const { data, error } = await supabase
         .from('clients')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Buscar todos os pagamentos aprovados agrupados por cliente
       const { data: allPayments } = await supabase
         .from('payments')
         .select('client_id, amount, status')
+        .eq('tenant_id', tenant.id)
         .eq('status', 'approved');
 
       // Calcular total gasto real para cada cliente
@@ -50,13 +56,15 @@ export function useClients() {
   };
 
   const searchClients = async (searchTerm: string) => {
+    if (!tenant) return;
+
     try {
       setLoading(true);
 
-      // Buscar todos os clientes
       let query = supabase
         .from('clients')
         .select('*')
+        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
 
       if (searchTerm.trim()) {
@@ -67,10 +75,10 @@ export function useClients() {
 
       if (error) throw error;
 
-      // Buscar todos os pagamentos aprovados agrupados por cliente
       const { data: allPayments } = await supabase
         .from('payments')
         .select('client_id, amount, status')
+        .eq('tenant_id', tenant.id)
         .eq('status', 'approved');
 
       // Calcular total gasto real para cada cliente

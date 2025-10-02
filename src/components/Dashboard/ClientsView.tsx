@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Phone, Mail, Eye, ExternalLink, UserPlus, X, CreditCard as Edit2, Trash2 } from 'lucide-react';
 import { useClients } from '../../hooks/useClients';
+import { useTenant } from '../../hooks/useTenant';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency } from '../../utils/pricing';
 import { Client, Appointment } from '../../types';
@@ -8,6 +9,7 @@ import { sessionTypeLabels, getSessionIcon } from '../../utils/sessionTypes';
 
 export function ClientsView() {
   const { clients, searchClients, getClientDetails, refetch } = useClients();
+  const { tenant } = useTenant();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClient, setSelectedClient] = useState<{
     client: Client;
@@ -68,9 +70,15 @@ export function ClientsView() {
         return;
       }
 
+      if (!tenant) {
+        alert('Erro: Tenant não encontrado');
+        return;
+      }
+
       const { error } = await supabase
         .from('clients')
         .insert([{
+          tenant_id: tenant.id,
           name: newClient.name,
           phone: newClient.phone,
           email: newClient.email || null

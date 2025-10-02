@@ -3,18 +3,24 @@ import { supabase } from '../lib/supabase';
 import { Appointment, BookingFormData } from '../types';
 import { isDateTimeAvailable } from '../utils/pricing';
 import { useNotifications } from './useNotifications';
+import { useTenant } from './useTenant';
 
 export function useAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { scheduleAllAppointmentNotifications } = useNotifications();
+  const { tenant } = useTenant();
 
   useEffect(() => {
-    fetchAppointments();
-  }, []);
+    if (tenant) {
+      fetchAppointments();
+    }
+  }, [tenant]);
 
   const fetchAppointments = async () => {
+    if (!tenant) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -23,6 +29,7 @@ export function useAppointments() {
           *,
           client:clients(*)
         `)
+        .eq('tenant_id', tenant.id)
         .order('scheduled_date', { ascending: true });
 
       if (error) throw error;

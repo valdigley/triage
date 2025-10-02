@@ -2,18 +2,24 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Gallery, Photo } from '../types';
 import { useNotifications } from './useNotifications';
+import { useTenant } from './useTenant';
 
 export function useGalleries() {
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { scheduleNotificationSafe, processNotificationQueue } = useNotifications();
+  const { tenant } = useTenant();
 
   useEffect(() => {
-    fetchGalleries();
-  }, []);
+    if (tenant) {
+      fetchGalleries();
+    }
+  }, [tenant]);
 
   const fetchGalleries = async () => {
+    if (!tenant) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -25,6 +31,7 @@ export function useGalleries() {
             client:clients(*)
           )
         `)
+        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -6,6 +6,7 @@ import { useGalleries } from '../../hooks/useGalleries';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useClients } from '../../hooks/useClients';
 import { useSettings } from '../../hooks/useSettings';
+import { useTenant } from '../../hooks/useTenant';
 import { PhotoUpload } from '../Gallery/PhotoUpload';
 import { Gallery, Photo } from '../../types';
 
@@ -14,6 +15,7 @@ export function GalleriesView() {
   const { sendGalleryLink } = useWhatsApp();
   const { clients } = useClients();
   const { settings } = useSettings();
+  const { tenant } = useTenant();
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
@@ -221,9 +223,15 @@ export function GalleriesView() {
       const expirationDate = new Date();
       expirationDate.setDate(expirationDate.getDate() + newGallery.expiration_days);
 
+      if (!tenant) {
+        alert('Erro: Tenant não encontrado');
+        return;
+      }
+
       const { data: gallery, error: galleryError } = await supabase
         .from('galleries_triage')
         .insert([{
+          tenant_id: tenant.id,
           name: newGallery.event_name,
           event_name: newGallery.event_name,
           is_public: true,
@@ -259,9 +267,15 @@ export function GalleriesView() {
       const clientId = newGallery.selected_client_id;
       const minimumPhotos = settings?.minimum_photos || 5;
 
+      if (!tenant) {
+        alert('Erro: Tenant não encontrado');
+        return;
+      }
+
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([{
+          tenant_id: tenant.id,
           client_id: clientId,
           session_type: newGallery.session_type,
           session_details: { theme: 'Galeria Manual' },
@@ -283,6 +297,7 @@ export function GalleriesView() {
       const { data: gallery, error: galleryError } = await supabase
         .from('galleries_triage')
         .insert([{
+          tenant_id: tenant.id,
           appointment_id: appointment.id,
           name: newGallery.name,
           password: newGallery.password || null,
