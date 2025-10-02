@@ -6,6 +6,7 @@ import { useMercadoPago } from '../../hooks/useMercadoPago';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
+import { useTenant } from '../../hooks/useTenant';
 import { supabase } from '../../lib/supabase';
 import { CommercialHours, SessionTypeData, NotificationTemplate } from '../../types';
 
@@ -15,6 +16,7 @@ export function SettingsView() {
   const { settings: mpSettings, updateSettings: updateMPSettings, testConnection } = useMercadoPago();
   const { instances, testConnection: testWhatsAppConnection, refetch: refetchWhatsApp } = useWhatsApp();
   const { templates, updateTemplate } = useNotifications();
+  const { tenant } = useTenant();
   const {
     settings: googleCalendarSettings,
     loading: googleCalendarLoading,
@@ -263,25 +265,57 @@ export function SettingsView() {
       return;
     }
 
+    if (!tenant) {
+      alert('Erro: Tenant não encontrado');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Save WhatsApp instance
-      const { error } = await supabase
+      // Check if instance already exists for this tenant
+      const { data: existingInstance } = await supabase
         .from('whatsapp_instances')
-        .upsert({
-          instance_name: whatsappSettings.instance_name,
-          status: 'created',
-          instance_data: {
-            evolution_api_url: whatsappSettings.evolution_api_url,
-            evolution_api_key: whatsappSettings.evolution_api_key,
-            saved_at: new Date().toISOString()
-          }
-        });
+        .select('id')
+        .eq('instance_name', whatsappSettings.instance_name)
+        .eq('tenant_id', tenant.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (existingInstance) {
+        // Update existing instance
+        const { error } = await supabase
+          .from('whatsapp_instances')
+          .update({
+            status: 'created',
+            instance_data: {
+              evolution_api_url: whatsappSettings.evolution_api_url,
+              evolution_api_key: whatsappSettings.evolution_api_key,
+              saved_at: new Date().toISOString()
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingInstance.id);
+
+        if (error) throw error;
+      } else {
+        // Create new instance
+        const { error } = await supabase
+          .from('whatsapp_instances')
+          .insert({
+            tenant_id: tenant.id,
+            instance_name: whatsappSettings.instance_name,
+            status: 'created',
+            instance_data: {
+              evolution_api_url: whatsappSettings.evolution_api_url,
+              evolution_api_key: whatsappSettings.evolution_api_key,
+              saved_at: new Date().toISOString()
+            }
+          });
+
+        if (error) throw error;
+      }
 
       alert('Configurações do WhatsApp salvas com sucesso!');
-      
+
       // Refresh instances to get updated data
       await refetchWhatsApp();
     } catch (error) {
