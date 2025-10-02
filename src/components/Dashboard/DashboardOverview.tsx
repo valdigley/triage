@@ -29,7 +29,7 @@ export function DashboardOverview() {
 
     try {
       const { data: payments, error } = await supabase
-        .from('payments')
+        .from('triagem_payments')
         .select('amount, status')
         .eq('tenant_id', tenant.id);
 

@@ -125,14 +125,14 @@ export function SettingsView() {
       const filePath = `studio/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('photos')
+        .from('triagem_photos')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('photos')
+        .from('triagem_photos')
         .getPublicUrl(filePath);
 
       // Update settings
@@ -175,14 +175,14 @@ export function SettingsView() {
       const filePath = `studio/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('photos')
+        .from('triagem_photos')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('photos')
+        .from('triagem_photos')
         .getPublicUrl(filePath);
 
       // Update settings
@@ -302,7 +302,7 @@ export function SettingsView() {
     try {
       // Check if instance already exists for this tenant
       const { data: existingInstance } = await supabase
-        .from('whatsapp_instances')
+        .from('triagem_whatsapp_instances')
         .select('id')
         .eq('instance_name', whatsappSettings.instance_name)
         .eq('tenant_id', tenant.id)
@@ -311,7 +311,7 @@ export function SettingsView() {
       if (existingInstance) {
         // Update existing instance
         const { error } = await supabase
-          .from('whatsapp_instances')
+          .from('triagem_whatsapp_instances')
           .update({
             status: 'created',
             instance_data: {
@@ -327,7 +327,7 @@ export function SettingsView() {
       } else {
         // Create new instance
         const { error } = await supabase
-          .from('whatsapp_instances')
+          .from('triagem_whatsapp_instances')
           .insert({
             tenant_id: tenant.id,
             instance_name: whatsappSettings.instance_name,

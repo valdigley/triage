@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
 
     // Get active Google Calendar settings
     const { data: settings, error: settingsError } = await supabase
-      .from('google_calendar_settings')
+      .from('triagem_google_calendar_settings')
       .select('*')
       .eq('is_active', true)
       .limit(1)

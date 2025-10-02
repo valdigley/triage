@@ -127,7 +127,7 @@ export function BookingForm() {
     try {
       // Buscar agendamentos existentes
       const { data: existingAppointments } = await supabase
-        .from('appointments')
+        .from('triagem_appointments')
         .select('scheduled_date')
         .in('status', ['pending', 'confirmed']);
 

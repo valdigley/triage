@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
     // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabase
-      .from('mercadopago_settings')
+      .from('triagem_mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .limit(1)
@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
 
     // Create payment record in database
     const { error: paymentError } = await supabase
-      .from('payments')
+      .from('triagem_payments')
       .insert({
         appointment_id: appointmentId,
         mercadopago_id: pixData.id.toString(),
