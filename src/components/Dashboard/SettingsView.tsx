@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Upload, TestTube, Check, X, AlertCircle, Camera, MessageSquare, CreditCard, Palette, Clock, Shield, Smartphone, Eye, EyeOff, Calendar, Plus, Trash2, Edit } from 'lucide-react';
+import { Save, Upload, TestTube, Check, X, AlertCircle, Camera, MessageSquare, CreditCard, Palette, Clock, Shield, Smartphone, Eye, EyeOff, Calendar, Plus, Trash2, CreditCard as Edit } from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useMercadoPago } from '../../hooks/useMercadoPago';
