@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Save, Upload, TestTube, Check, X, AlertCircle, Camera, MessageSquare, CreditCard, Palette, Clock, Shield, Smartphone, Eye, EyeOff, Calendar, Tag, Plus, Trash2, CreditCard as Edit } from 'lucide-react';
+import { Save, Upload, TestTube, Check, X, AlertCircle, Camera, MessageSquare, CreditCard, Palette, Clock, Shield, Smartphone, Eye, EyeOff, Calendar, Plus, Trash2, Edit } from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useMercadoPago } from '../../hooks/useMercadoPago';
@@ -10,7 +10,6 @@ import { useTenant } from '../../hooks/useTenant';
 import { useGlobalSettings } from '../../hooks/useGlobalSettings';
 import { supabase } from '../../lib/supabase';
 import { CommercialHours, SessionTypeData, NotificationTemplate } from '../../types';
-import { CouponsManager } from './CouponsManager';
 
 export function SettingsView() {
   const { settings, updateSettings } = useSettings();
@@ -506,7 +505,6 @@ export function SettingsView() {
   const tabs = [
     { id: 'general', label: 'Geral', icon: Camera },
     { id: 'pricing', label: 'Preços', icon: CreditCard },
-    { id: 'coupons', label: 'Cupons', icon: Tag },
     { id: 'watermark', label: 'Marca d\'água', icon: Palette },
     { id: 'sessions', label: 'Tipos de Sessão', icon: Camera },
     { id: 'notifications', label: 'Notificações', icon: MessageSquare },
@@ -816,11 +814,6 @@ export function SettingsView() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Coupons Tab */}
-        {activeTab === 'coupons' && (
-          <CouponsManager />
         )}
 
         {/* Watermark Tab */}
