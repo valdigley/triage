@@ -48,11 +48,11 @@ Deno.serve(async (req: Request) => {
 
     // Verify user owns this tenant
     const { data: tenant, error: tenantError } = await supabaseClient
-      .from('tenants')
+      .from('triagem_tenants')
       .select('*')
       .eq('id', tenantId)
       .eq('owner_user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (tenantError || !tenant) {
       return new Response(
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
       : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
 
     const { data: subscription, error: subscriptionError } = await supabaseClient
-      .from('subscriptions')
+      .from('triagem_subscriptions')
       .insert([{
         tenant_id: tenantId,
         plan_name: planName,
@@ -155,7 +155,7 @@ Deno.serve(async (req: Request) => {
 
     // Save payment info
     const { error: paymentError } = await supabaseClient
-      .from('subscription_payments')
+      .from('triagem_subscription_payments')
       .insert([{
         subscription_id: subscription.id,
         tenant_id: tenantId,
@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
 
     // Update subscription with payment_id
     await supabaseClient
-      .from('subscriptions')
+      .from('triagem_subscriptions')
       .update({ payment_id: mpData.id })
       .eq('id', subscription.id);
 

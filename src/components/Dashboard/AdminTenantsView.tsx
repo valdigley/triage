@@ -106,6 +106,12 @@ export function AdminTenantsView() {
   };
 
   const updateTenantStatus = async (tenantId: string, newStatus: 'trial' | 'active' | 'suspended' | 'canceled') => {
+    // Impedir ativação manual - apenas suspender ou cancelar
+    if (newStatus === 'active') {
+      alert('Status "Ativo" só pode ser definido após aprovação de pagamento.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('triagem_tenants')
