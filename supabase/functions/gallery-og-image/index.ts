@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
 
     // Get gallery info
     const { data: gallery, error } = await supabase
-      .from('galleries_triage')
+      .from('triagem_galleries')
       .select(`
         id,
         name,
@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
         og_title,
         og_description,
         appointment:appointments(
-          client:clients(
+          client:triagem_clients(
             name
           )
         )
@@ -89,7 +89,7 @@ Deno.serve(async (req: Request) => {
 
     // Get app URL from settings or use environment variable
     const { data: settings } = await supabase
-      .from('settings')
+      .from('triagem_settings')
       .select('app_url')
       .single();
 

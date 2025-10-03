@@ -77,7 +77,7 @@ Deno.serve(async (req: Request) => {
 
     // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabaseClient
-      .from('mercadopago_settings')
+      .from('triagem_mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .limit(1)

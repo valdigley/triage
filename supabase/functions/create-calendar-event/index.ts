@@ -224,7 +224,7 @@ Deno.serve(async (req: Request) => {
 
     // Atualizar appointment com o ID do evento do Google
     const { error: updateError } = await supabase
-      .from("appointments")
+      .from("triagem_appointments")
       .update({
         google_calendar_event_id: createdEvent.id,
         google_calendar_event_link: createdEvent.htmlLink,

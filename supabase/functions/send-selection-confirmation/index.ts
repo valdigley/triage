@@ -191,7 +191,7 @@ Deno.serve(async (req: Request) => {
 
     // Get settings for pricing
     const { data: settings } = await supabase
-      .from('settings')
+      .from('triagem_settings')
       .select('price_commercial_hour')
       .limit(1)
       .maybeSingle();
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
     
     // Get notification template
     const { data: template, error: templateError } = await supabase
-      .from('notification_templates')
+      .from('triagem_notification_templates')
       .select('message_template')
       .eq('type', 'selection_received')
       .eq('is_active', true)
@@ -247,7 +247,7 @@ Deno.serve(async (req: Request) => {
 
     // Get settings for delivery_days
     const { data: deliverySettings } = await supabase
-      .from('settings')
+      .from('triagem_settings')
       .select('delivery_days')
       .limit(1)
       .maybeSingle();

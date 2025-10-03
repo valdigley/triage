@@ -1,7 +1,7 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
 function generateICalendar(appointments: any[]): string {
@@ -142,10 +142,10 @@ Deno.serve(async (req: Request) => {
 
     // Get all appointments with client data
     const { data: appointments, error } = await supabase
-      .from('appointments')
+      .from('triagem_appointments')
       .select(`
         *,
-        client:clients(*)
+        client:triagem_clients(*)
       `)
       .order('scheduled_date', { ascending: true });
 

@@ -1,7 +1,7 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
 Deno.serve(async (req: Request) => {
@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
 
     // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabase
-      .from('mercadopago_settings')
+      .from('triagem_mercadopago_settings')
       .select('*')
       .eq('is_active', true)
       .single();
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
 
     // Update payment with new MercadoPago ID
     await supabase
-      .from('payments')
+      .from('triagem_payments')
       .update({
         mercadopago_id: pixResult.id.toString(),
         updated_at: new Date().toISOString()
