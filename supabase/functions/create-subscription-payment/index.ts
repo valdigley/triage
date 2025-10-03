@@ -18,7 +18,6 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get authenticated user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -48,7 +47,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify user owns this tenant
     const { data: tenant, error: tenantError } = await supabaseClient
       .from('triagem_tenants')
       .select('*')
@@ -63,16 +61,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get plan price from database or use provided finalPrice (with coupon)
     let amount: number;
 
     if (finalPrice && finalPrice > 0) {
-      // Use discounted price if coupon was applied
-      // Ensure it's a number, not a string
       amount = typeof finalPrice === 'string' ? parseFloat(finalPrice) : finalPrice;
       console.log('[create-subscription-payment] Using finalPrice:', amount);
     } else {
-      // Get price from database
       const { data: pricingData, error: pricingError } = await supabaseClient
         .from('triagem_pricing')
         .select('price')
@@ -81,16 +75,16 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (pricingError || !pricingData) {
-        // Fallback to default prices
         const defaultPrices: Record<string, number> = { 'monthly': 79.90, 'yearly': 799.00 };
         amount = defaultPrices[planName] || 0;
         console.log('[create-subscription-payment] Using default price:', amount);
       } else {
-        // Ensure it's a number
         amount = typeof pricingData.price === 'string' ? parseFloat(pricingData.price) : pricingData.price;
         console.log('[create-subscription-payment] Using DB price:', amount);
       }
     }
+
+    amount = Math.round(amount * 100) / 100;
 
     console.log('[create-subscription-payment] Final amount:', amount, 'Type:', typeof amount);
 
@@ -101,7 +95,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get MercadoPago settings
     const { data: mpSettings, error: mpError } = await supabaseClient
       .from('triagem_mercadopago_settings')
       .select('*')
@@ -116,10 +109,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create subscription
     const expiresAt = planName === 'monthly' 
-      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-      : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
+      ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
 
     const { data: subscription, error: subscriptionError } = await supabaseClient
       .from('triagem_subscriptions')
@@ -138,9 +130,8 @@ Deno.serve(async (req: Request) => {
       throw subscriptionError;
     }
 
-    // Create PIX payment in MercadoPago
     const pixPaymentData = {
-      transaction_amount: amount,
+      transaction_amount: parseFloat(amount.toFixed(2)),
       description: `Assinatura ${planName === 'monthly' ? 'Mensal' : 'Anual'} - Sistema de Fotografia`,
       payment_method_id: 'pix',
       payer: {
@@ -161,6 +152,8 @@ Deno.serve(async (req: Request) => {
       }
     };
 
+    console.log('[create-subscription-payment] Sending to MercadoPago:', { transaction_amount: pixPaymentData.transaction_amount });
+
     const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: {
@@ -180,7 +173,6 @@ Deno.serve(async (req: Request) => {
     const mpData = await mpResponse.json();
     console.log('MercadoPago payment created:', mpData.id);
 
-    // Save payment info
     const { error: paymentError } = await supabaseClient
       .from('triagem_subscription_payments')
       .insert([{
@@ -199,7 +191,6 @@ Deno.serve(async (req: Request) => {
       throw paymentError;
     }
 
-    // Update subscription with payment_id
     await supabaseClient
       .from('triagem_subscriptions')
       .update({ payment_id: mpData.id })
