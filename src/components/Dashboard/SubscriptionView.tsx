@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 
 export function SubscriptionView() {
   const { tenant, subscription, daysUntilExpiration, hasActiveSubscription } = useTenant();
-  const { pricing, validateCoupon } = usePricing();
+  const { pricing, loading: loadingPricing, validateCoupon } = usePricing();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
   const [couponCode, setCouponCode] = useState('');
@@ -23,7 +23,7 @@ export function SubscriptionView() {
     {
       id: 'monthly',
       name: 'Plano Mensal',
-      price: pricing.monthly || 79.90,
+      price: pricing.monthly ?? 79.90,
       period: 'mês',
       features: [
         'Galeria de fotos ilimitadas',
@@ -36,7 +36,7 @@ export function SubscriptionView() {
     {
       id: 'yearly',
       name: 'Plano Anual',
-      price: pricing.yearly || 799.00,
+      price: pricing.yearly ?? 799.00,
       period: 'ano',
       savings: 'Economize 2 meses!',
       features: [
@@ -142,7 +142,7 @@ export function SubscriptionView() {
     return selectedPlanData?.price || 0;
   };
 
-  if (!tenant) {
+  if (!tenant || loadingPricing) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

@@ -54,10 +54,13 @@ export function usePricing() {
 
       if (data && data.length > 0) {
         const pricingMap: Record<string, number> = {};
-        data.forEach((plan: PricingPlan) => {
-          pricingMap[plan.plan_name] = plan.price;
+        data.forEach((plan: any) => {
+          const price = typeof plan.price === 'string' ? parseFloat(plan.price) : plan.price;
+          pricingMap[plan.plan_name] = price;
+          console.log(`[usePricing] Loaded ${plan.plan_name}: R$ ${price}`);
         });
         setPricing(pricingMap);
+        console.log('[usePricing] Final pricing map:', pricingMap);
       }
     } catch (error) {
       console.error('Error fetching pricing:', error);
