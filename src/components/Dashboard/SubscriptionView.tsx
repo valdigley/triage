@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { useTenant } from '../../hooks/useTenant';
-import { Check, CreditCard, Loader2, CheckCircle2, Clock } from 'lucide-react';
+import { usePricing } from '../../hooks/usePricing';
+import { Check, CreditCard, Loader2, CheckCircle2, Clock, Tag, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export function SubscriptionView() {
   const { tenant, subscription, daysUntilExpiration, hasActiveSubscription } = useTenant();
+  const { pricing, validateCoupon } = usePricing();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [paymentData, setPaymentData] = useState<{
     qrCode?: string;
     qrCodeBase64?: string;
@@ -17,7 +23,7 @@ export function SubscriptionView() {
     {
       id: 'monthly',
       name: 'Plano Mensal',
-      price: 79.90,
+      price: pricing.monthly || 79.90,
       period: 'mês',
       features: [
         'Galeria de fotos ilimitadas',
@@ -30,7 +36,7 @@ export function SubscriptionView() {
     {
       id: 'yearly',
       name: 'Plano Anual',
-      price: 799.00,
+      price: pricing.yearly || 799.00,
       period: 'ano',
       savings: 'Economize 2 meses!',
       features: [
@@ -90,6 +96,50 @@ export function SubscriptionView() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Digite um código de cupom');
+      return;
+    }
+
+    setValidatingCoupon(true);
+    setCouponError('');
+
+    try {
+      const selectedPlanData = plans.find(p => p.id === selectedPlan);
+      if (!selectedPlanData) return;
+
+      const result = await validateCoupon(couponCode, selectedPlan, selectedPlanData.price);
+
+      if (result.valid) {
+        setAppliedCoupon(result);
+        setCouponError('');
+      } else {
+        setCouponError(result.error || 'Cupom inválido');
+        setAppliedCoupon(null);
+      }
+    } catch (error) {
+      setCouponError('Erro ao validar cupom');
+      setAppliedCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError('');
+  };
+
+  const getFinalPrice = () => {
+    if (appliedCoupon && appliedCoupon.valid) {
+      return appliedCoupon.final_price;
+    }
+    const selectedPlanData = plans.find(p => p.id === selectedPlan);
+    return selectedPlanData?.price || 0;
   };
 
   if (!tenant) {
