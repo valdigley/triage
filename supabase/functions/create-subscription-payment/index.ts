@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { tenantId, planName } = await req.json();
+    const { tenantId, planName, couponCode, finalPrice } = await req.json();
 
     if (!tenantId || !planName) {
       return new Response(
@@ -61,16 +61,33 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Define plan amounts
-    const planAmounts = {
-      'monthly': 79.90,
-      'yearly': 799.00
-    };
+    // Get plan price from database or use provided finalPrice (with coupon)
+    let amount: number;
 
-    const amount = planAmounts[planName as keyof typeof planAmounts];
-    if (!amount) {
+    if (finalPrice && finalPrice > 0) {
+      // Use discounted price if coupon was applied
+      amount = finalPrice;
+    } else {
+      // Get price from database
+      const { data: pricingData, error: pricingError } = await supabaseClient
+        .from('triagem_pricing')
+        .select('price')
+        .eq('plan_name', planName)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (pricingError || !pricingData) {
+        // Fallback to default prices
+        const defaultPrices: Record<string, number> = { 'monthly': 79.90, 'yearly': 799.00 };
+        amount = defaultPrices[planName] || 0;
+      } else {
+        amount = pricingData.price;
+      }
+    }
+
+    if (!amount || amount <= 0) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Plano inválido' }),
+        JSON.stringify({ success: false, error: 'Plano inválido ou preço inválido' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -130,7 +147,8 @@ Deno.serve(async (req: Request) => {
       metadata: {
         tenant_id: tenantId,
         subscription_id: subscription.id,
-        plan_name: planName
+        plan_name: planName,
+        coupon_code: couponCode || null
       }
     };
 
