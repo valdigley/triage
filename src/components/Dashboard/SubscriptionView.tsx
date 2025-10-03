@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTenant } from '../../hooks/useTenant';
 import { usePricing } from '../../hooks/usePricing';
 import { Check, CreditCard, Loader2, CheckCircle2, Clock, Tag, X } from 'lucide-react';
@@ -18,6 +18,8 @@ export function SubscriptionView() {
     qrCodeBase64?: string;
     subscriptionId?: string;
   } | null>(null);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const plans = [
     {
@@ -98,14 +100,14 @@ export function SubscriptionView() {
     }
   };
 
-  const handleCheckPaymentStatus = async () => {
-    if (!paymentData?.subscriptionId) return;
+  const checkPaymentStatus = async (silent = false) => {
+    if (!paymentData?.subscriptionId) return false;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Não autenticado');
+      if (!session) return false;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-subscription-payment-status`,
@@ -124,23 +126,79 @@ export function SubscriptionView() {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Erro ao verificar pagamento');
+        if (!silent) {
+          throw new Error(data.error || 'Erro ao verificar pagamento');
+        }
+        return false;
       }
-
-      alert(data.message);
 
       if (data.status === 'approved') {
-        // Reload to show active subscription
+        // Stop polling
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+
+        // Show success message and reload
+        alert('Pagamento aprovado! Sua assinatura foi ativada.');
         window.location.reload();
+        return true;
       }
+
+      if (!silent && data.message) {
+        alert(data.message);
+      }
+
+      return false;
 
     } catch (error) {
       console.error('Error checking payment status:', error);
-      alert(error instanceof Error ? error.message : 'Erro ao verificar pagamento');
+      if (!silent) {
+        alert(error instanceof Error ? error.message : 'Erro ao verificar pagamento');
+      }
+      return false;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  const handleCheckPaymentStatus = async () => {
+    await checkPaymentStatus(false);
+  };
+
+  // Auto-check payment status when QR code is shown
+  useEffect(() => {
+    if (paymentData?.subscriptionId && !pollingIntervalRef.current) {
+      console.log('Starting payment status polling...');
+      setCheckingPayment(true);
+
+      // Check immediately
+      checkPaymentStatus(true);
+
+      // Then check every 5 seconds
+      pollingIntervalRef.current = setInterval(() => {
+        checkPaymentStatus(true);
+      }, 5000);
+
+      // Stop after 10 minutes
+      setTimeout(() => {
+        if (pollingIntervalRef.current) {
+          console.log('Stopping payment status polling after 10 minutes');
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+          setCheckingPayment(false);
+        }
+      }, 10 * 60 * 1000);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [paymentData?.subscriptionId]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
@@ -246,9 +304,23 @@ export function SubscriptionView() {
           )}
 
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Importante:</strong> Após realizar o pagamento, clique no botão abaixo para verificar o status e ativar sua assinatura.
-            </p>
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                {checkingPayment ? (
+                  <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin mt-0.5" />
+                ) : (
+                  <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                )}
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>{checkingPayment ? 'Verificando pagamento automaticamente...' : 'Aguardando pagamento'}</strong>
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  O sistema verifica automaticamente a cada 5 segundos. Quando o pagamento for aprovado, sua assinatura será ativada instantaneamente.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="mt-6 flex gap-4 justify-center">
@@ -256,6 +328,7 @@ export function SubscriptionView() {
               onClick={handleCheckPaymentStatus}
               disabled={loading}
               className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+              title="Verificar pagamento imediatamente"
             >
               {loading ? (
                 <>
@@ -265,18 +338,22 @@ export function SubscriptionView() {
               ) : (
                 <>
                   <CheckCircle2 className="h-5 w-5 mr-2" />
-                  Verificar Pagamento
+                  Verificar Agora
                 </>
               )}
             </button>
             <button
               onClick={() => {
+                if (pollingIntervalRef.current) {
+                  clearInterval(pollingIntervalRef.current);
+                  pollingIntervalRef.current = null;
+                }
                 setPaymentData(null);
                 window.location.reload();
               }}
               className="text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Voltar
+              Cancelar
             </button>
           </div>
         </div>
