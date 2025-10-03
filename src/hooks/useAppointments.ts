@@ -34,7 +34,7 @@ export function useAppointments() {
           client:triagem_clients(*)
         `)
         .eq('tenant_id', tenant.id)
-        .order('scheduled_date', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setAppointments(data || []);
