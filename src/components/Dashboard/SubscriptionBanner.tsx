@@ -1,9 +1,12 @@
 import React from 'react';
 import { useTenant } from '../../hooks/useTenant';
 import { AlertCircle, Clock, CreditCard } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
-export function SubscriptionBanner() {
+interface SubscriptionBannerProps {
+  onNavigateToSubscription?: () => void;
+}
+
+export function SubscriptionBanner({ onNavigateToSubscription }: SubscriptionBannerProps) {
   const { tenant, isMasterAdmin, daysUntilExpiration, hasActiveSubscription } = useTenant();
 
   if (isMasterAdmin || !tenant) return null;
@@ -26,7 +29,7 @@ export function SubscriptionBanner() {
             </p>
           </div>
           <button
-            onClick={() => window.location.href = '/#/subscription'}
+            onClick={onNavigateToSubscription}
             className="ml-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
           >
             <CreditCard className="h-4 w-4" />
@@ -54,7 +57,7 @@ export function SubscriptionBanner() {
             </p>
           </div>
           <button
-            onClick={() => window.location.href = '/#/subscription'}
+            onClick={onNavigateToSubscription}
             className="ml-4 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors flex items-center space-x-2"
           >
             <CreditCard className="h-4 w-4" />

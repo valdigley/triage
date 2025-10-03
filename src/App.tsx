@@ -81,7 +81,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
 
       <main className="flex-1 overflow-y-auto">
         <div className="p-4 sm:p-6 lg:p-8">
-          <SubscriptionBanner />
+          <SubscriptionBanner onNavigateToSubscription={() => setCurrentView('subscription')} />
           {renderCurrentView()}
         </div>
       </main>
