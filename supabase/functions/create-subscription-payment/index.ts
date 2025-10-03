@@ -39,6 +39,8 @@ Deno.serve(async (req: Request) => {
 
     const { tenantId, planName, couponCode, finalPrice } = await req.json();
 
+    console.log('[create-subscription-payment] Received:', { tenantId, planName, couponCode, finalPrice, finalPriceType: typeof finalPrice });
+
     if (!tenantId || !planName) {
       return new Response(
         JSON.stringify({ success: false, error: 'tenantId e planName são obrigatórios' }),
@@ -66,7 +68,9 @@ Deno.serve(async (req: Request) => {
 
     if (finalPrice && finalPrice > 0) {
       // Use discounted price if coupon was applied
-      amount = finalPrice;
+      // Ensure it's a number, not a string
+      amount = typeof finalPrice === 'string' ? parseFloat(finalPrice) : finalPrice;
+      console.log('[create-subscription-payment] Using finalPrice:', amount);
     } else {
       // Get price from database
       const { data: pricingData, error: pricingError } = await supabaseClient
@@ -80,14 +84,19 @@ Deno.serve(async (req: Request) => {
         // Fallback to default prices
         const defaultPrices: Record<string, number> = { 'monthly': 79.90, 'yearly': 799.00 };
         amount = defaultPrices[planName] || 0;
+        console.log('[create-subscription-payment] Using default price:', amount);
       } else {
-        amount = pricingData.price;
+        // Ensure it's a number
+        amount = typeof pricingData.price === 'string' ? parseFloat(pricingData.price) : pricingData.price;
+        console.log('[create-subscription-payment] Using DB price:', amount);
       }
     }
 
-    if (!amount || amount <= 0) {
+    console.log('[create-subscription-payment] Final amount:', amount, 'Type:', typeof amount);
+
+    if (!amount || amount <= 0 || isNaN(amount)) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Plano inválido ou preço inválido' }),
+        JSON.stringify({ success: false, error: `Plano inválido ou preço inválido. Amount: ${amount}` }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
