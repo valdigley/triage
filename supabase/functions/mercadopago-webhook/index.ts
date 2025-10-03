@@ -576,7 +576,55 @@ Deno.serve(async (req: Request) => {
         // Note: The database trigger will automatically create a gallery
         // when the appointment status changes to 'confirmed'
         console.log('🎨 Galeria será criada automaticamente pelo trigger do banco');
-        
+
+        // Create event in Google Calendar
+        try {
+          console.log('📅 Criando evento no Google Calendar...');
+
+          const { data: appointment, error: apptError } = await supabase
+            .from('triagem_appointments')
+            .select('*, client:triagem_clients(name, email, phone), session_type_data:triagem_session_types!triagem_appointments_session_type_fkey(label)')
+            .eq('id', appointmentId)
+            .single();
+
+          if (apptError || !appointment) {
+            console.error('❌ Erro ao buscar appointment para Google Calendar:', apptError);
+          } else {
+            const scheduledDate = new Date(appointment.scheduled_date);
+            const endDate = new Date(scheduledDate.getTime() + (appointment.duration || 60) * 60000);
+
+            const calendarEventData = {
+              appointmentId: appointment.id,
+              summary: `${appointment.session_type_data?.label || appointment.session_type} - ${appointment.client?.name || 'Cliente'}`,
+              description: `Sessão: ${appointment.session_type_data?.label || appointment.session_type}\nCliente: ${appointment.client?.name || 'Cliente'}\nTelefone: ${appointment.client?.phone || ''}\nValor: R$ ${appointment.total_amount}`,
+              startDateTime: scheduledDate.toISOString(),
+              endDateTime: endDate.toISOString(),
+            };
+
+            const calendarResponse = await fetch(
+              `${Deno.env.get('SUPABASE_URL')}/functions/v1/create-calendar-event`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+                },
+                body: JSON.stringify(calendarEventData)
+              }
+            );
+
+            if (calendarResponse.ok) {
+              const calendarResult = await calendarResponse.json();
+              console.log('✅ Evento criado no Google Calendar:', calendarResult.eventId);
+            } else {
+              const errorText = await calendarResponse.text();
+              console.error('⚠️ Erro ao criar evento no Google Calendar (não crítico):', errorText);
+            }
+          }
+        } catch (calendarError) {
+          console.error('⚠️ Erro ao criar evento no Google Calendar (não crítico):', calendarError);
+        }
+
       } else if (paymentData.status === 'rejected') {
         console.log('❌ Pagamento rejeitado - mantendo status pendente');
       } else if (paymentData.status === 'cancelled') {
