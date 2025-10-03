@@ -98,6 +98,50 @@ export function SubscriptionView() {
     }
   };
 
+  const handleCheckPaymentStatus = async () => {
+    if (!paymentData?.subscriptionId) return;
+
+    try {
+      setLoading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-subscription-payment-status`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subscriptionId: paymentData.subscriptionId
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erro ao verificar pagamento');
+      }
+
+      alert(data.message);
+
+      if (data.status === 'approved') {
+        // Reload to show active subscription
+        window.location.reload();
+      }
+
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao verificar pagamento');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
       setCouponError('Digite um código de cupom');
@@ -203,11 +247,28 @@ export function SubscriptionView() {
 
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Importante:</strong> Após realizar o pagamento, sua assinatura será ativada automaticamente em alguns instantes.
+              <strong>Importante:</strong> Após realizar o pagamento, clique no botão abaixo para verificar o status e ativar sua assinatura.
             </p>
           </div>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 flex gap-4 justify-center">
+            <button
+              onClick={handleCheckPaymentStatus}
+              disabled={loading}
+              className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                  Verificando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  Verificar Pagamento
+                </>
+              )}
+            </button>
             <button
               onClick={() => {
                 setPaymentData(null);

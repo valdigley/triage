@@ -21,7 +21,6 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     console.log('Webhook received:', JSON.stringify(body, null, 2));
 
-    // MercadoPago sends notifications in this format
     if (body.type === 'payment' || body.action === 'payment.updated') {
       const paymentId = body.data?.id;
       
@@ -33,7 +32,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Get MercadoPago settings
       const { data: mpSettings } = await supabaseClient
         .from('triagem_mercadopago_settings')
         .select('*')
@@ -49,7 +47,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Fetch payment details from MercadoPago
       const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
         headers: {
           'Authorization': `Bearer ${mpSettings.access_token}`
@@ -79,44 +76,60 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Update subscription payment status
       const paymentStatus = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending';
-      
-      await supabaseClient
-        .from('subscription_payments')
+
+      console.log(`Updating payment ${paymentId} to status: ${paymentStatus}`);
+
+      const { error: updatePaymentError } = await supabaseClient
+        .from('triagem_subscription_payments')
         .update({
           status: paymentStatus,
           paid_at: status === 'approved' ? new Date().toISOString() : null
         })
         .eq('external_payment_id', paymentId);
 
-      // If payment is approved, activate subscription
+      if (updatePaymentError) {
+        console.error('Error updating payment:', updatePaymentError);
+      }
+
       if (status === 'approved') {
+        console.log(`Payment approved, activating subscription ${subscriptionId}`);
+
         const { data: subscription } = await supabaseClient
-          .from('subscriptions')
+          .from('triagem_subscriptions')
           .select('*')
           .eq('id', subscriptionId)
-          .single();
+          .maybeSingle();
 
         if (subscription) {
-          // Update subscription to active
-          await supabaseClient
-            .from('subscriptions')
+          const { error: updateSubError } = await supabaseClient
+            .from('triagem_subscriptions')
             .update({
               status: 'active',
               starts_at: new Date().toISOString()
             })
             .eq('id', subscriptionId);
 
-          // Update tenant status to active
-          await supabaseClient
-            .from('tenants')
+          if (updateSubError) {
+            console.error('Error updating subscription:', updateSubError);
+          } else {
+            console.log(`Subscription ${subscriptionId} activated`);
+          }
+
+          const { error: updateTenantError } = await supabaseClient
+            .from('triagem_tenants')
             .update({
               status: 'active'
             })
             .eq('id', tenantId);
 
-          console.log(`Subscription ${subscriptionId} activated for tenant ${tenantId}`);
+          if (updateTenantError) {
+            console.error('Error updating tenant:', updateTenantError);
+          } else {
+            console.log(`Tenant ${tenantId} activated`);
+          }
+        } else {
+          console.error(`Subscription ${subscriptionId} not found`);
         }
       }
 
