@@ -38,10 +38,35 @@ Deno.serve(async (req: Request) => {
     console.log("Start:", startDateTime);
     console.log("End:", endDateTime);
 
-    // Buscar configurações do Google Calendar
+    // Buscar appointment para obter tenant_id
+    const { data: appointment, error: appointmentError } = await supabase
+      .from("triagem_appointments")
+      .select("tenant_id")
+      .eq("id", appointmentId)
+      .maybeSingle();
+
+    if (appointmentError || !appointment) {
+      console.error("❌ Appointment não encontrado:", appointmentError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Appointment não encontrado",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const tenantId = appointment.tenant_id;
+    console.log("✅ Tenant ID do appointment:", tenantId);
+
+    // Buscar configurações do Google Calendar para este tenant
     const { data: settings, error: settingsError } = await supabase
       .from("triagem_google_calendar_settings")
       .select("*")
+      .eq("tenant_id", tenantId)
       .eq("is_active", true)
       .limit(1)
       .maybeSingle();

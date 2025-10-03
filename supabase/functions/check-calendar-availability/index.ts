@@ -102,10 +102,37 @@ Deno.serve(async (req: Request) => {
 
     console.log('🔍 Período solicitado:', startDateTime, 'até', endDateTime);
 
-    // Get active Google Calendar settings
+    // Buscar tenant_id baseado nas configurações ativas de MercadoPago
+    const { data: mpSettings, error: mpError } = await supabase
+      .from('triagem_mercadopago_settings')
+      .select('tenant_id')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (mpError || !mpSettings) {
+      console.error('❌ Tenant não encontrado:', mpError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Tenant configuration not found',
+          available: true,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const tenantId = mpSettings.tenant_id;
+    console.log('✅ Tenant ID:', tenantId);
+
+    // Get active Google Calendar settings for this tenant
     const { data: settings, error: settingsError } = await supabase
-      .from('google_calendar_settings')
+      .from('triagem_google_calendar_settings')
       .select('*')
+      .eq('tenant_id', tenantId)
       .eq('is_active', true)
       .limit(1)
       .maybeSingle();
