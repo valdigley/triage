@@ -529,35 +529,7 @@ Deno.serve(async (req: Request) => {
           console.log('   - ID:', confirmedAppointment.id);
           console.log('   - Status:', confirmedAppointment.status);
           console.log('   - Payment Status:', confirmedAppointment.payment_status);
-
-          // Update client total_spent
-          if (confirmedAppointment.client_id) {
-            console.log('💰 Atualizando total_spent do cliente...');
-
-            const { data: client, error: clientError } = await supabase
-              .from('triagem_clients')
-              .select('total_spent')
-              .eq('id', confirmedAppointment.client_id)
-              .single();
-
-            if (!clientError && client) {
-              const newTotalSpent = (client.total_spent || 0) + paymentData.transaction_amount;
-
-              const { error: updateClientError } = await supabase
-                .from('triagem_clients')
-                .update({
-                  total_spent: newTotalSpent,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', confirmedAppointment.client_id);
-
-              if (updateClientError) {
-                console.error('❌ Erro ao atualizar total_spent do cliente:', updateClientError);
-              } else {
-                console.log('✅ Total_spent do cliente atualizado:', newTotalSpent);
-              }
-            }
-          }
+          console.log('💰 Total_spent do cliente será atualizado automaticamente pelo trigger do banco');
         }
         
         // Schedule payment confirmation notification

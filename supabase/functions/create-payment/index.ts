@@ -78,46 +78,7 @@ Deno.serve(async (req: Request) => {
 
     await supabase.from('triagem_payments').insert({ appointment_id: appointment.id, mercadopago_id: pixData.id.toString(), amount: amount, status: pixData.status, payment_type: 'initial' });
 
-    try {
-      const { scheduleNotifications } = await import('./notifications.ts');
-      await scheduleNotifications(appointment.id, supabase);
-    } catch (error) {
-      console.error('Error scheduling notifications:', error);
-    }
-
-    try {
-      console.log('📅 Creating Google Calendar event...');
-      console.log('Appointment ID:', appointment.id);
-      console.log('Scheduled date:', formData.scheduledDate);
-      const startDate = new Date(formData.scheduledDate);
-      const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
-      const calendarPayload = {
-        appointmentId: appointment.id,
-        summary: `Sessão de Fotos - ${formData.clientName}`,
-        description: `Tipo: ${sessionLabel}\nCliente: ${formData.clientName}\nTelefone: ${formData.clientPhone}\nEmail: ${formData.clientEmail || 'Não informado'}`,
-        startDateTime: startDate.toISOString(),
-        endDateTime: endDate.toISOString(),
-        attendees: formData.clientEmail ? [formData.clientEmail] : []
-      };
-      console.log('Calendar payload:', JSON.stringify(calendarPayload, null, 2));
-      const calendarResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/create-calendar-event`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(calendarPayload)
-      });
-      console.log('Calendar response status:', calendarResponse.status);
-      if (calendarResponse.ok) {
-        const calendarResult = await calendarResponse.json();
-        console.log('✅ Google Calendar event created:', JSON.stringify(calendarResult, null, 2));
-      } else {
-        const errorText = await calendarResponse.text();
-        console.error('❌ Failed to create calendar event. Status:', calendarResponse.status);
-        console.error('❌ Error response:', errorText);
-      }
-    } catch (error) {
-      console.error('❌ Error creating calendar event:', error);
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
-    }
+    console.log('✅ Payment criado. Aguardando confirmação do PIX para confirmar agendamento e criar evento no Google Calendar.');
 
     return new Response(JSON.stringify({ success: true, appointment_id: appointment.id, payment_id: pixData.id, status: pixData.status, qr_code: qrCode, qr_code_base64: qrCodeBase64, expires_at: pixPaymentData.date_of_expiration }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
