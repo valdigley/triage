@@ -346,6 +346,33 @@ Deno.serve(async (req: Request) => {
             console.log('✅ Registro de pagamento criado');
           }
 
+          // 5. Update client total_spent
+          console.log('💰 Atualizando total_spent do cliente...');
+
+          const { data: client, error: clientError } = await supabase
+            .from('triagem_clients')
+            .select('total_spent')
+            .eq('id', clientId)
+            .single();
+
+          if (!clientError && client) {
+            const newTotalSpent = (client.total_spent || 0) + paymentData.transaction_amount;
+
+            const { error: updateClientError } = await supabase
+              .from('triagem_clients')
+              .update({
+                total_spent: newTotalSpent,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', clientId);
+
+            if (updateClientError) {
+              console.error('❌ Erro ao atualizar total_spent do cliente:', updateClientError);
+            } else {
+              console.log('✅ Total_spent do cliente atualizado (galeria pública):', newTotalSpent);
+            }
+          }
+
           console.log('🎉 ===== GALERIA PÚBLICA PROCESSADA COM SUCESSO =====');
 
         } catch (error) {
@@ -384,20 +411,51 @@ Deno.serve(async (req: Request) => {
         console.log('📊 Novo status:', paymentData.status);
       }
 
-      // If payment is approved, update gallery
+      // If payment is approved, update gallery and client total_spent
       if (paymentData.status === 'approved') {
         console.log('✅ Pagamento de fotos extras aprovado - atualizando galeria...');
-        const { error: galleryUpdateError } = await supabase
+        const { data: gallery, error: galleryUpdateError } = await supabase
           .from('triagem_galleries')
           .update({
             updated_at: new Date().toISOString()
           })
-          .eq('appointment_id', originalAppointmentId);
-        
+          .eq('appointment_id', originalAppointmentId)
+          .select('client_id')
+          .single();
+
         if (galleryUpdateError) {
           console.error('❌ Erro ao atualizar galeria para fotos extras:', galleryUpdateError);
         } else {
           console.log('✅ Galeria atualizada para pagamento aprovado de fotos extras');
+
+          // Update client total_spent
+          if (gallery?.client_id) {
+            console.log('💰 Atualizando total_spent do cliente...');
+
+            const { data: client, error: clientError } = await supabase
+              .from('triagem_clients')
+              .select('total_spent')
+              .eq('id', gallery.client_id)
+              .single();
+
+            if (!clientError && client) {
+              const newTotalSpent = (client.total_spent || 0) + paymentData.transaction_amount;
+
+              const { error: updateClientError } = await supabase
+                .from('triagem_clients')
+                .update({
+                  total_spent: newTotalSpent,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', gallery.client_id);
+
+              if (updateClientError) {
+                console.error('❌ Erro ao atualizar total_spent do cliente:', updateClientError);
+              } else {
+                console.log('✅ Total_spent do cliente atualizado (fotos extras):', newTotalSpent);
+              }
+            }
+          }
         }
       }
     } else {
@@ -449,11 +507,11 @@ Deno.serve(async (req: Request) => {
         console.log('   - Appointment Status:', updatedAppointment.status);
       }
 
-      // If payment is approved, confirm appointment
+      // If payment is approved, confirm appointment and update client total_spent
       if (paymentData.status === 'approved') {
         console.log('✅ ===== PAGAMENTO APROVADO =====');
         console.log('🎯 Confirmando appointment automaticamente...');
-        
+
         const { data: confirmedAppointment, error: appointmentStatusError } = await supabase
           .from('triagem_appointments')
           .update({
@@ -461,9 +519,9 @@ Deno.serve(async (req: Request) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', appointmentId)
-          .select()
+          .select('*, client_id')
           .single();
-        
+
         if (appointmentStatusError) {
           console.error('❌ Erro ao confirmar appointment:', appointmentStatusError);
         } else {
@@ -471,6 +529,35 @@ Deno.serve(async (req: Request) => {
           console.log('   - ID:', confirmedAppointment.id);
           console.log('   - Status:', confirmedAppointment.status);
           console.log('   - Payment Status:', confirmedAppointment.payment_status);
+
+          // Update client total_spent
+          if (confirmedAppointment.client_id) {
+            console.log('💰 Atualizando total_spent do cliente...');
+
+            const { data: client, error: clientError } = await supabase
+              .from('triagem_clients')
+              .select('total_spent')
+              .eq('id', confirmedAppointment.client_id)
+              .single();
+
+            if (!clientError && client) {
+              const newTotalSpent = (client.total_spent || 0) + paymentData.transaction_amount;
+
+              const { error: updateClientError } = await supabase
+                .from('triagem_clients')
+                .update({
+                  total_spent: newTotalSpent,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', confirmedAppointment.client_id);
+
+              if (updateClientError) {
+                console.error('❌ Erro ao atualizar total_spent do cliente:', updateClientError);
+              } else {
+                console.log('✅ Total_spent do cliente atualizado:', newTotalSpent);
+              }
+            }
+          }
         }
         
         // Schedule payment confirmation notification
