@@ -11,7 +11,7 @@ import { PhotoUpload } from '../Gallery/PhotoUpload';
 import { Gallery, Photo } from '../../types';
 
 export function GalleriesView() {
-  const { galleries, loading, updateGalleryStatus, createGallery, deleteGallery } = useGalleries();
+  const { galleries, loading, updateGalleryStatus, createGallery, deleteGallery, refetch: refetchGalleries } = useGalleries();
   const { sendGalleryLink } = useWhatsApp();
   const { clients } = useClients();
   const { settings } = useSettings();
@@ -245,9 +245,10 @@ export function GalleriesView() {
 
       if (galleryError) throw galleryError;
 
+      await refetchGalleries();
       alert('Galeria pública criada com sucesso!');
       resetCreateGallery();
-      window.location.reload();
+      setShowCreateModal(false);
     } catch (error) {
       console.error('Erro ao criar galeria pública:', error);
       alert('Erro ao criar galeria pública. Tente novamente.');
@@ -309,9 +310,10 @@ export function GalleriesView() {
 
       if (galleryError) throw galleryError;
 
+      await refetchGalleries();
       alert('Galeria criada com sucesso!');
       resetCreateGallery();
-      window.location.reload();
+      setShowCreateModal(false);
     } catch (error) {
       console.error('Erro ao criar galeria:', error);
       alert('Erro ao criar galeria. Tente novamente.');
