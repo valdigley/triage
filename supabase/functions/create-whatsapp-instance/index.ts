@@ -78,11 +78,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const instanceName = `tenant_${tenantId.substring(0, 8)}`;
+    const normalizeStudioName = (name: string): string => {
+      return name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .substring(0, 20);
+    };
+
+    const studioNamePrefix = normalizeStudioName(tenant.name);
+    const tenantIdSuffix = tenantId.substring(0, 8);
+    const instanceName = `${studioNamePrefix}_${tenantIdSuffix}`;
 
     const createInstanceUrl = `${globalSettings.evolution_server_url}/instance/create`;
 
-    console.log(`Creating instance ${instanceName} on Evolution API`);
+    console.log(`Creating instance ${instanceName} for studio "${tenant.name}" on Evolution API`);
 
     const createResponse = await fetch(createInstanceUrl, {
       method: 'POST',
