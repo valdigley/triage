@@ -89,10 +89,13 @@ export function useAppointments() {
 
   const checkGoogleCalendarAvailability = async (
     startDateTime: string,
-    endDateTime: string
+    endDateTime: string,
+    customTenantId?: string
   ): Promise<{ available: boolean; message: string; conflictingEvents?: any[] }> => {
     try {
       console.log('🔍 Verificando disponibilidade no Google Calendar...');
+
+      const tenantIdToUse = customTenantId || tenant?.id;
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-calendar-availability`,
@@ -105,6 +108,7 @@ export function useAppointments() {
           body: JSON.stringify({
             startDateTime,
             endDateTime,
+            tenantId: tenantIdToUse,
           }),
         }
       );

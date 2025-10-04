@@ -209,7 +209,8 @@ export function BookingForm() {
         // Verificar disponibilidade no Google Calendar
         const availability = await checkGoogleCalendarAvailability(
           slotDate.toISOString(),
-          endDate.toISOString()
+          endDate.toISOString(),
+          tenantId || undefined
         );
 
         // Apenas adicionar se estiver disponível no Google Calendar
@@ -271,7 +272,8 @@ export function BookingForm() {
 
       const availability = await checkGoogleCalendarAvailability(
         selectedDate.toISOString(),
-        endDate.toISOString()
+        endDate.toISOString(),
+        tenantId || undefined
       );
 
       if (!availability.available) {
