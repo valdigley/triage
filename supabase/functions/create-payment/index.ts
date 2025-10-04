@@ -6,6 +6,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+function generateToken(length: number = 32): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    token += chars[randomValues[i] % chars.length];
+  }
+  return token;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -17,15 +28,15 @@ Deno.serve(async (req: Request) => {
     const { formData, amount, clientName, clientEmail, sessionType, deviceId, tenant_id } = await req.json();
 
     if (!formData || !amount) {
-      return new Response(JSON.stringify({ success: false, error: 'formData e amount são obrigatórios' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return new Response(JSON.stringify({ success: false, error: 'formData e amount s\u00e3o obrigat\u00f3rios' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
     if (!tenant_id) {
-      return new Response(JSON.stringify({ success: false, error: 'tenant_id é obrigatório' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return new Response(JSON.stringify({ success: false, error: 'tenant_id \u00e9 obrigat\u00f3rio' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
     const tenantId = tenant_id;
-    console.log('✅ Tenant ID recebido:', tenantId);
+    console.log('\u2705 Tenant ID recebido:', tenantId);
 
     const { data: existingClient } = await supabase.from('triagem_clients').select('*').eq('phone', formData.clientPhone).eq('tenant_id', tenantId).maybeSingle();
     let clientId: string;
@@ -42,82 +53,71 @@ Deno.serve(async (req: Request) => {
     const { data: appointment, error: appointmentError } = await supabase.from('triagem_appointments').insert([{ client_id: clientId, tenant_id: tenantId, session_type: formData.sessionType, session_details: formData.sessionDetails, scheduled_date: formData.scheduledDate, total_amount: amount, minimum_photos: 5, terms_accepted: formData.termsAccepted, status: 'pending', payment_status: 'pending' }]).select().single();
     if (appointmentError) throw appointmentError;
 
-    console.log('🔍 Buscando configurações completas do MercadoPago...');
+    // Buscar configura\u00e7\u00f5es
+    const { data: settings } = await supabase
+      .from('triagem_settings')
+      .select('pix_key, studio_name, link_validity_days, minimum_photos')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    // SEMPRE criar galeria imediatamente (independente de ter ou n\u00e3o Mercado Pago)
+    console.log('\ud83c\udfa8 Criando galeria para o agendamento...');
+
+    const galleryToken = generateToken(32);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (settings?.link_validity_days || 30));
+
+    const { data: gallery, error: galleryError } = await supabase
+      .from('triagem_galleries')
+      .insert([{
+        appointment_id: appointment.id,
+        client_id: clientId,
+        tenant_id: tenantId,
+        gallery_token: galleryToken,
+        expires_at: expiresAt.toISOString(),
+        max_selections: settings?.minimum_photos || 5,
+        is_public: false
+      }])
+      .select()
+      .single();
+
+    if (galleryError) {
+      console.error('\u274c Erro ao criar galeria:', galleryError);
+    } else {
+      console.log('\u2705 Galeria criada:', gallery?.id);
+    }
+
+    // SEMPRE criar registro de pagamento pendente
+    console.log('\ud83d\udcb0 Criando registro de pagamento pendente...');
+    const { error: paymentPendingError } = await supabase
+      .from('triagem_payments')
+      .insert([{
+        appointment_id: appointment.id,
+        client_id: clientId,
+        tenant_id: tenantId,
+        amount: amount,
+        status: 'pending',
+        payment_type: 'initial'
+      }]);
+
+    if (paymentPendingError) {
+      console.error('\u274c Erro ao criar pagamento pendente:', paymentPendingError);
+    } else {
+      console.log('\u2705 Pagamento pendente criado');
+    }
+
+    // Verificar se tem Mercado Pago configurado
+    console.log('\ud83d\udd0d Buscando configura\u00e7\u00f5es do MercadoPago...');
     const { data: mpSettingsFull, error: mpFullError } = await supabase.from('triagem_mercadopago_settings').select('*').eq('tenant_id', tenantId).eq('is_active', true).limit(1).maybeSingle();
 
     if (mpFullError || !mpSettingsFull || !mpSettingsFull.access_token) {
-      console.log('⚠️ MercadoPago não configurado - tentando PIX manual...');
-
-      // Buscar chave PIX manual do tenant
-      const { data: settings } = await supabase
-        .from('triagem_settings')
-        .select('pix_key, studio_name, link_validity_days, minimum_photos')
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
+      console.log('\u26a0\ufe0f MercadoPago n\u00e3o configurado - fluxo PIX manual');
 
       const pixKey = settings?.pix_key;
-      const studioName = settings?.studio_name || 'Estúdio';
+      const studioName = settings?.studio_name || 'Est\u00fadio';
 
-      // Criar galeria imediatamente (sem esperar pagamento)
-      console.log('🎨 Criando galeria para agendamento sem pagamento automático...');
-
-      function generateToken(length: number = 32): string {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let token = '';
-        const randomValues = new Uint8Array(length);
-        crypto.getRandomValues(randomValues);
-        for (let i = 0; i < length; i++) {
-          token += chars[randomValues[i] % chars.length];
-        }
-        return token;
-      }
-
-      const galleryToken = generateToken(32);
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + (settings?.link_validity_days || 30));
-
-      const { data: gallery, error: galleryError } = await supabase
-        .from('triagem_galleries')
-        .insert([{
-          appointment_id: appointment.id,
-          client_id: clientId,
-          tenant_id: tenantId,
-          gallery_token: galleryToken,
-          expires_at: expiresAt.toISOString(),
-          max_selections: settings?.minimum_photos || 5,
-          is_public: false
-        }])
-        .select()
-        .single();
-
-      if (galleryError) {
-        console.error('❌ Erro ao criar galeria:', galleryError);
-      } else {
-        console.log('✅ Galeria criada:', gallery.id);
-      }
-
-      // Criar registro de pagamento pendente para baixa manual
-      console.log('💰 Criando registro de pagamento pendente...');
-      const { error: paymentError } = await supabase
-        .from('triagem_payments')
-        .insert([{
-          appointment_id: appointment.id,
-          client_id: clientId,
-          tenant_id: tenantId,
-          amount: amount,
-          status: 'pending',
-          payment_type: 'initial'
-        }]);
-
-      if (paymentError) {
-        console.error('❌ Erro ao criar pagamento pendente:', paymentError);
-      } else {
-        console.log('✅ Pagamento pendente criado para baixa manual');
-      }
-
-      // Se há chave PIX, enviar via WhatsApp
+      // Se h\u00e1 chave PIX, enviar via WhatsApp
       if (pixKey && formData.clientPhone) {
-        // Buscar template de notificação
         const { data: template } = await supabase
           .from('triagem_notification_templates')
           .select('message_template')
@@ -125,13 +125,11 @@ Deno.serve(async (req: Request) => {
           .eq('is_active', true)
           .maybeSingle();
 
-        // Buscar configurações globais da Evolution API
         const { data: globalSettings } = await supabase
           .from('global_settings')
           .select('evolution_server_url, evolution_auth_api_key')
           .maybeSingle();
 
-        // Buscar instância do tenant
         const { data: whatsappInstance } = await supabase
           .from('triagem_whatsapp_instances')
           .select('instance_name')
@@ -140,16 +138,15 @@ Deno.serve(async (req: Request) => {
 
         if (globalSettings && whatsappInstance && template) {
           const sessionTypeLabels = {
-            'aniversario': 'Sessão de Aniversário',
+            'aniversario': 'Sess\u00e3o de Anivers\u00e1rio',
             'gestante': 'Ensaio Gestante',
-            'formatura': 'Sessão de Formatura',
-            'comercial': 'Sessão Comercial',
-            'pre_wedding': 'Ensaio Pré-Wedding',
-            'tematico': 'Sessão Temática'
+            'formatura': 'Sess\u00e3o de Formatura',
+            'comercial': 'Sess\u00e3o Comercial',
+            'pre_wedding': 'Ensaio Pr\u00e9-Wedding',
+            'tematico': 'Sess\u00e3o Tem\u00e1tica'
           };
           const sessionLabel = sessionTypeLabels[formData.sessionType] || formData.sessionType;
 
-          // Formatar data e hora
           const appointmentDate = new Date(formData.scheduledDate);
           const formattedDate = appointmentDate.toLocaleDateString('pt-BR', {
             day: '2-digit',
@@ -163,15 +160,14 @@ Deno.serve(async (req: Request) => {
             timeZone: 'America/Sao_Paulo'
           });
 
-          // Processar template com variáveis
           let message = template.message_template
-            .replace(/\{\{client_name\}\}/g, clientName)
-            .replace(/\{\{studio_name\}\}/g, studioName)
-            .replace(/\{\{pix_key\}\}/g, pixKey)
-            .replace(/\{\{amount\}\}/g, `R$ ${(amount / 100).toFixed(2)}`)
-            .replace(/\{\{session_type\}\}/g, sessionLabel)
-            .replace(/\{\{appointment_date\}\}/g, formattedDate)
-            .replace(/\{\{appointment_time\}\}/g, formattedTime);
+            .replace(/\\{\\{client_name\\}\\}/g, clientName)
+            .replace(/\\{\\{studio_name\\}\\}/g, studioName)
+            .replace(/\\{\\{pix_key\\}\\}/g, pixKey)
+            .replace(/\\{\\{amount\\}\\}/g, `R$ ${(amount / 100).toFixed(2)}`)
+            .replace(/\\{\\{session_type\\}\\}/g, sessionLabel)
+            .replace(/\\{\\{appointment_date\\}\\}/g, formattedDate)
+            .replace(/\\{\\{appointment_time\\}\\}/g, formattedTime);
 
           try {
             await fetch(
@@ -183,13 +179,12 @@ Deno.serve(async (req: Request) => {
                   'apikey': globalSettings.evolution_auth_api_key
                 },
                 body: JSON.stringify({
-                  number: formData.clientPhone.replace(/\D/g, ''),
+                  number: formData.clientPhone.replace(/\\D/g, ''),
                   text: message
                 })
               }
             );
-
-            console.log('✅ WhatsApp enviado com sucesso com chave PIX');
+            console.log('\u2705 WhatsApp enviado com chave PIX');
           } catch (error) {
             console.error('Error sending WhatsApp message:', error);
           }
@@ -204,7 +199,7 @@ Deno.serve(async (req: Request) => {
           gallery_token: galleryToken,
           no_payment_configured: true,
           pix_key: pixKey,
-          message: 'Agendamento criado. Galeria disponível. Pagamento pendente para baixa manual.'
+          message: 'Agendamento criado. Galeria dispon\u00edvel. Pagamento pendente para baixa manual.'
         }),
         {
           status: 200,
@@ -213,10 +208,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Tem Mercado Pago - gerar QR Code PIX
+    console.log('\ud83d\udcb3 Gerando QR Code PIX do Mercado Pago...');
+
     const nameParts = clientName.trim().split(' ');
     const firstName = nameParts[0] || 'Cliente';
     const lastName = nameParts.slice(1).join(' ') || 'Sobrenome';
-    const sessionTypeLabels = { 'aniversario': 'Sessão de Aniversário', 'gestante': 'Ensaio Gestante', 'formatura': 'Sessão de Formatura', 'comercial': 'Sessão Comercial', 'pre_wedding': 'Ensaio Pré-Wedding', 'tematico': 'Sessão Temática' };
+    const sessionTypeLabels = { 'aniversario': 'Sess\u00e3o de Anivers\u00e1rio', 'gestante': 'Ensaio Gestante', 'formatura': 'Sess\u00e3o de Formatura', 'comercial': 'Sess\u00e3o Comercial', 'pre_wedding': 'Ensaio Pr\u00e9-Wedding', 'tematico': 'Sess\u00e3o Tem\u00e1tica' };
     const sessionLabel = sessionTypeLabels[formData.sessionType] || sessionType;
 
     const pixPaymentData = {
@@ -225,12 +223,11 @@ Deno.serve(async (req: Request) => {
       payment_method_id: "pix",
       external_reference: appointment.id,
       notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercadopago-webhook`,
-      description: `Sessão Fotográfica - ${sessionType}`,
+      description: `Sess\u00e3o Fotogr\u00e1fica - ${sessionType}`,
       ...(deviceId && { device_id: deviceId }),
       payer: { first_name: firstName, last_name: lastName, email: clientEmail || 'cliente@exemplo.com', identification: { type: "CPF", number: "11111111111" }, address: { zip_code: "01310-100", street_name: "Av. Paulista", street_number: "1000" }, phone: { area_code: "11", number: "999999999" } }
     };
 
-    console.log('Creating PIX payment:', JSON.stringify(pixPaymentData, null, 2));
     const pixResponse = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${mpSettingsFull.access_token}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': `${appointment.id}-${Date.now()}` },
@@ -244,15 +241,28 @@ Deno.serve(async (req: Request) => {
     }
 
     const pixData = await pixResponse.json();
-    console.log('PIX created:', JSON.stringify(pixData, null, 2));
     const qrCode = pixData.point_of_interaction?.transaction_data?.qr_code;
     const qrCodeBase64 = pixData.point_of_interaction?.transaction_data?.qr_code_base64;
 
-    await supabase.from('triagem_payments').insert({ appointment_id: appointment.id, tenant_id: tenantId, mercadopago_id: pixData.id.toString(), amount: amount, status: pixData.status, payment_type: 'initial' });
+    // Atualizar pagamento pendente com ID do Mercado Pago
+    await supabase.from('triagem_payments')
+      .update({ mercadopago_id: pixData.id.toString(), status: pixData.status })
+      .eq('appointment_id', appointment.id)
+      .eq('payment_type', 'initial');
 
-    console.log('✅ Payment criado. Aguardando confirmação do PIX para confirmar agendamento e criar evento no Google Calendar.');
+    console.log('\u2705 QR Code PIX criado. Galeria j\u00e1 dispon\u00edvel. Aguardando confirma\u00e7\u00e3o de pagamento.');
 
-    return new Response(JSON.stringify({ success: true, appointment_id: appointment.id, payment_id: pixData.id, status: pixData.status, qr_code: qrCode, qr_code_base64: qrCodeBase64, expires_at: pixPaymentData.date_of_expiration }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    return new Response(JSON.stringify({
+      success: true,
+      appointment_id: appointment.id,
+      gallery_id: gallery?.id,
+      gallery_token: galleryToken,
+      payment_id: pixData.id,
+      status: pixData.status,
+      qr_code: qrCode,
+      qr_code_base64: qrCodeBase64,
+      expires_at: pixPaymentData.date_of_expiration
+    }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
   } catch (error) {
     console.error('Error:', error);
