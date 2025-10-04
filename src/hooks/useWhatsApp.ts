@@ -102,13 +102,14 @@ export function useWhatsApp() {
 
         if (response.ok) {
           const result = await response.json();
-          // Se o número existe no WhatsApp, retornar ele
+          console.log('✅ Resultado da verificação:', result);
+          // Se o número existe no WhatsApp, retornar apenas o número (sem @s.whatsapp.net)
           if (result && result.length > 0 && result[0].exists) {
-            return phoneNumber;
+            return result[0].number || phoneNumber;
           }
         }
       } catch (error) {
-        console.log(`Erro ao verificar número ${phoneNumber}:`, error);
+        console.log(`❌ Erro ao verificar número ${phoneNumber}:`, error);
       }
     }
 
@@ -140,8 +141,8 @@ export function useWhatsApp() {
         return false;
       }
 
-      console.log(`Enviando mensagem para: ${validPhone}`);
-      
+      console.log(`📤 Enviando mensagem para: ${validPhone}`);
+
       const response = await fetch(`${evolution_api_url}/message/sendText/${activeInstance.instance_name}`, {
         method: 'POST',
         headers: {
