@@ -282,6 +282,121 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Check if this is a NEW booking payment (with temp ID and metadata)
+    if (appointmentId.startsWith('temp-') && paymentData.status === 'approved' && paymentData.metadata) {
+      console.log('🎉 ===== NOVO AGENDAMENTO VIA MERCADOPAGO =====');
+      console.log('✅ Pagamento aprovado - criando agendamento...');
+
+      const metadata = paymentData.metadata;
+      const tenantId = metadata.tenant_id;
+      const clientId = metadata.client_id;
+
+      try {
+        // Criar agendamento
+        const { data: appointment, error: appointmentError } = await supabase
+          .from('triagem_appointments')
+          .insert([{
+            client_id: clientId,
+            tenant_id: tenantId,
+            session_type: metadata.session_type,
+            session_details: metadata.session_details,
+            scheduled_date: metadata.scheduled_date,
+            total_amount: metadata.total_amount,
+            minimum_photos: metadata.minimum_photos || 5,
+            terms_accepted: metadata.terms_accepted,
+            status: 'confirmed',
+            payment_status: 'approved'
+          }])
+          .select()
+          .single();
+
+        if (appointmentError) throw appointmentError;
+        console.log('✅ Agendamento criado:', appointment.id);
+
+        // Criar galeria
+        function generateToken(length: number = 32): string {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          let token = '';
+          const randomValues = new Uint8Array(length);
+          crypto.getRandomValues(randomValues);
+          for (let i = 0; i < length; i++) {
+            token += chars[randomValues[i] % chars.length];
+          }
+          return token;
+        }
+
+        const galleryToken = generateToken(32);
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + (metadata.link_validity_days || 30));
+
+        const { data: gallery, error: galleryError } = await supabase
+          .from('triagem_galleries')
+          .insert([{
+            appointment_id: appointment.id,
+            client_id: clientId,
+            tenant_id: tenantId,
+            name: `Galeria - ${metadata.client_name}`,
+            gallery_token: galleryToken,
+            link_expires_at: expiresAt.toISOString(),
+            is_public: false,
+            status: 'pending'
+          }])
+          .select()
+          .single();
+
+        if (galleryError) {
+          console.error('❌ Erro ao criar galeria:', galleryError);
+        } else {
+          console.log('✅ Galeria criada:', gallery?.id);
+        }
+
+        // Criar pagamento
+        const { error: paymentError } = await supabase
+          .from('triagem_payments')
+          .insert([{
+            appointment_id: appointment.id,
+            client_id: clientId,
+            tenant_id: tenantId,
+            amount: metadata.total_amount,
+            status: 'approved',
+            payment_type: 'initial',
+            mercadopago_id: paymentId.toString()
+          }]);
+
+        if (paymentError) {
+          console.error('❌ Erro ao criar pagamento:', paymentError);
+        } else {
+          console.log('✅ Pagamento registrado');
+        }
+
+        // Enviar notificação de confirmação
+        try {
+          console.log('📧 Enviando notificação de confirmação...');
+          const notificationSuccess = await schedulePaymentConfirmationNotification(supabase, appointment.id);
+          if (notificationSuccess) {
+            console.log('✅ Notificação enviada com sucesso');
+          } else {
+            console.error('❌ Falha ao enviar notificação');
+          }
+        } catch (notificationError) {
+          console.error('❌ Erro ao enviar notificação:', notificationError);
+        }
+
+        console.log('🎉 ===== AGENDAMENTO CRIADO COM SUCESSO =====');
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+
+      } catch (error) {
+        console.error('❌ Erro ao criar agendamento:', error);
+        return new Response(JSON.stringify({ success: false, error: 'Erro ao criar agendamento' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        });
+      }
+    }
+
     // Check if this is a public gallery payment
     if (appointmentId.startsWith('public-')) {
       console.log('🎉 ===== PAGAMENTO DE GALERIA PÚBLICA =====');
