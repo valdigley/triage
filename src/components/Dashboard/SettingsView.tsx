@@ -586,6 +586,22 @@ export function SettingsView() {
 
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Chave PIX (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={settings.pix_key ?? ''}
+                  onChange={(e) => updateSettings({ pix_key: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Será enviada via WhatsApp quando Mercado Pago não estiver configurado
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   URL do Aplicativo
                 </label>
                 <input

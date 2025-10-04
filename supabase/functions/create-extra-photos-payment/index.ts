@@ -20,7 +20,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { galleryId, appointmentId, extraPhotos, totalAmount, clientName, clientEmail, selectedPhotos } = await req.json();
+    const { galleryId, appointmentId, extraPhotos, totalAmount, clientName, clientEmail, clientPhone, selectedPhotos } = await req.json();
 
     if (!galleryId || !appointmentId || !extraPhotos || !totalAmount) {
       return new Response(
@@ -70,11 +70,70 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
+      // Buscar chave PIX manual do tenant
+      const { data: settings } = await supabase
+        .from('triagem_settings')
+        .select('pix_key, studio_name')
+        .eq('tenant_id', gallery.tenant_id)
+        .maybeSingle();
+
+      const pixKey = settings?.pix_key;
+      const studioName = settings?.studio_name || 'Estúdio';
+
+      // Se há chave PIX, enviar via WhatsApp
+      if (pixKey && clientPhone) {
+        // Buscar configurações globais da Evolution API
+        const { data: globalSettings } = await supabase
+          .from('global_settings')
+          .select('evolution_server_url, evolution_auth_api_key')
+          .maybeSingle();
+
+        // Buscar instância do tenant
+        const { data: whatsappInstance } = await supabase
+          .from('triagem_whatsapp_instances')
+          .select('instance_name')
+          .eq('tenant_id', gallery.tenant_id)
+          .maybeSingle();
+
+        if (globalSettings && whatsappInstance) {
+          const message = `🎉 *Seleção Confirmada!*\n\n` +
+            `Olá *${clientName}*!\n\n` +
+            `Recebemos sua seleção de fotos:\n` +
+            `📸 *${extraPhotos} foto(s) extra(s)*\n` +
+            `💰 *Valor: R$ ${(totalAmount / 100).toFixed(2)}*\n\n` +
+            `*Dados para Pagamento PIX:*\n` +
+            `🔑 Chave: \`${pixKey}\`\n` +
+            `🏢 Favorecido: ${studioName}\n\n` +
+            `Após o pagamento, envie o comprovante para este número.\n\n` +
+            `✨ Obrigado por escolher nosso estúdio!`;
+
+          try {
+            await fetch(
+              `${globalSettings.evolution_server_url}/message/sendText/${whatsappInstance.instance_name}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': globalSettings.evolution_auth_api_key
+                },
+                body: JSON.stringify({
+                  number: clientPhone.replace(/\D/g, ''),
+                  text: message
+                })
+              }
+            );
+          } catch (error) {
+            console.error('Error sending WhatsApp message:', error);
+          }
+        }
+      }
+
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'MercadoPago não configurado para este estúdios',
-          no_payment_configured: true
+          error: 'MercadoPago não configurado para este estúdio',
+          no_payment_configured: true,
+          pix_key: pixKey
         }),
         {
           status: 400,

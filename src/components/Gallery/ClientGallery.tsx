@@ -275,6 +275,7 @@ export function ClientGallery() {
           totalAmount: extraCost,
           clientName: gallery.appointment?.client?.name,
           clientEmail: gallery.appointment?.client?.email,
+          clientPhone: gallery.appointment?.client?.phone,
           selectedPhotos: selectedPhotos
         })
       });
@@ -289,9 +290,9 @@ export function ClientGallery() {
         // Start polling for payment status
         startPaymentPolling(result.payment_id);
       } else {
-        // Se não há configuração de pagamento, apenas mostrar mensagem
+        // Se não há configuração de pagamento, notificar via WhatsApp com chave PIX
         if (result.no_payment_configured) {
-          alert(`✅ Seleção enviada com sucesso!\n\n📸 Você selecionou ${extraPhotos} foto(s) extra(s).\n💰 Valor: ${formatCurrency(extraCost)}\n\n⚠️ O estúdio ainda não configurou o sistema de pagamento online.\n\nEntre em contato com o estúdio para combinar a forma de pagamento das fotos extras.\n\n✅ Sua seleção foi salva e o estúdio foi notificado!`);
+          alert(`✅ Seleção enviada com sucesso!\n\n📸 Você selecionou ${extraPhotos} foto(s) extra(s).\n💰 Valor: ${formatCurrency(extraCost)}\n\n${result.pix_key ? `📲 A chave PIX para pagamento foi enviada via WhatsApp!\n\nPIX: ${result.pix_key}` : '⚠️ O estúdio ainda não configurou o sistema de pagamento online.\n\nEntre em contato com o estúdio para combinar a forma de pagamento das fotos extras.'}\n\n✅ Sua seleção foi salva e o estúdio foi notificado!`);
           setShowCart(false);
         } else {
           throw new Error(result.error || 'Erro ao criar pagamento');

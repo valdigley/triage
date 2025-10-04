@@ -53,6 +53,7 @@ export interface Settings {
   studio_name: string;
   studio_logo_url?: string;
   studio_phone?: string;
+  pix_key?: string;
   studio_address?: string;
   studio_maps_url?: string;
   app_url?: string;
