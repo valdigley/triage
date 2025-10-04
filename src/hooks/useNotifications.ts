@@ -201,13 +201,19 @@ export function useNotifications() {
     try {
       console.log('📋 Agendando lembretes para:', appointment.client?.name);
 
+      if (!appointment.tenant_id) {
+        console.error('❌ Tenant ID não encontrado no appointment');
+        return false;
+      }
+
       const { data: settings } = await supabase
         .from('triagem_settings')
         .select('*')
-        .single();
+        .eq('tenant_id', appointment.tenant_id)
+        .maybeSingle();
 
       if (!settings) {
-        console.error('❌ Configurações não encontradas');
+        console.error('❌ Configurações não encontradas para tenant:', appointment.tenant_id);
         return false;
       }
 
