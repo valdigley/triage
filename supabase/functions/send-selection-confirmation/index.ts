@@ -254,25 +254,20 @@ Deno.serve(async (req: Request) => {
 
     const deliveryDays = deliverySettings?.delivery_days || 7;
 
-    console.log('🔍 Buscando instâncias WhatsApp...');
-    
-    // Get active WhatsApp instance
-    const { data: instances } = await supabase
-      .from('whatsapp_instances')
-      .select('*')
-      .order('created_at', { ascending: false });
+    console.log('🔍 Buscando configurações WhatsApp...');
 
-    console.log('📱 Instâncias encontradas:', instances?.length || 0);
-    const activeInstance = instances?.find(instance => 
-      instance.status === 'connected' || instance.status === 'created'
-    ) || instances?.[0];
+    // Get global WhatsApp settings
+    const { data: globalSettings } = await supabase
+      .from('global_settings')
+      .select('evolution_server_url, evolution_auth_api_key')
+      .maybeSingle();
 
-    if (!activeInstance) {
-      console.error('❌ Nenhuma instância WhatsApp ativa encontrada');
+    if (!globalSettings || !globalSettings.evolution_server_url || !globalSettings.evolution_auth_api_key) {
+      console.error('❌ Configurações globais WhatsApp não encontradas');
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Nenhuma instância WhatsApp ativa encontrada' 
+        JSON.stringify({
+          success: false,
+          error: 'Configurações WhatsApp não encontradas'
         }),
         {
           status: 400,
@@ -284,15 +279,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('✅ Instância ativa encontrada:', activeInstance.instance_name);
-    const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
-    
-    if (!evolution_api_url || !evolution_api_key) {
-      console.error('❌ Credenciais WhatsApp não configuradas');
+    // Get tenant WhatsApp instance (assume first tenant for now, should be passed as parameter)
+    const { data: whatsappInstance } = await supabase
+      .from('triagem_whatsapp_instances')
+      .select('instance_name')
+      .limit(1)
+      .maybeSingle();
+
+    if (!whatsappInstance) {
+      console.error('❌ Nenhuma instância WhatsApp encontrada');
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Credenciais WhatsApp não configuradas' 
+        JSON.stringify({
+          success: false,
+          error: 'Nenhuma instância WhatsApp encontrada'
         }),
         {
           status: 400,
@@ -303,6 +302,10 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    console.log('✅ Instância encontrada:', whatsappInstance.instance_name);
+    const evolution_api_url = globalSettings.evolution_server_url;
+    const evolution_api_key = globalSettings.evolution_auth_api_key;
 
     console.log('🔧 Credenciais WhatsApp OK');
     console.log('📝 Montando mensagem...');
@@ -348,7 +351,7 @@ Deno.serve(async (req: Request) => {
     let whatsappSuccess = false;
     try {
       whatsappSuccess = await sendWhatsAppMessage(
-        activeInstance.instance_name,
+        whatsappInstance.instance_name,
         evolution_api_url,
         evolution_api_key,
         clientPhone,

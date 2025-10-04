@@ -97,25 +97,51 @@ async function schedulePaymentConfirmationNotification(supabase: any, appointmen
       message = message.replace(new RegExp(`{{${key}}}`, 'g'), value);
     });
 
-    // Schedule immediate notification
-    const { error: queueError } = await supabase
-      .from('triagem_notification_queue')
-      .insert({
-        appointment_id: appointmentId,
-        template_type: 'payment_confirmation',
-        recipient_phone: clientPhone,
-        recipient_name: clientName,
-        message,
-        scheduled_for: new Date().toISOString()
-      });
+    // Enviar mensagem IMEDIATAMENTE via WhatsApp
+    const { data: globalSettings } = await supabase
+      .from('global_settings')
+      .select('evolution_server_url, evolution_auth_api_key')
+      .maybeSingle();
 
-    if (queueError) {
-      console.error('❌ Erro ao agendar notificação:', queueError);
+    const { data: whatsappInstance } = await supabase
+      .from('triagem_whatsapp_instances')
+      .select('instance_name')
+      .eq('tenant_id', appointment.tenant_id)
+      .maybeSingle();
+
+    if (!globalSettings || !whatsappInstance) {
+      console.log('⚠️ WhatsApp não configurado para este tenant');
       return false;
     }
 
-    console.log('✅ Notificação de confirmação de pagamento agendada');
-    return true;
+    try {
+      const response = await fetch(
+        `${globalSettings.evolution_server_url}/message/sendText/${whatsappInstance.instance_name}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': globalSettings.evolution_auth_api_key
+          },
+          body: JSON.stringify({
+            number: clientPhone.replace(/\D/g, ''),
+            text: message
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro ao enviar WhatsApp:', errorText);
+        return false;
+      }
+
+      console.log('✅ Notificação de confirmação de pagamento enviada via WhatsApp');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro ao enviar WhatsApp:', error);
+      return false;
+    }
   } catch (error) {
     console.error('❌ Erro em schedulePaymentConfirmationNotification:', error);
     return false;
