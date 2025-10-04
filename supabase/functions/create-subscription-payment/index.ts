@@ -21,7 +21,7 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Não autenticado' }),
+        JSON.stringify({ success: false, error: 'N\u00e3o autenticado' }),
         { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
     
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Usuário não encontrado' }),
+        JSON.stringify({ success: false, error: 'Usu\u00e1rio n\u00e3o encontrado' }),
         { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
 
     if (!tenantId || !planName) {
       return new Response(
-        JSON.stringify({ success: false, error: 'tenantId e planName são obrigatórios' }),
+        JSON.stringify({ success: false, error: 'tenantId e planName s\u00e3o obrigat\u00f3rios' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
 
     if (tenantError || !tenant) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Tenant não encontrado ou você não tem permissão' }),
+        JSON.stringify({ success: false, error: 'Tenant n\u00e3o encontrado ou voc\u00ea n\u00e3o tem permiss\u00e3o' }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
 
     if (!amount || amount <= 0 || isNaN(amount)) {
       return new Response(
-        JSON.stringify({ success: false, error: `Plano inválido ou preço inválido. Amount: ${amount}` }),
+        JSON.stringify({ success: false, error: `Plano inv\u00e1lido ou pre\u00e7o inv\u00e1lido. Amount: ${amount}` }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Configurações do MercadoPago não encontradas' }),
+        JSON.stringify({ success: false, error: 'Configura\u00e7\u00f5es do MercadoPago n\u00e3o encontradas' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -195,6 +195,25 @@ Deno.serve(async (req: Request) => {
       .from('triagem_subscriptions')
       .update({ payment_id: mpData.id })
       .eq('id', subscription.id);
+
+    try {
+      const planNameDisplay = planName === 'monthly' ? 'Mensal' : 'Anual';
+
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-tenant-notification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId,
+          eventType: 'subscription_payment_pending',
+          customData: {
+            amount: amount.toFixed(2),
+            plan_name: planNameDisplay
+          }
+        })
+      });
+    } catch (notifError) {
+      console.error('Error sending pending notification:', notifError);
+    }
 
     return new Response(
       JSON.stringify({

@@ -102,6 +102,30 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
       if (settingsError) throw settingsError;
 
+      // Send welcome notification
+      try {
+        const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-tenant-notification`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              tenantId: tenant.id,
+              eventType: 'tenant_welcome',
+              customData: {
+                trial_expires_at: trialEndsAt.toLocaleDateString('pt-BR')
+              }
+            })
+          }
+        );
+      } catch (notifError) {
+        console.error('Error sending welcome notification:', notifError);
+        // Don't fail registration if notification fails
+      }
+
       setSuccess(true);
       setTimeout(() => {
         onSuccess();

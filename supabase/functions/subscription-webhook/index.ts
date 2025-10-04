@@ -128,6 +128,27 @@ Deno.serve(async (req: Request) => {
           } else {
             console.log(`Tenant ${tenantId} activated`);
           }
+
+          try {
+            const expiresAt = new Date(subscription.expires_at);
+            const planName = subscription.plan_name === 'monthly' ? 'Mensal' : 'Anual';
+
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-tenant-notification`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tenantId,
+                eventType: 'subscription_payment_approved',
+                customData: {
+                  amount: subscription.amount.toFixed(2),
+                  plan_name: planName,
+                  expires_at: expiresAt.toLocaleDateString('pt-BR')
+                }
+              })
+            });
+          } catch (notifError) {
+            console.error('Error sending notification:', notifError);
+          }
         } else {
           console.error(`Subscription ${subscriptionId} not found`);
         }
