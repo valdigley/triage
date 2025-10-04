@@ -334,26 +334,20 @@ export function BookingForm() {
         // Verificar se é pagamento manual (sem Mercado Pago)
         if (paymentResult.no_payment_configured) {
           alert(
-            `✅ Agendamento recebido com sucesso!\n\n` +
+            `✅ Agendamento confirmado com sucesso!\n\n` +
             `📸 ${selectedSessionType?.label || formData.sessionType}\n` +
             `📅 ${new Date(formData.scheduledDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}\n` +
             `🕐 ${new Date(formData.scheduledDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\n` +
-            `${paymentResult.pix_key ? `📲 A chave PIX para pagamento foi enviada via WhatsApp!\n\nPIX: ${paymentResult.pix_key}\n\n` : ''}` +
-            `⚠️ Seu agendamento será confirmado após o pagamento e envio do comprovante.\n\n` +
-            `Caso não tenha recebido a mensagem no WhatsApp, entre em contato com o estúdio.`
+            `${paymentResult.pix_key ? `💰 DADOS PARA PAGAMENTO:\nPIX: ${paymentResult.pix_key}\nValor: ${formatCurrency(price)}\n\n📲 Enviamos os dados via WhatsApp também!\n\n` : ''}` +
+            `✅ Sua galeria já está disponível e as fotos serão adicionadas após a sessão.\n\n` +
+            `⚠️ Confirme o pagamento com o estúdio para garantir sua reserva.\n\n` +
+            `A página será atualizada agora.`
           );
 
-          // Reset form
-          setFormData({
-            clientName: '',
-            clientEmail: '',
-            clientPhone: '',
-            sessionType: '',
-            sessionDetails: '',
-            scheduledDate: '',
-            termsAccepted: false,
-          });
-          setCurrentStep(1);
+          // Recarregar a página após 1 segundo
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
         } else {
           // Fluxo normal com Mercado Pago
           setPaymentData(paymentResult);
@@ -450,6 +444,22 @@ export function BookingForm() {
             } catch (error) {
               console.error('Error sending payment confirmation:', error);
             }
+
+            // Exibir mensagem de sucesso
+            alert(
+              `✅ Pagamento confirmado com sucesso!\n\n` +
+              `📸 ${activeSessionTypes.find(st => st.name === formData.sessionType)?.label || formData.sessionType}\n` +
+              `📅 ${new Date(formData.scheduledDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}\n` +
+              `🕐 ${new Date(formData.scheduledDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\n` +
+              `✅ Sua galeria já está disponível!\n` +
+              `📲 Enviamos a confirmação via WhatsApp.\n\n` +
+              `A página será atualizada agora.`
+            );
+
+            // Recarregar a página após 1 segundo
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
           } else if (result.status === 'expired' || result.status === 'cancelled') {
             // Payment expired/cancelled - stop polling
             clearInterval(interval);
