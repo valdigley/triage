@@ -248,7 +248,7 @@ export function GalleriesView() {
       await refetchGalleries();
       alert('Galeria pública criada com sucesso!');
       resetCreateGallery();
-      setShowCreateModal(false);
+      setShowCreateGallery(false);
     } catch (error) {
       console.error('Erro ao criar galeria pública:', error);
       alert('Erro ao criar galeria pública. Tente novamente.');
@@ -313,7 +313,7 @@ export function GalleriesView() {
       await refetchGalleries();
       alert('Galeria criada com sucesso!');
       resetCreateGallery();
-      setShowCreateModal(false);
+      setShowCreateGallery(false);
     } catch (error) {
       console.error('Erro ao criar galeria:', error);
       alert('Erro ao criar galeria. Tente novamente.');
