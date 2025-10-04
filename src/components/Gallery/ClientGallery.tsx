@@ -399,14 +399,13 @@ export function ClientGallery() {
   const handleSubmitSelection = async () => {
     if (!gallery) return;
 
-    // Verificar se já foi submetido para evitar cliques duplos
     if (submitting) {
       console.log('⚠️ Submissão já em andamento, ignorando');
       return;
     }
 
-    // Se for galeria pública, mostrar formulário de identificação primeiro
-    if (gallery.is_public) {
+    // Para galerias públicas sem client_id, pedir identificação
+    if (gallery.is_public && !gallery.client_id) {
       setShowIdentificationForm(true);
       return;
     }
@@ -420,23 +419,19 @@ export function ClientGallery() {
         setGallery(prev => prev ? { ...prev, selection_completed: true, status: 'completed' } : null);
         setShowCode(true);
 
-        // Calcular fotos extras
         const extrasCount = Math.max(0, selectedPhotos.length - (gallery.appointment?.minimum_photos || 5));
 
-        // Se há fotos extras, mostrar carrinho
         if (extrasCount > 0) {
           setShowCart(true);
         } else {
           alert('✅ Seleção enviada com sucesso!\n\nSua seleção foi salva e o estúdio foi notificado.\n\nVocê receberá as fotos editadas conforme combinado.\n\n💡 Dica: Você receberá uma confirmação por WhatsApp em alguns minutos.');
         }
 
-        // Aguardar upload mínimo de fotos antes de enviar link da galeria
         const minimumPhotosToSend = gallery.appointment?.minimum_photos || 5;
 
         setTimeout(async () => {
           console.log('🔄 Verificando fotos carregadas antes de enviar notificações...');
 
-          // Verificar quantas fotos estão carregadas na galeria
           const { data: currentPhotos } = await (await import('../../lib/supabase')).supabase
             .from('triagem_photos')
             .select('id')
@@ -450,7 +445,7 @@ export function ClientGallery() {
           } else {
             console.log(`⏳ Apenas ${uploadedCount}/${minimumPhotosToSend} fotos carregadas, aguardando mais uploads...`);
           }
-        }, 10000); // Delay de 10 segundos para dar tempo do upload
+        }, 10000);
       } else {
         console.warn('⚠️ Falha na submissão, mas seleção pode ter sido salva');
         alert('✅ Sua seleção foi salva!\n\nO sistema de notificação pode estar temporariamente indisponível, mas sua seleção foi registrada com sucesso.\n\nEntre em contato com o estúdio para confirmar.');
