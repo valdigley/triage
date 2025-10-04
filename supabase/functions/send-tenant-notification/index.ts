@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
 
     if (!tenantId || !eventType) {
       return new Response(
-        JSON.stringify({ success: false, error: 'tenantId e eventType s\u00e3o obrigat\u00f3rios' }),
+        JSON.stringify({ success: false, error: 'tenantId e eventType são obrigatórios' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     if (tenantError || !tenant) {
       console.error('Tenant not found:', tenantError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Tenant n\u00e3o encontrado' }),
+        JSON.stringify({ success: false, error: 'Tenant não encontrado' }),
         { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -54,7 +54,7 @@ Deno.serve(async (req: Request) => {
     if (!phoneNumber) {
       console.log('Tenant has no phone number, skipping notification');
       return new Response(
-        JSON.stringify({ success: true, message: 'Tenant sem n\u00famero de telefone' }),
+        JSON.stringify({ success: true, message: 'Tenant sem número de telefone' }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     if (templateError || !template) {
       console.error('Template not found:', templateError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Template n\u00e3o encontrado' }),
+        JSON.stringify({ success: false, error: 'Template não encontrado' }),
         { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -88,25 +88,74 @@ Deno.serve(async (req: Request) => {
       message = message.replace(regex, variables[key]);
     });
 
-    const { data: tenantSettings } = await supabaseClient
+    let tenantSettings = await supabaseClient
       .from('triagem_settings')
       .select('evolution_instance_name, evolution_instance_apikey, whatsapp_connected')
       .eq('tenant_id', tenantId)
-      .maybeSingle();
+      .maybeSingle()
+      .then(res => res.data);
 
+    // Se não tem instância, tentar criar automaticamente
     if (!tenantSettings || !tenantSettings.evolution_instance_name || !tenantSettings.evolution_instance_apikey) {
-      console.error('Tenant WhatsApp instance not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Inst\u00e2ncia WhatsApp do tenant n\u00e3o configurada' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+      console.log(`Tenant WhatsApp instance not configured. Attempting to create...`);
+
+      try {
+        const createInstanceUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/create-whatsapp-instance`;
+        const createResponse = await fetch(createInstanceUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+          },
+          body: JSON.stringify({ tenantId })
+        });
+
+        if (!createResponse.ok) {
+          console.error('Failed to create instance automatically');
+          return new Response(
+            JSON.stringify({ success: false, error: 'Instância WhatsApp do tenant não configurada. Execute a configuração manual.' }),
+            { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+          );
+        }
+
+        // Buscar novamente as configurações
+        tenantSettings = await supabaseClient
+          .from('triagem_settings')
+          .select('evolution_instance_name, evolution_instance_apikey, whatsapp_connected')
+          .eq('tenant_id', tenantId)
+          .maybeSingle()
+          .then(res => res.data);
+      } catch (err) {
+        console.error('Error creating instance:', err);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Erro ao criar instância WhatsApp' }),
+          { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
+      }
     }
 
-    if (!tenantSettings.whatsapp_connected) {
-      console.error('Tenant WhatsApp not connected');
+    if (!tenantSettings || !tenantSettings.whatsapp_connected) {
+      console.warn(`Tenant WhatsApp not connected. Notification will be logged but not sent.`);
+
+      // Log como pendente
+      await supabaseClient
+        .from('triagem_tenant_notification_log')
+        .insert([{
+          tenant_id: tenantId,
+          event_type: eventType,
+          phone_number: phoneNumber,
+          message: message,
+          status: 'pending',
+          error_message: 'WhatsApp não conectado'
+        }]);
+
       return new Response(
-        JSON.stringify({ success: false, error: 'WhatsApp do tenant n\u00e3o conectado' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        JSON.stringify({
+          success: true,
+          warning: 'WhatsApp do tenant não conectado. Notificação registrada como pendente.',
+          qrCodeRequired: true
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
@@ -118,7 +167,7 @@ Deno.serve(async (req: Request) => {
     if (!globalSettings || !globalSettings.evolution_server_url) {
       console.error('Evolution server URL not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'Servidor Evolution n\u00e3o configurado' }),
+        JSON.stringify({ success: false, error: 'Servidor Evolution não configurado' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -174,7 +223,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Notifica\u00e7\u00e3o enviada com sucesso',
+        message: 'Notificação enviada com sucesso',
         messageId: evolutionData.key?.id
       }),
       { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
