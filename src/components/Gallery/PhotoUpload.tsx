@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useTenant } from '../../hooks/useTenant';
+import { useToast } from '../../contexts/ToastContext';
 
 // Função para redimensionar imagem mantendo proporção
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<Blob> => {
@@ -101,6 +102,7 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
   const [deletingPhotos, setDeletingPhotos] = useState<Set<string>>(new Set());
   const { sendGalleryLink } = useWhatsApp();
   const { scheduleGalleryNotifications } = useNotifications();
+  const toast = useToast();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -369,19 +371,48 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
       // Check if we should send WhatsApp message automatically
       const totalPhotos = photos?.length || 0;
       const minimumPhotos = gallery?.appointment?.minimum_photos || 5;
-      
+
       if (totalPhotos >= minimumPhotos && gallery?.appointment?.client) {
         try {
-          console.log(`Agendando notificação da galeria: ${totalPhotos} fotos >= ${minimumPhotos} mínimas`);
+          console.log(`📸 Galeria atingiu o mínimo: ${totalPhotos} fotos >= ${minimumPhotos} mínimas`);
 
-          // Schedule gallery ready notification usando função centralizada
-          const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-          const galleryLink = `${appUrl}/gallery/${gallery.gallery_token}`;
-          await scheduleGalleryNotifications(gallery.appointment.id, galleryLink);
+          // Verificar se já foi enviada notificação de galeria pronta
+          const { data: existingNotifications } = await supabase
+            .from('triagem_scheduled_notifications')
+            .select('id, status')
+            .eq('appointment_id', gallery.appointment.id)
+            .eq('type', 'gallery_ready')
+            .in('status', ['sent', 'pending']);
 
-          console.log('Notificação da galeria agendada automaticamente');
+          if (existingNotifications && existingNotifications.length > 0) {
+            console.log('✅ Notificação de galeria já foi enviada anteriormente');
+          } else {
+            const client = gallery.appointment.client;
+            const clientName = client.name;
+            const clientPhone = client.phone;
+            const expirationDate = gallery.link_expires_at;
+
+            // Enviar mensagem imediatamente via WhatsApp
+            console.log(`📤 Enviando mensagem WhatsApp para ${clientName}...`);
+            const sent = await sendGalleryLink(clientName, clientPhone, gallery.gallery_token, expirationDate);
+
+            if (sent) {
+              console.log('✅ Mensagem WhatsApp enviada com sucesso!');
+              toast.success(`Notificação enviada para ${clientName}!`);
+            } else {
+              console.warn('⚠️ Falha ao enviar mensagem WhatsApp');
+              toast.warning('Falha ao enviar notificação WhatsApp');
+            }
+
+            // Também agendar notificações futuras (lembretes)
+            const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+            const galleryLink = `${appUrl}/gallery/${gallery.gallery_token}`;
+            await scheduleGalleryNotifications(gallery.appointment.id, galleryLink);
+
+            console.log('📅 Notificações futuras agendadas');
+          }
         } catch (error) {
-          console.error('Erro ao agendar notificação da galeria:', error);
+          console.error('❌ Erro ao notificar cliente:', error);
         }
       }
       if (completedUploads > 0) {
