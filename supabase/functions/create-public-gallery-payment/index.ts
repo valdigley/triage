@@ -89,8 +89,16 @@ Deno.serve(async (req: Request) => {
       const pixKey = settings?.pix_key;
       const studioName = settings?.studio_name || 'Estúdio';
 
-      // Se há chave PIX, enviar via WhatsApp
+      // Se há chave PIX, enviar via WhatsApp usando template
       if (pixKey && clientPhone) {
+        // Buscar template de notificação
+        const { data: template } = await supabase
+          .from('triagem_notification_templates')
+          .select('message_template')
+          .eq('type', 'pix_public_gallery')
+          .eq('is_active', true)
+          .maybeSingle();
+
         // Buscar configurações globais da Evolution API
         const { data: globalSettings } = await supabase
           .from('global_settings')
@@ -104,17 +112,15 @@ Deno.serve(async (req: Request) => {
           .eq('tenant_id', parentGallery.tenant_id)
           .maybeSingle();
 
-        if (globalSettings && whatsappInstance) {
-          const message = `🎉 *Galeria Pública - Seleção Confirmada!*\n\n` +
-            `Olá *${clientName}*!\n\n` +
-            `📸 *Evento:* ${eventName}\n` +
-            `🖼️ *Fotos selecionadas:* ${selectedPhotos.length}\n` +
-            `💰 *Valor total: R$ ${(totalAmount / 100).toFixed(2)}*\n\n` +
-            `*Dados para Pagamento PIX:*\n` +
-            `🔑 Chave: \`${pixKey}\`\n` +
-            `🏢 Favorecido: ${studioName}\n\n` +
-            `Após o pagamento, envie o comprovante para este número.\n\n` +
-            `✨ Obrigado por escolher nosso estúdio!`;
+        if (globalSettings && whatsappInstance && template) {
+          // Processar template com variáveis
+          let message = template.message_template
+            .replace(/\{\{client_name\}\}/g, clientName)
+            .replace(/\{\{studio_name\}\}/g, studioName)
+            .replace(/\{\{pix_key\}\}/g, pixKey)
+            .replace(/\{\{amount\}\}/g, `R$ ${(totalAmount / 100).toFixed(2)}`)
+            .replace(/\{\{event_name\}\}/g, eventName || 'Evento')
+            .replace(/\{\{photos_count\}\}/g, selectedPhotos.length.toString());
 
           try {
             await fetch(
