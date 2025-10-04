@@ -131,7 +131,8 @@ Deno.serve(async (req: Request) => {
         link_expires_at: expiresAt.toISOString(),
         is_public: false,
         status: 'pending',
-        event_name: eventName
+        event_name: eventName,
+        photos_selected: selectedPhotos
       }])
       .select()
       .single();
@@ -142,6 +143,38 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('✅ Galeria individual criada:', newGallery.id);
+    console.log('📸 Fotos selecionadas salvas:', selectedPhotos.length);
+
+    const { data: selectedPhotosData, error: photosError } = await supabase
+      .from('triagem_photos')
+      .select('*')
+      .eq('gallery_id', parentGalleryId)
+      .in('id', selectedPhotos);
+
+    if (!photosError && selectedPhotosData && selectedPhotosData.length > 0) {
+      console.log(`📋 Copiando ${selectedPhotosData.length} fotos para a nova galeria...`);
+
+      const photosToInsert = selectedPhotosData.map(photo => ({
+        gallery_id: newGallery.id,
+        tenant_id: tenantId,
+        filename: photo.filename,
+        url: photo.url,
+        order_index: photo.order_index,
+        is_selected: true
+      }));
+
+      const { error: insertError } = await supabase
+        .from('triagem_photos')
+        .insert(photosToInsert);
+
+      if (insertError) {
+        console.error('❌ Erro ao copiar fotos:', insertError);
+      } else {
+        console.log('✅ Fotos copiadas com sucesso!');
+      }
+    } else {
+      console.warn('⚠️ Nenhuma foto encontrada para copiar');
+    }
 
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('triagem_payments')
