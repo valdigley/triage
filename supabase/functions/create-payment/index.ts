@@ -73,10 +73,11 @@ Deno.serve(async (req: Request) => {
         appointment_id: appointment.id,
         client_id: clientId,
         tenant_id: tenantId,
+        name: `Galeria - ${formData.clientName}`,
         gallery_token: galleryToken,
-        expires_at: expiresAt.toISOString(),
-        max_selections: settings?.minimum_photos || 5,
-        is_public: false
+        link_expires_at: expiresAt.toISOString(),
+        is_public: false,
+        status: 'pending'
       }])
       .select()
       .single();
