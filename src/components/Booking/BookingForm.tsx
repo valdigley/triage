@@ -191,7 +191,7 @@ export function BookingForm() {
   };
 
   const handleSubmit = async () => {
-    if (!settings || !mpSettings) {
+    if (!settings) {
       alert('Configurações do sistema não encontradas. Tente novamente mais tarde.');
       return;
     }
@@ -268,12 +268,38 @@ export function BookingForm() {
       console.log('Payment result:', paymentResult);
 
       if (paymentResult.success) {
-        setPaymentData(paymentResult);
-        setPaymentStatus(paymentResult.status);
-        setCurrentStep(4); // Go to payment step instead of separate payment screen
+        // Verificar se é pagamento manual (sem Mercado Pago)
+        if (paymentResult.no_payment_configured) {
+          alert(
+            `✅ Agendamento recebido com sucesso!\n\n` +
+            `📸 ${selectedSessionType?.label || formData.sessionType}\n` +
+            `📅 ${new Date(formData.scheduledDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}\n` +
+            `🕐 ${new Date(formData.scheduledDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}\n\n` +
+            `${paymentResult.pix_key ? `📲 A chave PIX para pagamento foi enviada via WhatsApp!\n\nPIX: ${paymentResult.pix_key}\n\n` : ''}` +
+            `⚠️ Seu agendamento será confirmado após o pagamento e envio do comprovante.\n\n` +
+            `Caso não tenha recebido a mensagem no WhatsApp, entre em contato com o estúdio.`
+          );
 
-        // Start polling for payment status
-        startPaymentPolling(paymentResult.payment_id, paymentResult.appointment_id);
+          // Reset form
+          setFormData({
+            clientName: '',
+            clientEmail: '',
+            clientPhone: '',
+            sessionType: '',
+            sessionDetails: '',
+            scheduledDate: '',
+            termsAccepted: false,
+          });
+          setCurrentStep(1);
+        } else {
+          // Fluxo normal com Mercado Pago
+          setPaymentData(paymentResult);
+          setPaymentStatus(paymentResult.status);
+          setCurrentStep(4); // Go to payment step instead of separate payment screen
+
+          // Start polling for payment status
+          startPaymentPolling(paymentResult.payment_id, paymentResult.appointment_id);
+        }
       } else {
         throw new Error(paymentResult.error || 'Erro ao criar pagamento');
       }

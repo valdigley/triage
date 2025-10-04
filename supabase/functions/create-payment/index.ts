@@ -46,9 +46,114 @@ Deno.serve(async (req: Request) => {
 
     console.log('🔍 Buscando configurações completas do MercadoPago...');
     const { data: mpSettingsFull, error: mpFullError } = await supabase.from('triagem_mercadopago_settings').select('*').eq('tenant_id', tenantId).eq('is_active', true).limit(1).maybeSingle();
+
     if (mpFullError || !mpSettingsFull || !mpSettingsFull.access_token) {
-      console.error('MercadoPago settings error:', mpFullError);
-      return new Response(JSON.stringify({ success: false, error: 'Configurações do MercadoPago não encontradas' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      console.log('⚠️ MercadoPago não configurado - tentando PIX manual...');
+
+      // Buscar chave PIX manual do tenant
+      const { data: settings } = await supabase
+        .from('triagem_settings')
+        .select('pix_key, studio_name')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      const pixKey = settings?.pix_key;
+      const studioName = settings?.studio_name || 'Estúdio';
+
+      // Se há chave PIX, enviar via WhatsApp
+      if (pixKey && formData.clientPhone) {
+        // Buscar template de notificação
+        const { data: template } = await supabase
+          .from('triagem_notification_templates')
+          .select('message_template')
+          .eq('type', 'pix_appointment')
+          .eq('is_active', true)
+          .maybeSingle();
+
+        // Buscar configurações globais da Evolution API
+        const { data: globalSettings } = await supabase
+          .from('global_settings')
+          .select('evolution_server_url, evolution_auth_api_key')
+          .maybeSingle();
+
+        // Buscar instância do tenant
+        const { data: whatsappInstance } = await supabase
+          .from('triagem_whatsapp_instances')
+          .select('instance_name')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+
+        if (globalSettings && whatsappInstance && template) {
+          const sessionTypeLabels = {
+            'aniversario': 'Sessão de Aniversário',
+            'gestante': 'Ensaio Gestante',
+            'formatura': 'Sessão de Formatura',
+            'comercial': 'Sessão Comercial',
+            'pre_wedding': 'Ensaio Pré-Wedding',
+            'tematico': 'Sessão Temática'
+          };
+          const sessionLabel = sessionTypeLabels[formData.sessionType] || formData.sessionType;
+
+          // Formatar data e hora
+          const appointmentDate = new Date(formData.scheduledDate);
+          const formattedDate = appointmentDate.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: 'America/Sao_Paulo'
+          });
+          const formattedTime = appointmentDate.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo'
+          });
+
+          // Processar template com variáveis
+          let message = template.message_template
+            .replace(/\{\{client_name\}\}/g, clientName)
+            .replace(/\{\{studio_name\}\}/g, studioName)
+            .replace(/\{\{pix_key\}\}/g, pixKey)
+            .replace(/\{\{amount\}\}/g, `R$ ${(amount / 100).toFixed(2)}`)
+            .replace(/\{\{session_type\}\}/g, sessionLabel)
+            .replace(/\{\{appointment_date\}\}/g, formattedDate)
+            .replace(/\{\{appointment_time\}\}/g, formattedTime);
+
+          try {
+            await fetch(
+              `${globalSettings.evolution_server_url}/message/sendText/${whatsappInstance.instance_name}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': globalSettings.evolution_auth_api_key
+                },
+                body: JSON.stringify({
+                  number: formData.clientPhone.replace(/\D/g, ''),
+                  text: message
+                })
+              }
+            );
+
+            console.log('✅ WhatsApp enviado com sucesso com chave PIX');
+          } catch (error) {
+            console.error('Error sending WhatsApp message:', error);
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          appointment_id: appointment.id,
+          no_payment_configured: true,
+          pix_key: pixKey,
+          message: 'Agendamento criado. Pagamento pendente via PIX manual.'
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
     }
 
     const nameParts = clientName.trim().split(' ');
