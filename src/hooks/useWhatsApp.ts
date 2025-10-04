@@ -21,9 +21,13 @@ export function useWhatsApp() {
   const { tenant, loading: tenantLoading } = useTenant();
 
   const fetchInstances = async () => {
-    if (!tenant) return;
+    if (!tenant) {
+      console.warn('⚠️ Tenant não disponível para buscar instâncias');
+      return;
+    }
 
     try {
+      console.log('🔍 Buscando instâncias WhatsApp para tenant:', tenant.id);
       const { data, error } = await supabase
         .from('triagem_whatsapp_instances')
         .select('*')
@@ -31,17 +35,28 @@ export function useWhatsApp() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log(`📱 ${data?.length || 0} instância(s) encontrada(s):`, data);
       setInstances(data || []);
     } catch (error) {
-      console.error('Erro ao buscar instâncias WhatsApp:', error);
+      console.error('❌ Erro ao buscar instâncias WhatsApp:', error);
     }
   };
 
   const getActiveInstance = (): WhatsAppInstance | null => {
+    console.log(`🔍 Buscando instância ativa entre ${instances.length} instâncias`);
+
     // Buscar instância ativa (connected ou created)
-    return instances.find(instance => 
+    const active = instances.find(instance =>
       instance.status === 'connected' || instance.status === 'created'
     ) || instances[0] || null;
+
+    if (active) {
+      console.log('✅ Instância ativa encontrada:', active.instance_name, '- Status:', active.status);
+    } else {
+      console.warn('⚠️ Nenhuma instância ativa encontrada');
+    }
+
+    return active;
   };
 
   const checkRemoteJid = async (instance: WhatsAppInstance, phone: string): Promise<string | null> => {

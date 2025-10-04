@@ -100,9 +100,14 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingPhotos, setDeletingPhotos] = useState<Set<string>>(new Set());
-  const { sendGalleryLink } = useWhatsApp();
+  const { sendGalleryLink, instances } = useWhatsApp();
   const { scheduleGalleryNotifications } = useNotifications();
   const toast = useToast();
+
+  // Debug: Log quando instâncias mudarem
+  React.useEffect(() => {
+    console.log('📱 PhotoUpload: Instâncias WhatsApp atualizadas:', instances.length);
+  }, [instances]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
