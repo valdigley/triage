@@ -172,6 +172,7 @@ function App() {
                 )
               }
             />
+            <Route path="/agendamento/:subdomain" element={<BookingForm />} />
             <Route path="/agendamento" element={<BookingForm />} />
             <Route path="/gallery/:token" element={<ClientGallery />} />
             <Route path="/g/:token" element={<ClientGallery />} />

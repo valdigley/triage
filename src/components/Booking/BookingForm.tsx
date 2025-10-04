@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { Calendar, Phone, Mail, User, Clock, DollarSign, QrCode, ExternalLink, ChevronRight } from 'lucide-react';
 import { BookingFormData, SessionType } from '../../types';
 import { useSettings } from '../../hooks/useSettings';
@@ -70,6 +71,10 @@ function generateAvailableTimeSlots(
 }
 
 export function BookingForm() {
+  const { subdomain } = useParams<{ subdomain?: string }>();
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [publicSettings, setPublicSettings] = useState<any>(null);
+  const [loadingTenant, setLoadingTenant] = useState(true);
   const { settings } = useSettings();
   const { getActiveSessionTypes } = useSessionTypes();
   const { appointments, checkAvailability, createAppointment, checkGoogleCalendarAvailability } = useAppointments();
@@ -111,15 +116,72 @@ export function BookingForm() {
   const activeSessionTypes = getActiveSessionTypes();
   const mpSettings = getActiveSettings();
 
+  // Buscar tenant pelo subdomain (para páginas públicas)
+  useEffect(() => {
+    async function fetchPublicTenant() {
+      try {
+        if (subdomain) {
+          const { data: tenant, error } = await supabase
+            .from('triagem_tenants')
+            .select('id, subdomain')
+            .eq('subdomain', subdomain)
+            .eq('status', 'active')
+            .single();
+
+          if (error) throw error;
+          setTenantId(tenant.id);
+
+          // Buscar settings públicos
+          const { data: settingsData } = await supabase
+            .from('triagem_settings')
+            .select('*')
+            .eq('tenant_id', tenant.id)
+            .single();
+
+          setPublicSettings(settingsData);
+        } else {
+          // Fallback: pegar primeiro tenant ativo (caso não tenha subdomain)
+          const { data: tenant } = await supabase
+            .from('triagem_tenants')
+            .select('id')
+            .eq('status', 'active')
+            .limit(1)
+            .single();
+
+          if (tenant) {
+            setTenantId(tenant.id);
+
+            const { data: settingsData } = await supabase
+              .from('triagem_settings')
+              .select('*')
+              .eq('tenant_id', tenant.id)
+              .single();
+
+            setPublicSettings(settingsData);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar tenant:', error);
+      } finally {
+        setLoadingTenant(false);
+      }
+    }
+
+    fetchPublicTenant();
+  }, [subdomain]);
+
+  // Usar settings público ou autenticado
+  const effectiveSettings = publicSettings || settings;
+
   // Carregar horários quando uma data for selecionada
   React.useEffect(() => {
-    if (settings && selectedDate) {
+    if (effectiveSettings && selectedDate) {
       loadAvailableSlotsForDate(selectedDate);
     }
-  }, [selectedDate, settings]);
+  }, [selectedDate, effectiveSettings]);
 
   const loadAvailableSlotsForDate = async (date: string) => {
-    if (!settings) return;
+    if (!effectiveSettings) return;
 
     setLoadingSlots(true);
     setAvailableSlots([]);
@@ -191,7 +253,7 @@ export function BookingForm() {
   };
 
   const handleSubmit = async () => {
-    if (!settings) {
+    if (!effectiveSettings || !tenantId) {
       alert('Configurações do sistema não encontradas. Tente novamente mais tarde.');
       return;
     }
@@ -259,7 +321,8 @@ export function BookingForm() {
           clientName: formData.clientName,
           clientEmail: formData.clientEmail,
           sessionType: selectedSessionType?.label || formData.sessionType,
-          deviceId
+          deviceId,
+          tenant_id: tenantId
         })
       });
 

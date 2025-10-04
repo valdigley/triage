@@ -14,20 +14,18 @@ Deno.serve(async (req: Request) => {
   try {
     const { createClient } = await import('npm:@supabase/supabase-js@2');
     const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-    const { formData, amount, clientName, clientEmail, sessionType, deviceId } = await req.json();
+    const { formData, amount, clientName, clientEmail, sessionType, deviceId, tenant_id } = await req.json();
 
     if (!formData || !amount) {
       return new Response(JSON.stringify({ success: false, error: 'formData e amount são obrigatórios' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    console.log('🔍 Buscando tenant_id baseado nas configurações de MercadoPago...');
-    const { data: mpSettings, error: mpError } = await supabase.from('triagem_mercadopago_settings').select('tenant_id').eq('is_active', true).limit(1).maybeSingle();
-    if (mpError || !mpSettings || !mpSettings.tenant_id) {
-      console.error('❌ Erro ao buscar tenant_id:', mpError);
-      return new Response(JSON.stringify({ success: false, error: 'Configuração de tenant não encontrada' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    if (!tenant_id) {
+      return new Response(JSON.stringify({ success: false, error: 'tenant_id é obrigatório' }), { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
-    const tenantId = mpSettings.tenant_id;
-    console.log('✅ Tenant ID encontrado:', tenantId);
+
+    const tenantId = tenant_id;
+    console.log('✅ Tenant ID recebido:', tenantId);
 
     const { data: existingClient } = await supabase.from('triagem_clients').select('*').eq('phone', formData.clientPhone).eq('tenant_id', tenantId).maybeSingle();
     let clientId: string;
