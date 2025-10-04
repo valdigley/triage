@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, DollarSign, TrendingUp, Calendar, Clock, Send } from 'lucide-react';
+import { CreditCard, DollarSign, TrendingUp, Calendar, Clock, Send, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useTenant } from '../../hooks/useTenant';
@@ -150,6 +150,64 @@ export function PaymentsView() {
       alert(`Erro ao gerar PIX: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setSendingPaymentRequest(null);
+    }
+  };
+
+  const handleMarkAsPaid = async (payment: Payment) => {
+    if (!confirm('Confirmar que este pagamento foi recebido?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('triagem_payments')
+        .update({ status: 'approved' })
+        .eq('id', payment.id);
+
+      if (error) throw error;
+
+      // Atualizar também o agendamento se houver
+      if (payment.appointment_id) {
+        await supabase
+          .from('triagem_appointments')
+          .update({ payment_status: 'paid' })
+          .eq('id', payment.appointment_id);
+      }
+
+      alert('✅ Pagamento marcado como pago!');
+      fetchPayments();
+    } catch (error) {
+      console.error('Erro ao marcar pagamento:', error);
+      alert('Erro ao marcar pagamento como pago');
+    }
+  };
+
+  const handleMarkAsUnpaid = async (payment: Payment) => {
+    if (!confirm('Marcar este pagamento como não pago?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('triagem_payments')
+        .update({ status: 'cancelled' })
+        .eq('id', payment.id);
+
+      if (error) throw error;
+
+      // Atualizar também o agendamento se houver
+      if (payment.appointment_id) {
+        await supabase
+          .from('triagem_appointments')
+          .update({ payment_status: 'pending' })
+          .eq('id', payment.appointment_id);
+      }
+
+      alert('❌ Pagamento marcado como não pago');
+      fetchPayments();
+    } catch (error) {
+      console.error('Erro ao marcar pagamento:', error);
+      alert('Erro ao marcar pagamento como não pago');
     }
   };
 
@@ -310,18 +368,41 @@ export function PaymentsView() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {payment.status === 'pending' && getPaymentClient(payment) && (
-                      <button
-                        onClick={() => handleSendPaymentRequest(payment)}
-                        disabled={sendingPaymentRequest === payment.id}
-                        className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                        title="Gerar e enviar PIX via WhatsApp"
-                      >
-                        {sendingPaymentRequest === payment.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="flex items-center space-x-2">
+                        {payment.mercadopago_id ? (
+                          // Tem Mercado Pago - Mostrar botão de gerar PIX
+                          <button
+                            onClick={() => handleSendPaymentRequest(payment)}
+                            disabled={sendingPaymentRequest === payment.id}
+                            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                            title="Gerar e enviar PIX via WhatsApp"
+                          >
+                            {sendingPaymentRequest === payment.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            ) : (
+                              <DollarSign className="h-4 w-4" />
+                            )}
+                          </button>
                         ) : (
-                          <DollarSign className="h-4 w-4" />
+                          // Pagamento Manual - Mostrar botões de marcar pago/não pago
+                          <>
+                            <button
+                              onClick={() => handleMarkAsPaid(payment)}
+                              className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
+                              title="Marcar como Pago"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleMarkAsUnpaid(payment)}
+                              className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+                              title="Marcar como Não Pago"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                          </>
                         )}
-                      </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -383,32 +464,53 @@ export function PaymentsView() {
               </div>
             )}
 
-            {/* Payment Request Button */}
+            {/* Payment Actions */}
             {payment.status === 'pending' && getPaymentClient(payment) && (
               <div className="mb-3">
-                <button
-                  onClick={() => handleSendPaymentRequest(payment)}
-                  disabled={sendingPaymentRequest === payment.id}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
-                >
-                  {sendingPaymentRequest === payment.id ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Enviando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <DollarSign className="h-4 w-4" />
-                      <span>Gerar e Enviar PIX</span>
-                    </>
-                  )}
-                </button>
+                {payment.mercadopago_id ? (
+                  // Tem Mercado Pago - Mostrar botão de gerar PIX
+                  <button
+                    onClick={() => handleSendPaymentRequest(payment)}
+                    disabled={sendingPaymentRequest === payment.id}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {sendingPaymentRequest === payment.id ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Enviando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <DollarSign className="h-4 w-4" />
+                        <span>Gerar e Enviar PIX</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  // Pagamento Manual - Mostrar botões de marcar pago/não pago
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => handleMarkAsPaid(payment)}
+                      className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Pago</span>
+                    </button>
+                    <button
+                      onClick={() => handleMarkAsUnpaid(payment)}
+                      className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span>Não Pago</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Additional Info */}
             <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              Pagamento processado via MercadoPago
+              {payment.mercadopago_id ? 'Pagamento processado via MercadoPago' : 'Pagamento manual (PIX)'}
             </div>
           </div>
         ))}
