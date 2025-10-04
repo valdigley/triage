@@ -154,14 +154,17 @@ export function PaymentsView() {
   };
 
   const handleMarkAsPaid = async (payment: Payment) => {
-    if (!confirm('Confirmar que este pagamento foi recebido?')) {
+    if (!confirm('Confirmar que este pagamento foi recebido?\n\nIsso confirmará o agendamento automaticamente.')) {
       return;
     }
 
     try {
       const { error } = await supabase
         .from('triagem_payments')
-        .update({ status: 'approved' })
+        .update({
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
         .eq('id', payment.id);
 
       if (error) throw error;
@@ -170,11 +173,15 @@ export function PaymentsView() {
       if (payment.appointment_id) {
         await supabase
           .from('triagem_appointments')
-          .update({ payment_status: 'paid' })
+          .update({
+            payment_status: 'approved',
+            status: 'confirmed',
+            updated_at: new Date().toISOString()
+          })
           .eq('id', payment.appointment_id);
       }
 
-      alert('✅ Pagamento marcado como pago!');
+      alert('✅ Pagamento confirmado! Agendamento atualizado.');
       fetchPayments();
     } catch (error) {
       console.error('Erro ao marcar pagamento:', error);
@@ -183,14 +190,17 @@ export function PaymentsView() {
   };
 
   const handleMarkAsUnpaid = async (payment: Payment) => {
-    if (!confirm('Marcar este pagamento como não pago?')) {
+    if (!confirm('Cancelar este pagamento?\n\nIsso cancelará o agendamento se houver.')) {
       return;
     }
 
     try {
       const { error } = await supabase
         .from('triagem_payments')
-        .update({ status: 'cancelled' })
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
         .eq('id', payment.id);
 
       if (error) throw error;
@@ -199,15 +209,19 @@ export function PaymentsView() {
       if (payment.appointment_id) {
         await supabase
           .from('triagem_appointments')
-          .update({ payment_status: 'pending' })
+          .update({
+            payment_status: 'pending',
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          })
           .eq('id', payment.appointment_id);
       }
 
-      alert('❌ Pagamento marcado como não pago');
+      alert('❌ Pagamento cancelado');
       fetchPayments();
     } catch (error) {
-      console.error('Erro ao marcar pagamento:', error);
-      alert('Erro ao marcar pagamento como não pago');
+      console.error('Erro ao cancelar pagamento:', error);
+      alert('Erro ao cancelar pagamento');
     }
   };
 
@@ -367,10 +381,10 @@ export function PaymentsView() {
                     {payment.mercadopago_id || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {payment.status === 'pending' && getPaymentClient(payment) && (
+                    {getPaymentClient(payment) && (
                       <div className="flex items-center space-x-2">
-                        {payment.mercadopago_id ? (
-                          // Tem Mercado Pago - Mostrar botão de gerar PIX
+                        {payment.status === 'pending' && payment.mercadopago_id ? (
+                          // Tem Mercado Pago PENDENTE - Mostrar botão de gerar PIX
                           <button
                             onClick={() => handleSendPaymentRequest(payment)}
                             disabled={sendingPaymentRequest === payment.id}
@@ -384,22 +398,26 @@ export function PaymentsView() {
                             )}
                           </button>
                         ) : (
-                          // Pagamento Manual - Mostrar botões de marcar pago/não pago
+                          // Pagamento Manual - Sempre mostrar botões de controle
                           <>
-                            <button
-                              onClick={() => handleMarkAsPaid(payment)}
-                              className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
-                              title="Marcar como Pago"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleMarkAsUnpaid(payment)}
-                              className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
-                              title="Marcar como Não Pago"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
+                            {payment.status !== 'approved' && (
+                              <button
+                                onClick={() => handleMarkAsPaid(payment)}
+                                className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
+                                title="Marcar como Pago"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                            )}
+                            {payment.status !== 'cancelled' && payment.status !== 'rejected' && (
+                              <button
+                                onClick={() => handleMarkAsUnpaid(payment)}
+                                className="bg-red-600 text-white p-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+                                title="Cancelar Pagamento"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -465,10 +483,10 @@ export function PaymentsView() {
             )}
 
             {/* Payment Actions */}
-            {payment.status === 'pending' && getPaymentClient(payment) && (
+            {getPaymentClient(payment) && (
               <div className="mb-3">
-                {payment.mercadopago_id ? (
-                  // Tem Mercado Pago - Mostrar botão de gerar PIX
+                {payment.status === 'pending' && payment.mercadopago_id ? (
+                  // Tem Mercado Pago PENDENTE - Mostrar botão de gerar PIX
                   <button
                     onClick={() => handleSendPaymentRequest(payment)}
                     disabled={sendingPaymentRequest === payment.id}
@@ -487,22 +505,26 @@ export function PaymentsView() {
                     )}
                   </button>
                 ) : (
-                  // Pagamento Manual - Mostrar botões de marcar pago/não pago
+                  // Pagamento Manual - Sempre mostrar botões de controle
                   <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleMarkAsPaid(payment)}
-                      className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      <span>Pago</span>
-                    </button>
-                    <button
-                      onClick={() => handleMarkAsUnpaid(payment)}
-                      className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <XCircle className="h-4 w-4" />
-                      <span>Não Pago</span>
-                    </button>
+                    {payment.status !== 'approved' && (
+                      <button
+                        onClick={() => handleMarkAsPaid(payment)}
+                        className="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Pago</span>
+                      </button>
+                    )}
+                    {payment.status !== 'cancelled' && payment.status !== 'rejected' && (
+                      <button
+                        onClick={() => handleMarkAsUnpaid(payment)}
+                        className="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        <span>Cancelar</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
