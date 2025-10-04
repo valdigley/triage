@@ -950,7 +950,7 @@ export function BookingForm() {
                 ) : (
                   <button
                     onClick={handleSubmit}
-                    disabled={!isStepValid() || isSubmitting || !mpSettings}
+                    disabled={!isStepValid() || isSubmitting}
                     className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
                   >
                     {isSubmitting ? (
@@ -958,10 +958,15 @@ export function BookingForm() {
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                         <span>Processando...</span>
                       </>
-                    ) : (
+                    ) : mpSettings ? (
                       <>
                         <QrCode className="h-4 w-4 sm:h-5 sm:w-5" />
                         <span>Gerar PIX</span>
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span>Confirmar Agendamento</span>
                       </>
                     )}
                   </button>
