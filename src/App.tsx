@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { Sidebar } from './components/Layout/Sidebar';
 import { BookingForm } from './components/Booking/BookingForm';
 import { DashboardOverview } from './components/Dashboard/DashboardOverview';
@@ -148,36 +149,38 @@ function App() {
 
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              isAuthenticated ? (
-                <AuthenticatedApp onLogout={handleLogout} />
-              ) : showRegister ? (
-                <div className="min-h-screen bg-gradient-to-br from-blue-900 to-gray-900 flex items-center justify-center p-4">
-                  <RegisterForm
-                    onSuccess={handleLogin}
-                    onSwitchToLogin={() => setShowRegister(false)}
+      <ToastProvider>
+        <Router>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                isAuthenticated ? (
+                  <AuthenticatedApp onLogout={handleLogout} />
+                ) : showRegister ? (
+                  <div className="min-h-screen bg-gradient-to-br from-blue-900 to-gray-900 flex items-center justify-center p-4">
+                    <RegisterForm
+                      onSuccess={handleLogin}
+                      onSwitchToLogin={() => setShowRegister(false)}
+                    />
+                  </div>
+                ) : (
+                  <LoginForm
+                    onLogin={handleLogin}
+                    onSwitchToRegister={() => setShowRegister(true)}
                   />
-                </div>
-              ) : (
-                <LoginForm
-                  onLogin={handleLogin}
-                  onSwitchToRegister={() => setShowRegister(true)}
-                />
-              )
-            } 
-          />
-          <Route path="/agendamento" element={<BookingForm />} />
-          <Route path="/gallery/:token" element={<ClientGallery />} />
-          <Route path="/g/:token" element={<ClientGallery />} />
+                )
+              }
+            />
+            <Route path="/agendamento" element={<BookingForm />} />
+            <Route path="/gallery/:token" element={<ClientGallery />} />
+            <Route path="/g/:token" element={<ClientGallery />} />
 
-          {/* Redirect unknown routes */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+            {/* Redirect unknown routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

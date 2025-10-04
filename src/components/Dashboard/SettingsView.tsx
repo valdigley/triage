@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Save, Upload, TestTube, Check, X, AlertCircle, Camera, MessageSquare, CreditCard, Palette, Clock, Shield, Smartphone, Eye, EyeOff, Calendar, Plus, Trash2, CreditCard as Edit } from 'lucide-react';
+import { useToast } from '../../contexts/ToastContext';
 import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useMercadoPago } from '../../hooks/useMercadoPago';
@@ -13,6 +14,7 @@ import { supabase } from '../../lib/supabase';
 import { CommercialHours, SessionTypeData, NotificationTemplate } from '../../types';
 
 export function SettingsView() {
+  const toast = useToast();
   const { settings, updateSettings } = useSettings();
   const { sessionTypes, createSessionType, updateSessionType, deleteSessionType, toggleSessionTypeStatus } = useSessionTypes();
   const { settings: mpSettings, updateSettings: updateMPSettings, testConnection } = useMercadoPago();
@@ -111,13 +113,13 @@ export function SettingsView() {
     try {
       const success = await updateSettings(settings);
       if (success) {
-        alert('Configurações salvas com sucesso!');
+        toast.success('Configurações salvas com sucesso!');
       } else {
-        alert('Erro ao salvar configurações.');
+        toast.error('Erro ao salvar configurações.');
       }
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('Erro ao salvar configurações.');
+      toast.error('Erro ao salvar configurações.');
     } finally {
       setSaving(false);
     }
@@ -129,13 +131,13 @@ export function SettingsView() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione apenas arquivos de imagem.');
+      toast.warning('Por favor, selecione apenas arquivos de imagem.');
       return;
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      alert('A imagem deve ter no máximo 2MB.');
+      toast.warning('A imagem deve ter no máximo 2MB.');
       return;
     }
 
@@ -162,10 +164,10 @@ export function SettingsView() {
         studio_logo_url: urlData.publicUrl
       });
 
-      alert('Logo atualizado com sucesso!');
+      toast.success('Logo atualizado com sucesso!');
     } catch (error) {
       console.error('Erro no upload do logo:', error);
-      alert('Erro ao fazer upload do logo.');
+      toast.error('Erro ao fazer upload do logo.');
     } finally {
       setUploadingLogo(false);
       if (logoInputRef.current) {
@@ -180,13 +182,13 @@ export function SettingsView() {
 
     // Validate file type (PNG only for transparency)
     if (file.type !== 'image/png') {
-      alert('Por favor, selecione apenas arquivos PNG para a marca d\'água.');
+      toast.warning('Selecione apenas arquivos PNG.');
       return;
     }
 
     // Validate file size (max 1MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('A marca d\'água deve ter no máximo 5MB.');
+      toast.warning('A marca d\'água deve ter no máximo 5MB.');
       return;
     }
 
@@ -212,10 +214,10 @@ export function SettingsView() {
         watermark_image_url: urlData.publicUrl
       });
 
-      alert('Marca d\'água atualizada com sucesso!');
+      toast.success('Marca d\'água atualizada com sucesso!');
     } catch (error) {
       console.error('Erro no upload da marca d\'água:', error);
-      alert('Erro ao fazer upload da marca d\'água.');
+      toast.error('Erro ao fazer upload da marca d\'água.');
     } finally {
       setUploadingWatermark(false);
       if (watermarkInputRef.current) {
@@ -288,7 +290,7 @@ export function SettingsView() {
 
   const handleCreateSessionType = async () => {
     if (!newSessionType.name || !newSessionType.label) {
-      alert('Nome e rótulo são obrigatórios');
+      toast.warning('Nome e rótulo são obrigatórios');
       return;
     }
 
@@ -303,25 +305,25 @@ export function SettingsView() {
         description: '',
         icon: '📸'
       });
-      alert('Tipo de sessão criado com sucesso!');
+      toast.success('Tipo de sessão criado com sucesso!');
     } catch (error) {
-      alert('Erro ao criar tipo de sessão');
+      toast.error('Erro ao criar tipo de sessão');
     }
   };
 
   const saveWhatsAppSettings = async () => {
     if (!globalSettings?.evolution_api_url || !globalSettings?.evolution_api_key) {
-      alert('Configurações globais da Evolution API não encontradas. Entre em contato com o administrador.');
+      toast.error('Configurações globais da Evolution API não encontradas. Entre em contato com o administrador.');
       return;
     }
 
     if (!settings?.studio_phone) {
-      alert('Configure o telefone do estúdio nas configurações gerais primeiro');
+      toast.warning('Configure o telefone do estúdio nas configurações gerais primeiro');
       return;
     }
 
     if (!tenant) {
-      alert('Erro: Tenant não encontrado');
+      toast.error('Erro: Tenant não encontrado');
       return;
     }
 
@@ -350,13 +352,13 @@ export function SettingsView() {
 
       if (error) throw error;
 
-      alert('Configurações do WhatsApp salvas com sucesso!');
+      toast.success('Configurações do WhatsApp salvas com sucesso!');
 
       // Refresh instances to get updated data
       await refetchWhatsApp();
     } catch (error) {
       console.error('Erro ao salvar WhatsApp:', error);
-      alert('Erro ao salvar configurações do WhatsApp');
+      toast.error('Erro ao salvar configurações do WhatsApp');
     } finally {
       setSaving(false);
     }
@@ -390,7 +392,7 @@ export function SettingsView() {
 
   const handleGenerateQR = async () => {
     if (!settings?.studio_phone) {
-      alert('Configure o telefone do estúdio nas configurações gerais primeiro');
+      toast.warning('Configure o telefone do estúdio nas configurações gerais primeiro');
       return;
     }
 
@@ -405,7 +407,7 @@ export function SettingsView() {
         const result = await createInstance();
 
         if (!result.success) {
-          alert(`Erro ao criar instância: ${result.message}`);
+          toast.error(`Erro ao criar instância: ${result.message}`);
           return;
         }
 
@@ -420,7 +422,7 @@ export function SettingsView() {
         if (result.success && result.qrcode) {
           setQrCode(result.qrcode);
         } else {
-          alert(result.message || 'Erro ao buscar QR Code');
+          toast.error(result.message || 'Erro ao buscar QR Code');
           return;
         }
       }
@@ -443,7 +445,7 @@ export function SettingsView() {
           }
           setQrCode(null);
           setQrCountdown(0);
-          alert('WhatsApp conectado com sucesso!');
+          toast.success('WhatsApp conectado com sucesso!');
           await refetchInstance();
         } else if (countdown <= 0) {
           if (qrIntervalRef.current) {
@@ -451,13 +453,13 @@ export function SettingsView() {
           }
           setQrCode(null);
           setQrCountdown(0);
-          alert('QR Code expirado. Clique novamente para gerar um novo.');
+          toast.warning('QR Code expirado. Clique novamente para gerar um novo.');
         }
       }, 1000);
 
     } catch (error) {
       console.error('❌ Erro ao gerar QR Code:', error);
-      alert('Erro ao gerar QR Code');
+      toast.error('Erro ao gerar QR Code');
     } finally {
       setLoadingQR(false);
     }
@@ -473,11 +475,11 @@ export function SettingsView() {
     const result = await deleteWhatsAppInstance();
 
     if (result.success) {
-      alert('Instância excluída com sucesso!');
+      toast.success('Instância excluída com sucesso!');
       setQrCode(null);
       await refetchInstance();
     } else {
-      alert(`Erro ao excluir instância: ${result.message}`);
+      toast.error(`Erro ao excluir instância: ${result.message}`);
     }
   };
 
@@ -1377,7 +1379,7 @@ export function SettingsView() {
                     onClick={() => {
                       const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-webhook`;
                       navigator.clipboard.writeText(webhookUrl);
-                      alert('URL do webhook copiada para a área de transferência!');
+                      toast.success('URL do webhook copiada para a área de transferência!');
                     }}
                     className="ml-3 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors flex-shrink-0"
                   >

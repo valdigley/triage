@@ -7,6 +7,7 @@ import { useWhatsApp } from '../../hooks/useWhatsApp';
 import { useClients } from '../../hooks/useClients';
 import { useSettings } from '../../hooks/useSettings';
 import { useTenant } from '../../hooks/useTenant';
+import { useToast } from '../../contexts/ToastContext';
 import { PhotoUpload } from '../Gallery/PhotoUpload';
 import { Gallery, Photo } from '../../types';
 
@@ -16,6 +17,7 @@ export function GalleriesView() {
   const { clients } = useClients();
   const { settings } = useSettings();
   const { tenant } = useTenant();
+  const toast = useToast();
   const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
@@ -133,7 +135,7 @@ export function GalleriesView() {
       
     } catch (error) {
       console.error('Erro ao deletar foto:', error);
-      alert('Erro ao deletar foto. Tente novamente.');
+      toast.error('Erro ao deletar foto. Tente novamente.');
     } finally {
       setDeletingPhotos(prev => {
         const newSet = new Set(prev);
@@ -159,13 +161,13 @@ export function GalleriesView() {
     try {
       const success = await deleteGallery(gallery.id);
       if (success) {
-        alert('Galeria excluída com sucesso!');
+        toast.success('Galeria excluída com sucesso!');
         // If we were viewing this gallery, go back to list
         if (selectedGallery?.id === gallery.id) {
           setSelectedGallery(null);
         }
       } else {
-        alert('Erro ao excluir galeria. Tente novamente.');
+        toast.error('Erro ao excluir galeria. Tente novamente.');
       }
     } catch (error) {
       console.error('Erro ao excluir galeria:', error);
@@ -193,13 +195,13 @@ export function GalleriesView() {
       );
       
       if (success) {
-        alert('Link da galeria enviado via WhatsApp com sucesso!');
+        toast.success('Link da galeria enviado via WhatsApp!');
       } else {
-        alert('Erro ao enviar link. Verifique se o WhatsApp está conectado.');
+        toast.error('Erro ao enviar link. Verifique o WhatsApp.');
       }
     } catch (error) {
       console.error('Erro ao enviar link da galeria:', error);
-      alert('Erro ao enviar link da galeria.');
+      toast.error('Erro ao enviar link da galeria.');
     } finally {
       setSendingMessage(null);
     }
@@ -209,12 +211,12 @@ export function GalleriesView() {
     const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
     const link = `${appUrl}/g/${token}`;
     navigator.clipboard.writeText(link);
-    alert('Link copiado para a área de transferência!');
+    toast.success('Link copiado!');
   };
 
   const handleCreatePublicGallery = async () => {
     if (!newGallery.event_name) {
-      alert('Nome do evento é obrigatório');
+      toast.warning('Nome do evento é obrigatório');
       return;
     }
 
@@ -224,7 +226,7 @@ export function GalleriesView() {
       expirationDate.setDate(expirationDate.getDate() + newGallery.expiration_days);
 
       if (!tenant) {
-        alert('Erro: Tenant não encontrado');
+        toast.error('Erro: Tenant não encontrado');
         return;
       }
 
@@ -246,12 +248,12 @@ export function GalleriesView() {
       if (galleryError) throw galleryError;
 
       await refetchGalleries();
-      alert('Galeria pública criada com sucesso!');
+      toast.success('Galeria pública criada com sucesso!');
       resetCreateGallery();
       setShowCreateGallery(false);
     } catch (error) {
       console.error('Erro ao criar galeria pública:', error);
-      alert('Erro ao criar galeria pública. Tente novamente.');
+      toast.error('Erro ao criar galeria pública.');
     } finally {
       setCreating(false);
     }
@@ -259,7 +261,7 @@ export function GalleriesView() {
 
   const handleCreateManualGallery = async () => {
     if (!newGallery.name || !newGallery.selected_client_id) {
-      alert('Nome da galeria e cliente são obrigatórios');
+      toast.warning('Nome da galeria e cliente são obrigatórios');
       return;
     }
 
@@ -269,7 +271,7 @@ export function GalleriesView() {
       const minimumPhotos = settings?.minimum_photos || 5;
 
       if (!tenant) {
-        alert('Erro: Tenant não encontrado');
+        toast.error('Erro: Tenant não encontrado');
         return;
       }
 
@@ -311,12 +313,12 @@ export function GalleriesView() {
       if (galleryError) throw galleryError;
 
       await refetchGalleries();
-      alert('Galeria criada com sucesso!');
+      toast.success('Galeria criada com sucesso!');
       resetCreateGallery();
       setShowCreateGallery(false);
     } catch (error) {
       console.error('Erro ao criar galeria:', error);
-      alert('Erro ao criar galeria. Tente novamente.');
+      toast.error('Erro ao criar galeria.');
     } finally {
       setCreating(false);
     }
@@ -884,7 +886,7 @@ export function GalleriesView() {
                         const selectedPhotosData = photos.filter(p => selectedGallery.photos_selected?.includes(p.id));
                         const code = selectedPhotosData.map(p => p.filename).join(' OR ');
                         navigator.clipboard.writeText(code);
-                        alert('Código copiado!');
+                        toast.success('Código copiado!');
                       }}
                       className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs sm:text-sm flex items-center space-x-1"
                     >
