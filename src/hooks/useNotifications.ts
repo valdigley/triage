@@ -142,6 +142,18 @@ export function useNotifications() {
         return false;
       }
 
+      // Buscar tenant_id do appointment
+      const { data: appointment } = await supabase
+        .from('triagem_appointments')
+        .select('tenant_id')
+        .eq('id', appointmentId)
+        .single();
+
+      if (!appointment?.tenant_id) {
+        console.error('❌ Tenant ID não encontrado para appointment:', appointmentId);
+        return false;
+      }
+
       // IMPORTANTE: Verificar duplicatas ANTES de processar template
       const isDuplicate = await checkDuplicateNotification(appointmentId, templateType);
       if (isDuplicate) {
@@ -156,10 +168,11 @@ export function useNotifications() {
         return false;
       }
 
-      // Inserir na fila
+      // Inserir na fila COM tenant_id
       const { error } = await supabase
         .from('triagem_notification_queue')
         .insert({
+          tenant_id: appointment.tenant_id,
           appointment_id: appointmentId,
           template_type: templateType,
           recipient_phone: recipientPhone,
@@ -173,7 +186,7 @@ export function useNotifications() {
         return false;
       }
 
-      console.log(`✅ Notificação ${templateType} agendada com sucesso`);
+      console.log(`✅ Notificação ${templateType} agendada com sucesso (tenant: ${appointment.tenant_id})`);
       return true;
     } catch (err) {
       console.error('❌ Erro crítico ao agendar notificação:', err);
