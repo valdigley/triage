@@ -204,12 +204,22 @@ export function useGalleries() {
 
   const updatePhotoSelection = async (galleryId: string, photoIds: string[]) => {
     try {
+      // Validar UUIDs antes de enviar
+      const validPhotoIds = photoIds.filter(id => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(id);
+      });
+
+      if (validPhotoIds.length !== photoIds.length) {
+        console.warn('⚠️ Alguns IDs de foto inválidos foram filtrados');
+      }
+
       // Update gallery with selected photos
       const { error: galleryError } = await supabase
         .from('triagem_galleries')
         .update({
-          photos_selected: photoIds,
-          status: photoIds.length > 0 ? 'started' : 'pending',
+          photos_selected: validPhotoIds,
+          status: validPhotoIds.length > 0 ? 'started' : 'pending',
           updated_at: new Date().toISOString()
         })
         .eq('id', galleryId);
@@ -222,11 +232,11 @@ export function useGalleries() {
         .update({ is_selected: false })
         .eq('gallery_id', galleryId);
 
-      if (photoIds.length > 0) {
+      if (validPhotoIds.length > 0) {
         await supabase
           .from('triagem_photos')
           .update({ is_selected: true })
-          .in('id', photoIds);
+          .in('id', validPhotoIds);
       }
 
       return true;
