@@ -10,6 +10,7 @@ const corsHeaders = {
 interface CheckAvailabilityRequest {
   startDateTime: string; // ISO 8601 format
   endDateTime: string;   // ISO 8601 format
+  tenantId?: string;     // Optional tenant ID
 }
 
 interface CalendarEvent {
@@ -85,7 +86,7 @@ Deno.serve(async (req: Request) => {
     );
 
     // Parse request body
-    const { startDateTime, endDateTime }: CheckAvailabilityRequest = await req.json();
+    const { startDateTime, endDateTime, tenantId: requestTenantId }: CheckAvailabilityRequest = await req.json();
 
     if (!startDateTime || !endDateTime) {
       return new Response(
@@ -102,21 +103,17 @@ Deno.serve(async (req: Request) => {
 
     console.log('🔍 Período solicitado:', startDateTime, 'até', endDateTime);
 
-    // Buscar tenant_id baseado nas configurações ativas de MercadoPago
-    const { data: mpSettings, error: mpError } = await supabase
-      .from('triagem_mercadopago_settings')
-      .select('tenant_id')
-      .eq('is_active', true)
-      .limit(1)
-      .maybeSingle();
+    let tenantId: string | null = requestTenantId || null;
 
-    if (mpError || !mpSettings) {
-      console.error('❌ Tenant não encontrado:', mpError);
+    // Se não foi fornecido tenantId, NÃO tentar identificar automaticamente
+    // Isso evita que o calendar de um tenant seja usado por outro
+    if (!tenantId) {
+      console.log('⚠️ Nenhum tenantId fornecido - retornando todas as datas como disponíveis');
       return new Response(
         JSON.stringify({
-          success: false,
-          error: 'Tenant configuration not found',
+          success: true,
           available: true,
+          message: 'Tenant não identificado - todas as datas disponíveis',
         }),
         {
           status: 200,
@@ -125,8 +122,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const tenantId = mpSettings.tenant_id;
-    console.log('✅ Tenant ID:', tenantId);
+    console.log('✅ Tenant ID fornecido:', tenantId);
 
     // Get active Google Calendar settings for this tenant
     const { data: settings, error: settingsError } = await supabase
@@ -138,12 +134,12 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (settingsError || !settings) {
-      console.error('❌ Google Calendar não configurado:', settingsError);
+      console.log('⚠️ Google Calendar não configurado para este tenant - retornando todas as datas como disponíveis');
       return new Response(
         JSON.stringify({
-          success: false,
-          error: 'Google Calendar integration not configured',
-          available: true, // Fallback: permitir agendamento se não configurado
+          success: true,
+          available: true,
+          message: 'Google Calendar não configurado - todas as datas disponíveis',
         }),
         {
           status: 200,
@@ -158,12 +154,12 @@ Deno.serve(async (req: Request) => {
     const privateKey = settings.service_account_key.private_key;
 
     if (!privateKey) {
-      console.error('❌ Private key não encontrada');
+      console.log('⚠️ Private key não encontrada - retornando todas as datas como disponíveis');
       return new Response(
         JSON.stringify({
-          success: false,
-          error: 'Invalid service account configuration',
+          success: true,
           available: true,
+          message: 'Configuração do Google Calendar inválida - todas as datas disponíveis',
         }),
         {
           status: 200,
