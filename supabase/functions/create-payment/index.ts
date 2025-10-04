@@ -51,12 +51,69 @@ Deno.serve(async (req: Request) => {
       // Buscar chave PIX manual do tenant
       const { data: settings } = await supabase
         .from('triagem_settings')
-        .select('pix_key, studio_name')
+        .select('pix_key, studio_name, link_validity_days, minimum_photos')
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
       const pixKey = settings?.pix_key;
       const studioName = settings?.studio_name || 'Estúdio';
+
+      // Criar galeria imediatamente (sem esperar pagamento)
+      console.log('🎨 Criando galeria para agendamento sem pagamento automático...');
+
+      function generateToken(length: number = 32): string {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let token = '';
+        const randomValues = new Uint8Array(length);
+        crypto.getRandomValues(randomValues);
+        for (let i = 0; i < length; i++) {
+          token += chars[randomValues[i] % chars.length];
+        }
+        return token;
+      }
+
+      const galleryToken = generateToken(32);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + (settings?.link_validity_days || 30));
+
+      const { data: gallery, error: galleryError } = await supabase
+        .from('triagem_galleries')
+        .insert([{
+          appointment_id: appointment.id,
+          client_id: clientId,
+          tenant_id: tenantId,
+          gallery_token: galleryToken,
+          expires_at: expiresAt.toISOString(),
+          max_selections: settings?.minimum_photos || 5,
+          is_public: false
+        }])
+        .select()
+        .single();
+
+      if (galleryError) {
+        console.error('❌ Erro ao criar galeria:', galleryError);
+      } else {
+        console.log('✅ Galeria criada:', gallery.id);
+      }
+
+      // Criar registro de pagamento pendente para baixa manual
+      console.log('💰 Criando registro de pagamento pendente...');
+      const { error: paymentError } = await supabase
+        .from('triagem_payments')
+        .insert([{
+          appointment_id: appointment.id,
+          client_id: clientId,
+          tenant_id: tenantId,
+          amount: amount,
+          status: 'pending',
+          payment_type: 'initial'
+        }]);
+
+      if (paymentError) {
+        console.error('❌ Erro ao criar pagamento pendente:', paymentError);
+      } else {
+        console.log('✅ Pagamento pendente criado para baixa manual');
+      }
 
       // Se há chave PIX, enviar via WhatsApp
       if (pixKey && formData.clientPhone) {
@@ -143,9 +200,11 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: true,
           appointment_id: appointment.id,
+          gallery_id: gallery?.id,
+          gallery_token: galleryToken,
           no_payment_configured: true,
           pix_key: pixKey,
-          message: 'Agendamento criado. Pagamento pendente via PIX manual.'
+          message: 'Agendamento criado. Galeria disponível. Pagamento pendente para baixa manual.'
         }),
         {
           status: 200,
