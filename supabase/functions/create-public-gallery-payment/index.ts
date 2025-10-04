@@ -58,7 +58,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get parent gallery to find tenant_id
     const { data: parentGallery, error: parentGalleryError } = await supabase
       .from('triagem_galleries')
       .select('tenant_id')
@@ -83,7 +82,6 @@ Deno.serve(async (req: Request) => {
 
     const tenantId = parentGallery.tenant_id;
 
-    // Criar ou atualizar cliente
     const { data: existingClient } = await supabase
       .from('triagem_clients')
       .select('*')
@@ -119,10 +117,9 @@ Deno.serve(async (req: Request) => {
       clientId = newClient.id;
     }
 
-    // Criar galeria individual para o cliente com suas fotos selecionadas
     const galleryToken = generateToken(32);
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 dias de validade
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
     const { data: newGallery, error: galleryError } = await supabase
       .from('triagem_galleries')
@@ -146,7 +143,6 @@ Deno.serve(async (req: Request) => {
 
     console.log('✅ Galeria individual criada:', newGallery.id);
 
-    // Criar registro de pagamento pendente
     const { data: paymentRecord, error: paymentError } = await supabase
       .from('triagem_payments')
       .insert([{
@@ -173,14 +169,12 @@ Deno.serve(async (req: Request) => {
 
     console.log('✅ Pagamento pendente criado:', paymentRecord.id);
 
-    // Buscar configurações do tenant
     const { data: settings } = await supabase
       .from('triagem_settings')
       .select('pix_key, studio_name')
       .eq('tenant_id', tenantId)
       .maybeSingle();
 
-    // Verificar se tem MercadoPago configurado
     const { data: mpSettings, error: mpError } = await supabase
       .from('triagem_mercadopago_settings')
       .select('*')
@@ -194,7 +188,6 @@ Deno.serve(async (req: Request) => {
       const pixKey = settings?.pix_key;
       const studioName = settings?.studio_name || 'Estúdio';
 
-      // Agendar notificação via fila
       if (pixKey && clientPhone) {
         console.log('📲 Agendando notificação via fila...');
 
@@ -202,7 +195,7 @@ Deno.serve(async (req: Request) => {
           const { error: notifError } = await supabase
             .from('triagem_notification_queue')
             .insert({
-              appointment_id: newGallery.id, // Usar gallery_id como referência
+              appointment_id: newGallery.id,
               tenant_id: tenantId,
               template_type: 'pix_public_gallery',
               recipient_phone: clientPhone,
@@ -249,7 +242,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Tem MercadoPago - gerar QR Code PIX
     console.log('💳 Gerando QR Code PIX...');
 
     const nameParts = clientName.trim().split(' ');
@@ -318,7 +310,6 @@ Deno.serve(async (req: Request) => {
     const pixData = await pixResponse.json();
     console.log('PIX payment created for public gallery:', JSON.stringify(pixData, null, 2));
 
-    // Atualizar pagamento com ID do MercadoPago
     await supabase
       .from('triagem_payments')
       .update({
