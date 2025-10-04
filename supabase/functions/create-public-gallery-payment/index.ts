@@ -6,6 +6,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+function generateToken(length: number = 32): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  const randomValues = new Uint8Array(length);
+  crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    token += chars[randomValues[i] % chars.length];
+  }
+  return token;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -70,88 +81,166 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get MercadoPago settings for THIS tenant
+    const tenantId = parentGallery.tenant_id;
+
+    // Criar ou atualizar cliente
+    const { data: existingClient } = await supabase
+      .from('triagem_clients')
+      .select('*')
+      .eq('phone', clientPhone)
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    let clientId: string;
+
+    if (existingClient) {
+      clientId = existingClient.id;
+      await supabase
+        .from('triagem_clients')
+        .update({
+          name: clientName,
+          email: clientEmail,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', clientId);
+    } else {
+      const { data: newClient, error: clientError } = await supabase
+        .from('triagem_clients')
+        .insert([{
+          name: clientName,
+          email: clientEmail,
+          phone: clientPhone,
+          tenant_id: tenantId
+        }])
+        .select()
+        .single();
+
+      if (clientError) throw clientError;
+      clientId = newClient.id;
+    }
+
+    // Criar galeria individual para o cliente com suas fotos selecionadas
+    const galleryToken = generateToken(32);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 dias de validade
+
+    const { data: newGallery, error: galleryError } = await supabase
+      .from('triagem_galleries')
+      .insert([{
+        client_id: clientId,
+        tenant_id: tenantId,
+        name: `${eventName || 'Evento'} - ${clientName}`,
+        gallery_token: galleryToken,
+        link_expires_at: expiresAt.toISOString(),
+        is_public: false,
+        status: 'pending',
+        event_name: eventName
+      }])
+      .select()
+      .single();
+
+    if (galleryError) {
+      console.error('Erro ao criar galeria:', galleryError);
+      throw new Error('Erro ao criar galeria');
+    }
+
+    console.log('✅ Galeria individual criada:', newGallery.id);
+
+    // Criar registro de pagamento pendente
+    const { data: paymentRecord, error: paymentError } = await supabase
+      .from('triagem_payments')
+      .insert([{
+        client_id: clientId,
+        gallery_id: newGallery.id,
+        tenant_id: tenantId,
+        amount: totalAmount,
+        status: 'pending',
+        payment_type: 'public_gallery',
+        metadata: {
+          parent_gallery_id: parentGalleryId,
+          selected_photos: selectedPhotos,
+          photos_count: selectedPhotos.length,
+          event_name: eventName
+        }
+      }])
+      .select()
+      .single();
+
+    if (paymentError) {
+      console.error('Erro ao criar pagamento:', paymentError);
+      throw new Error('Erro ao criar registro de pagamento');
+    }
+
+    console.log('✅ Pagamento pendente criado:', paymentRecord.id);
+
+    // Buscar configurações do tenant
+    const { data: settings } = await supabase
+      .from('triagem_settings')
+      .select('pix_key, studio_name')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+
+    // Verificar se tem MercadoPago configurado
     const { data: mpSettings, error: mpError } = await supabase
       .from('triagem_mercadopago_settings')
       .select('*')
-      .eq('tenant_id', parentGallery.tenant_id)
+      .eq('tenant_id', tenantId)
       .eq('is_active', true)
       .maybeSingle();
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
-      // Buscar chave PIX manual do tenant
-      const { data: settings } = await supabase
-        .from('triagem_settings')
-        .select('pix_key, studio_name')
-        .eq('tenant_id', parentGallery.tenant_id)
-        .maybeSingle();
+      console.log('⚠️ MercadoPago não configurado - fluxo PIX manual');
 
       const pixKey = settings?.pix_key;
       const studioName = settings?.studio_name || 'Estúdio';
 
-      // Se há chave PIX, enviar via WhatsApp usando template
+      // Agendar notificação via fila
       if (pixKey && clientPhone) {
-        // Buscar template de notificação
-        const { data: template } = await supabase
-          .from('triagem_notification_templates')
-          .select('message_template')
-          .eq('type', 'pix_public_gallery')
-          .eq('is_active', true)
-          .maybeSingle();
+        console.log('📲 Agendando notificação via fila...');
 
-        // Buscar configurações globais da Evolution API
-        const { data: globalSettings } = await supabase
-          .from('global_settings')
-          .select('evolution_server_url, evolution_auth_api_key')
-          .maybeSingle();
+        try {
+          const { error: notifError } = await supabase
+            .from('triagem_notification_queue')
+            .insert({
+              appointment_id: newGallery.id, // Usar gallery_id como referência
+              tenant_id: tenantId,
+              template_type: 'pix_public_gallery',
+              recipient_phone: clientPhone,
+              recipient_name: clientName,
+              scheduled_for: new Date().toISOString(),
+              template_data: {
+                client_name: clientName,
+                studio_name: studioName,
+                pix_key: pixKey,
+                amount: `R$ ${(totalAmount / 100).toFixed(2)}`,
+                event_name: eventName || 'Evento',
+                photos_count: selectedPhotos.length.toString()
+              },
+              status: 'pending'
+            });
 
-        // Buscar instância do tenant
-        const { data: whatsappInstance } = await supabase
-          .from('triagem_whatsapp_instances')
-          .select('instance_name')
-          .eq('tenant_id', parentGallery.tenant_id)
-          .maybeSingle();
-
-        if (globalSettings && whatsappInstance && template) {
-          // Processar template com variáveis
-          let message = template.message_template
-            .replace(/\{\{client_name\}\}/g, clientName)
-            .replace(/\{\{studio_name\}\}/g, studioName)
-            .replace(/\{\{pix_key\}\}/g, pixKey)
-            .replace(/\{\{amount\}\}/g, `R$ ${(totalAmount / 100).toFixed(2)}`)
-            .replace(/\{\{event_name\}\}/g, eventName || 'Evento')
-            .replace(/\{\{photos_count\}\}/g, selectedPhotos.length.toString());
-
-          try {
-            await fetch(
-              `${globalSettings.evolution_server_url}/message/sendText/${whatsappInstance.instance_name}`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': globalSettings.evolution_auth_api_key
-                },
-                body: JSON.stringify({
-                  number: clientPhone.replace(/\D/g, ''),
-                  text: message
-                })
-              }
-            );
-          } catch (error) {
-            console.error('Error sending WhatsApp message:', error);
+          if (notifError) {
+            console.error('❌ Erro ao agendar notificação:', notifError);
+          } else {
+            console.log('✅ Notificação agendada na fila');
           }
+        } catch (error) {
+          console.error('❌ Erro ao agendar notificação:', error);
         }
       }
 
       return new Response(
         JSON.stringify({
-          success: false,
-          error: 'MercadoPago não configurado para este estúdio',
+          success: true,
+          gallery_id: newGallery.id,
+          gallery_token: galleryToken,
+          payment_id: paymentRecord.id,
           no_payment_configured: true,
-          pix_key: pixKey
+          pix_key: pixKey,
+          message: 'Seleção registrada. Pagamento pendente para baixa manual.'
         }),
         {
-          status: 400,
+          status: 200,
           headers: {
             'Content-Type': 'application/json',
             ...corsHeaders,
@@ -159,6 +248,9 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    // Tem MercadoPago - gerar QR Code PIX
+    console.log('💳 Gerando QR Code PIX...');
 
     const nameParts = clientName.trim().split(' ');
     const firstName = nameParts[0] || 'Cliente';
@@ -168,17 +260,19 @@ Deno.serve(async (req: Request) => {
       transaction_amount: totalAmount,
       date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       payment_method_id: "pix",
-      external_reference: `public-${parentGalleryId}-${Date.now()}`,
+      external_reference: paymentRecord.id,
       notification_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/mercadopago-webhook`,
       description: `${selectedPhotos.length} fotos - ${eventName}`,
       metadata: {
         parent_gallery_id: parentGalleryId,
+        gallery_id: newGallery.id,
         client_name: clientName,
         client_phone: clientPhone,
         client_email: clientEmail || '',
         selected_photos: JSON.stringify(selectedPhotos),
         photos_count: selectedPhotos.length,
-        event_name: eventName
+        event_name: eventName,
+        payment_type: 'public_gallery'
       },
       payer: {
         first_name: firstName,
@@ -224,12 +318,23 @@ Deno.serve(async (req: Request) => {
     const pixData = await pixResponse.json();
     console.log('PIX payment created for public gallery:', JSON.stringify(pixData, null, 2));
 
+    // Atualizar pagamento com ID do MercadoPago
+    await supabase
+      .from('triagem_payments')
+      .update({
+        mercadopago_id: pixData.id.toString(),
+        status: pixData.status
+      })
+      .eq('id', paymentRecord.id);
+
     const qrCode = pixData.point_of_interaction?.transaction_data?.qr_code;
     const qrCodeBase64 = pixData.point_of_interaction?.transaction_data?.qr_code_base64;
 
     return new Response(
       JSON.stringify({
         success: true,
+        gallery_id: newGallery.id,
+        gallery_token: galleryToken,
         payment_id: pixData.id.toString(),
         status: pixData.status,
         qr_code: qrCode,

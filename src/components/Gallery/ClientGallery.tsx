@@ -505,6 +505,22 @@ export function ClientGallery() {
         throw new Error(payment.error || 'Erro ao gerar pagamento');
       }
 
+      // Se não tem pagamento configurado (PIX manual)
+      if (payment.no_payment_configured) {
+        alert(
+          `✅ Seleção registrada com sucesso!\n\n` +
+          `📸 ${selectedPhotos.length} foto(s) selecionada(s)\n` +
+          `💰 Valor total: R$ ${(totalAmount / 100).toFixed(2)}\n\n` +
+          `${payment.pix_key ? `💳 DADOS PARA PAGAMENTO:\nPIX: ${payment.pix_key}\n\n📲 Enviamos os dados via WhatsApp também!\n\n` : ''}` +
+          `Sua galeria estará disponível após a confirmação do pagamento pelo estúdio.\n\n` +
+          `A página será recarregada agora.`
+        );
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        return;
+      }
+
       setPaymentData(payment);
       setShowIdentificationForm(false);
       setShowPayment(true);
