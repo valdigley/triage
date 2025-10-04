@@ -138,11 +138,13 @@ Deno.serve(async (req: Request) => {
     const instanceData = await createResponse.json();
     console.log('Instance created successfully:', instanceData);
 
+    const instanceApiKey = instanceData.hash?.apikey || instanceData.instance?.apikey || globalSettings.evolution_auth_api_key;
+
     const { error: updateError } = await supabaseClient
       .from('triagem_settings')
       .update({
         evolution_instance_name: instanceName,
-        evolution_instance_apikey: instanceData.hash?.apikey || instanceData.instance?.apikey,
+        evolution_instance_apikey: instanceApiKey,
         whatsapp_connected: false,
         whatsapp_qrcode: instanceData.qrcode?.base64 || null,
         updated_at: new Date().toISOString()
@@ -152,6 +154,29 @@ Deno.serve(async (req: Request) => {
     if (updateError) {
       console.error('Error updating tenant settings:', updateError);
       throw new Error('Erro ao salvar configurações da instância');
+    }
+
+    // Sincronizar com triagem_whatsapp_instances
+    const { error: instanceError } = await supabaseClient
+      .from('triagem_whatsapp_instances')
+      .upsert({
+        tenant_id: tenantId,
+        instance_name: instanceName,
+        instance_data: {
+          evolution_api_url: globalSettings.evolution_server_url.replace(/\/$/, ''),
+          evolution_api_key: instanceApiKey,
+          saved_at: new Date().toISOString()
+        },
+        status: 'created',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
+
+    if (instanceError) {
+      console.error('Error syncing whatsapp_instances:', instanceError);
+      // Não falhar se apenas a sincronização falhar
     }
 
     console.log(`Instance ${instanceName} created and configured for tenant ${tenantId}`);
