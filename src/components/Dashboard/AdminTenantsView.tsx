@@ -17,8 +17,8 @@ export function AdminTenantsView() {
 
   const { settings: globalSettings, saveSettings: saveGlobalSettings } = useGlobalSettings();
   const [evolutionForm, setEvolutionForm] = useState({
-    api_url: '',
-    api_key: '',
+    evolution_api_url: '',
+    evolution_api_key: '',
     instance_name: ''
   });
   const [resendingNotifications, setResendingNotifications] = useState(false);
@@ -30,15 +30,15 @@ export function AdminTenantsView() {
   useEffect(() => {
     if (globalSettings) {
       setEvolutionForm({
-        api_url: globalSettings.api_url || '',
-        api_key: globalSettings.api_key || '',
+        evolution_api_url: globalSettings.evolution_api_url || '',
+        evolution_api_key: globalSettings.evolution_api_key || '',
         instance_name: globalSettings.instance_name || ''
       });
     }
   }, [globalSettings]);
 
   const handleSaveEvolutionSettings = async () => {
-    if (!evolutionForm.api_url || !evolutionForm.api_key || !evolutionForm.instance_name) {
+    if (!evolutionForm.evolution_api_url || !evolutionForm.evolution_api_key || !evolutionForm.instance_name) {
       alert('Preencha todos os campos');
       return;
     }
@@ -46,8 +46,8 @@ export function AdminTenantsView() {
     setSaving(true);
     try {
       const success = await saveGlobalSettings(
-        evolutionForm.api_url,
-        evolutionForm.api_key,
+        evolutionForm.evolution_api_url,
+        evolutionForm.evolution_api_key,
         evolutionForm.instance_name
       );
 
@@ -64,7 +64,7 @@ export function AdminTenantsView() {
   };
 
   const handleResendNotifications = async () => {
-    if (!globalSettings || !globalSettings.api_url) {
+    if (!globalSettings || !globalSettings.evolution_api_url) {
       alert('Configure a Evolution API primeiro!');
       return;
     }
@@ -388,8 +388,8 @@ export function AdminTenantsView() {
                 </label>
                 <input
                   type="url"
-                  value={evolutionForm.api_url}
-                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, api_url: e.target.value }))}
+                  value={evolutionForm.evolution_api_url}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_url: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="https://sua-evolution-api.com"
                   required
@@ -402,8 +402,8 @@ export function AdminTenantsView() {
                 </label>
                 <input
                   type="password"
-                  value={evolutionForm.api_key}
-                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, api_key: e.target.value }))}
+                  value={evolutionForm.evolution_api_key}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_key: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Sua API Key"
                   required

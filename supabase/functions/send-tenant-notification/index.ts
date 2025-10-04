@@ -89,12 +89,11 @@ Deno.serve(async (req: Request) => {
     });
 
     const { data: globalSettings } = await supabaseClient
-      .from('triagem_global_evolution_settings')
+      .from('global_settings')
       .select('*')
-      .eq('is_active', true)
       .maybeSingle();
 
-    if (!globalSettings || !globalSettings.api_url || !globalSettings.api_key) {
+    if (!globalSettings || !globalSettings.evolution_api_url || !globalSettings.evolution_api_key) {
       console.error('Global Evolution settings not found or incomplete');
       return new Response(
         JSON.stringify({ success: false, error: 'Configura\u00e7\u00f5es globais do Evolution n\u00e3o encontradas' }),
@@ -102,7 +101,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const evolutionUrl = `${globalSettings.api_url}/message/sendText/${globalSettings.instance_name}`;
+    const instanceName = globalSettings.instance_name || 'triagem';
+    const evolutionUrl = `${globalSettings.evolution_api_url}/message/sendText/${instanceName}`;
 
     console.log(`Sending notification to ${phoneNumber}`);
 
@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': globalSettings.api_key
+        'apikey': globalSettings.evolution_api_key
       },
       body: JSON.stringify({
         number: phoneNumber,

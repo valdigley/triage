@@ -3,10 +3,9 @@ import { supabase } from '../lib/supabase';
 
 interface GlobalSettings {
   id: string;
-  api_url: string;
-  api_key: string;
+  evolution_api_url: string;
+  evolution_api_key: string;
   instance_name: string;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -20,9 +19,8 @@ export function useGlobalSettings() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('triagem_global_evolution_settings')
+        .from('global_settings')
         .select('*')
-        .eq('is_active', true)
         .maybeSingle();
 
       if (error) throw error;
@@ -38,24 +36,30 @@ export function useGlobalSettings() {
   const saveSettings = async (apiUrl: string, apiKey: string, instanceName: string): Promise<boolean> => {
     try {
       if (settings) {
-        // Desativar configuração antiga
-        await supabase
-          .from('triagem_global_evolution_settings')
-          .update({ is_active: false })
+        // Atualizar configuração existente
+        const { error } = await supabase
+          .from('global_settings')
+          .update({
+            evolution_api_url: apiUrl,
+            evolution_api_key: apiKey,
+            instance_name: instanceName,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', settings.id);
+
+        if (error) throw error;
+      } else {
+        // Criar nova configuração
+        const { error } = await supabase
+          .from('global_settings')
+          .insert({
+            evolution_api_url: apiUrl,
+            evolution_api_key: apiKey,
+            instance_name: instanceName
+          });
+
+        if (error) throw error;
       }
-
-      // Criar nova configuração ativa
-      const { error } = await supabase
-        .from('triagem_global_evolution_settings')
-        .insert({
-          api_url: apiUrl,
-          api_key: apiKey,
-          instance_name: instanceName,
-          is_active: true
-        });
-
-      if (error) throw error;
 
       await fetchSettings();
       return true;
