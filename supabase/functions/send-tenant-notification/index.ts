@@ -49,10 +49,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!tenant.whatsapp_number) {
-      console.log('Tenant has no WhatsApp number, skipping notification');
+    const phoneNumber = tenant.whatsapp_number || tenant.phone;
+
+    if (!phoneNumber) {
+      console.log('Tenant has no phone number, skipping notification');
       return new Response(
-        JSON.stringify({ success: true, message: 'Tenant sem n\u00famero de WhatsApp' }),
+        JSON.stringify({ success: true, message: 'Tenant sem n\u00famero de telefone' }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -102,7 +104,7 @@ Deno.serve(async (req: Request) => {
 
     const evolutionUrl = `${globalSettings.api_url}/message/sendText/${globalSettings.instance_name}`;
 
-    console.log(`Sending notification to ${tenant.whatsapp_number}`);
+    console.log(`Sending notification to ${phoneNumber}`);
 
     const evolutionResponse = await fetch(evolutionUrl, {
       method: 'POST',
@@ -111,7 +113,7 @@ Deno.serve(async (req: Request) => {
         'apikey': globalSettings.api_key
       },
       body: JSON.stringify({
-        number: tenant.whatsapp_number,
+        number: phoneNumber,
         text: message
       })
     });
@@ -126,7 +128,7 @@ Deno.serve(async (req: Request) => {
         .insert([{
           tenant_id: tenantId,
           event_type: eventType,
-          phone_number: tenant.whatsapp_number,
+          phone_number: phoneNumber,
           message: message,
           status: 'failed',
           error_message: JSON.stringify(evolutionData)
@@ -140,7 +142,7 @@ Deno.serve(async (req: Request) => {
       .insert([{
         tenant_id: tenantId,
         event_type: eventType,
-        phone_number: tenant.whatsapp_number,
+        phone_number: phoneNumber,
         message: message,
         status: 'sent',
         sent_at: new Date().toISOString()

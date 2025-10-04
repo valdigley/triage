@@ -133,6 +133,19 @@ Deno.serve(async (req: Request) => {
             const expiresAt = new Date(subscription.expires_at);
             const planName = subscription.plan_name === 'monthly' ? 'Mensal' : 'Anual';
 
+            const { data: tenantData } = await supabaseClient
+              .from('triagem_tenants')
+              .select('email')
+              .eq('id', tenantId)
+              .maybeSingle();
+
+            const { data: settings } = await supabaseClient
+              .from('triagem_global_settings')
+              .select('app_url')
+              .maybeSingle();
+
+            const appUrl = settings?.app_url || 'https://triagem.app';
+
             await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-tenant-notification`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -142,7 +155,9 @@ Deno.serve(async (req: Request) => {
                 customData: {
                   amount: subscription.amount.toFixed(2),
                   plan_name: planName,
-                  expires_at: expiresAt.toLocaleDateString('pt-BR')
+                  expires_at: expiresAt.toLocaleDateString('pt-BR'),
+                  app_url: appUrl,
+                  email: tenantData?.email || ''
                 }
               })
             });

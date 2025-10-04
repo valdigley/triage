@@ -102,7 +102,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
       if (settingsError) throw settingsError;
 
-      // Send welcome notification
+      // Send welcome notification with credentials
       try {
         const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         await fetch(
@@ -116,7 +116,10 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
               tenantId: tenant.id,
               eventType: 'tenant_welcome',
               customData: {
-                trial_expires_at: trialEndsAt.toLocaleDateString('pt-BR')
+                trial_expires_at: trialEndsAt.toLocaleDateString('pt-BR'),
+                app_url: window.location.origin,
+                email: formData.email,
+                password: formData.password
               }
             })
           }
