@@ -4,6 +4,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useMercadoPago } from '../../hooks/useMercadoPago';
 import { useWhatsApp } from '../../hooks/useWhatsApp';
+import { useWhatsAppInstance } from '../../hooks/useWhatsAppInstance';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { useTenant } from '../../hooks/useTenant';
@@ -16,6 +17,7 @@ export function SettingsView() {
   const { sessionTypes, createSessionType, updateSessionType, deleteSessionType, toggleSessionTypeStatus } = useSessionTypes();
   const { settings: mpSettings, updateSettings: updateMPSettings, testConnection } = useMercadoPago();
   const { instances, getQRCode, testConnection: testWhatsAppConnection, sendTestMessage, refetch: refetchWhatsApp } = useWhatsApp();
+  const { instance: whatsappInstance, loading: loadingInstance, creating: creatingInstance, createInstance, refreshQRCode, checkConnection: checkWhatsAppConnection, deleteInstance: deleteWhatsAppInstance, refetch: refetchInstance } = useWhatsAppInstance();
   const { templates, updateTemplate } = useNotifications();
   const { tenant } = useTenant();
   const { settings: globalSettings } = useGlobalSettings();
@@ -392,68 +394,67 @@ export function SettingsView() {
       return;
     }
 
-    if (!globalSettings?.evolution_api_url || !globalSettings?.evolution_api_key) {
-      alert('Configurações globais da Evolution API não encontradas. Entre em contato com o administrador.');
-      return;
-    }
-
     setLoadingQR(true);
     setQrCode(null);
-    setQrCountdown(15);
+    setQrCountdown(45);
 
     try {
-      console.log('🔄 Salvando configurações WhatsApp...');
-      await saveWhatsAppSettings();
+      // Criar ou obter instância
+      if (!whatsappInstance?.evolution_instance_name) {
+        console.log('🔄 Criando instância WhatsApp...');
+        const result = await createInstance();
 
-      console.log('🔄 Recarregando instâncias...');
-      await refetchWhatsApp();
-
-      console.log('📱 Gerando QR Code...');
-      const result = await getQRCode();
-
-      console.log('📊 Resultado:', result);
-
-      if (result.success && result.qrCode) {
-        setQrCode(result.qrCode);
-
-        if (qrIntervalRef.current) {
-          clearInterval(qrIntervalRef.current);
+        if (!result.success) {
+          alert(`Erro ao criar instância: ${result.message}`);
+          return;
         }
 
-        let countdown = 15;
-        qrIntervalRef.current = setInterval(async () => {
-          countdown--;
-          setQrCountdown(countdown);
-
-          const isConnected = await checkConnectionStatus();
-
-          if (isConnected) {
-            if (qrIntervalRef.current) {
-              clearInterval(qrIntervalRef.current);
-            }
-            setQrCode(null);
-            setQrCountdown(0);
-
-            if (settings.studio_phone) {
-              await sendTestMessage(settings.studio_phone);
-              alert('WhatsApp conectado com sucesso! Uma mensagem de teste foi enviada.');
-            }
-
-            await refetchWhatsApp();
-          } else if (countdown <= 0) {
-            if (qrIntervalRef.current) {
-              clearInterval(qrIntervalRef.current);
-            }
-            setQrCode(null);
-            setQrCountdown(0);
-          }
-        }, 1000);
-      } else if (result.message === 'WhatsApp já está conectado') {
-        alert('WhatsApp já está conectado!');
-        await refetchWhatsApp();
+        if (result.qrcode) {
+          setQrCode(result.qrcode);
+        }
       } else {
-        alert(`Erro ao gerar QR Code: ${result.message}`);
+        // Buscar QR Code da instância existente
+        console.log('📱 Buscando QR Code...');
+        const result = await refreshQRCode();
+
+        if (result.success && result.qrcode) {
+          setQrCode(result.qrcode);
+        } else {
+          alert(result.message || 'Erro ao buscar QR Code');
+          return;
+        }
       }
+
+      // Iniciar verificação de conexão
+      if (qrIntervalRef.current) {
+        clearInterval(qrIntervalRef.current);
+      }
+
+      let countdown = 45;
+      qrIntervalRef.current = setInterval(async () => {
+        countdown--;
+        setQrCountdown(countdown);
+
+        const isConnected = await checkWhatsAppConnection();
+
+        if (isConnected) {
+          if (qrIntervalRef.current) {
+            clearInterval(qrIntervalRef.current);
+          }
+          setQrCode(null);
+          setQrCountdown(0);
+          alert('WhatsApp conectado com sucesso!');
+          await refetchInstance();
+        } else if (countdown <= 0) {
+          if (qrIntervalRef.current) {
+            clearInterval(qrIntervalRef.current);
+          }
+          setQrCode(null);
+          setQrCountdown(0);
+          alert('QR Code expirado. Clique novamente para gerar um novo.');
+        }
+      }, 1000);
+
     } catch (error) {
       console.error('❌ Erro ao gerar QR Code:', error);
       alert('Erro ao gerar QR Code');
@@ -463,26 +464,20 @@ export function SettingsView() {
   };
 
   const handleDeleteInstance = async () => {
-    if (!activeWhatsAppInstance) return;
+    if (!whatsappInstance?.evolution_instance_name) return;
 
-    if (!confirm('Tem certeza que deseja excluir esta instância do WhatsApp?')) {
+    if (!confirm('Tem certeza que deseja excluir esta instância do WhatsApp? Você perderá todas as mensagens e histórico.')) {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('triagem_whatsapp_instances')
-        .delete()
-        .eq('id', activeWhatsAppInstance.id);
+    const result = await deleteWhatsAppInstance();
 
-      if (error) throw error;
-
+    if (result.success) {
       alert('Instância excluída com sucesso!');
       setQrCode(null);
-      await refetchWhatsApp();
-    } catch (error) {
-      console.error('Erro ao excluir instância:', error);
-      alert('Erro ao excluir instância');
+      await refetchInstance();
+    } else {
+      alert(`Erro ao excluir instância: ${result.message}`);
     }
   };
 
@@ -1263,40 +1258,51 @@ export function SettingsView() {
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Evolution API</h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
                 Configure sua instância da Evolution API para envio automático de mensagens WhatsApp.
               </p>
-              {activeWhatsAppInstance && (
+              {whatsappInstance && whatsappInstance.evolution_instance_name && (
                 <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-800/30 rounded-lg">
                   <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>Instância ativa:</strong> {activeWhatsAppInstance.instance_name} 
+                    <strong>Instância:</strong> {whatsappInstance.evolution_instance_name}
                     <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                      activeWhatsAppInstance.status === 'connected' 
-                        ? 'bg-green-100 text-green-800' 
+                      whatsappInstance.whatsapp_connected
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {activeWhatsAppInstance.status}
+                      {whatsappInstance.whatsapp_connected ? 'Conectado' : 'Aguardando conexão'}
                     </span>
+                  </p>
+                </div>
+              )}
+              {!globalSettings?.evolution_server_url && (
+                <div className="mt-3 p-3 bg-red-100 dark:bg-red-800/30 rounded-lg">
+                  <p className="text-sm text-red-800 dark:text-red-200">
+                    <strong>Atenção:</strong> Servidor Evolution não configurado. Entre em contato com o administrador.
                   </p>
                 </div>
               )}
             </div>
 
             <div className="flex flex-wrap gap-4">
-              {!activeWhatsAppInstance ? (
+              {!whatsappInstance?.evolution_instance_name || !whatsappInstance?.whatsapp_connected ? (
                 <button
                   onClick={handleGenerateQR}
-                  disabled={loadingQR || !globalSettings}
+                  disabled={loadingQR || creatingInstance || !globalSettings?.evolution_server_url}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
-                  {loadingQR ? (
+                  {(loadingQR || creatingInstance) ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
                     <Smartphone className="h-4 w-4" />
                   )}
-                  <span>{loadingQR ? 'Conectando...' : 'Conectar WhatsApp'}</span>
+                  <span>
+                    {creatingInstance ? 'Criando instância...' : loadingQR ? 'Carregando...' : whatsappInstance?.evolution_instance_name ? 'Gerar Novo QR Code' : 'Conectar WhatsApp'}
+                  </span>
                 </button>
-              ) : (
+              ) : null}
+
+              {whatsappInstance?.evolution_instance_name && (
                 <button
                   onClick={handleDeleteInstance}
                   className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
