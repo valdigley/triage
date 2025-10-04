@@ -187,29 +187,34 @@ export function useWhatsApp() {
   };
 
   const sendGalleryLink = async (clientName: string, clientPhone: string, galleryToken: string, expirationDate: string): Promise<boolean> => {
-    // Use short URL path /g/ for WhatsApp preview
-    // This should be configured in your VPS Nginx to proxy to Edge Function for bots
-    const appUrl = 'https://triagem.online';
-    const galleryUrl = `${appUrl}/g/${galleryToken}`;
+    try {
+      // Buscar template do banco
+      const { data: template } = await supabase
+        .from('triagem_notification_templates')
+        .select('message_template')
+        .eq('type', 'gallery_ready')
+        .eq('is_active', true)
+        .maybeSingle();
 
-    const message = `📸 *Suas Fotos Estão Prontas!*\n\n` +
-                   `Olá ${clientName}!\n\n` +
-                   `Suas fotos da sessão fotográfica estão prontas para visualização e seleção! 🎉\n\n` +
-                   `🔗 *Link da Galeria:*\n${galleryUrl}\n\n` +
-                   `⏰ *Válido até:* ${new Date(expirationDate).toLocaleDateString('pt-BR')}\n\n` +
-                   `📋 *Instruções:*\n` +
-                   `• Acesse o link acima\n` +
-                   `• Visualize todas as fotos\n` +
-                   `• Selecione suas favoritas\n` +
-                   `• Confirme sua seleção\n\n` +
-                   `💡 *Lembre-se:*\n` +
-                   `• As fotos mostradas têm marca d'água apenas para visualização\n` +
-                   `• As fotos finais serão entregues sem marca d'água e em alta qualidade\n` +
-                   `• Você pode selecionar quantas fotos desejar\n\n` +
-                   `Em caso de dúvidas, entre em contato conosco.\n\n` +
-                   `_Mensagem automática do sistema_`;
+      if (!template) {
+        console.error('❌ Template gallery_ready não encontrado');
+        return false;
+      }
 
-    return await sendMessage(clientPhone, message);
+      // Use short URL path /g/ for WhatsApp preview
+      const appUrl = 'https://triagem.online';
+      const galleryUrl = `${appUrl}/g/${galleryToken}`;
+
+      // Substituir variáveis no template
+      let message = template.message_template
+        .replace(/\{\{client_name\}\}/g, clientName)
+        .replace(/\{\{gallery_link\}\}/g, galleryUrl);
+
+      return await sendMessage(clientPhone, message);
+    } catch (error) {
+      console.error('❌ Erro ao enviar link da galeria:', error);
+      return false;
+    }
   };
 
   const sendPaymentReminder = async (clientName: string, clientPhone: string, amount: number): Promise<boolean> => {
