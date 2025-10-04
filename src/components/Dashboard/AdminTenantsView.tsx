@@ -17,9 +17,11 @@ export function AdminTenantsView() {
 
   const { settings: globalSettings, saveSettings: saveGlobalSettings } = useGlobalSettings();
   const [evolutionForm, setEvolutionForm] = useState({
-    evolution_api_url: '',
-    evolution_api_key: ''
+    api_url: '',
+    api_key: '',
+    instance_name: ''
   });
+  const [resendingNotifications, setResendingNotifications] = useState(false);
 
   useEffect(() => {
     fetchTenants();
@@ -28,18 +30,25 @@ export function AdminTenantsView() {
   useEffect(() => {
     if (globalSettings) {
       setEvolutionForm({
-        evolution_api_url: globalSettings.evolution_api_url,
-        evolution_api_key: globalSettings.evolution_api_key
+        api_url: globalSettings.api_url || '',
+        api_key: globalSettings.api_key || '',
+        instance_name: globalSettings.instance_name || ''
       });
     }
   }, [globalSettings]);
 
   const handleSaveEvolutionSettings = async () => {
+    if (!evolutionForm.api_url || !evolutionForm.api_key || !evolutionForm.instance_name) {
+      alert('Preencha todos os campos');
+      return;
+    }
+
     setSaving(true);
     try {
       const success = await saveGlobalSettings(
-        evolutionForm.evolution_api_url,
-        evolutionForm.evolution_api_key
+        evolutionForm.api_url,
+        evolutionForm.api_key,
+        evolutionForm.instance_name
       );
 
       if (success) {
@@ -51,6 +60,95 @@ export function AdminTenantsView() {
       alert('Erro ao salvar configurações');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResendNotifications = async () => {
+    if (!globalSettings || !globalSettings.api_url) {
+      alert('Configure a Evolution API primeiro!');
+      return;
+    }
+
+    const confirm = window.confirm('Deseja reenviar notificações para os últimos pagamentos aprovados sem notificação? Isso enviará mensagens no WhatsApp dos clientes.');
+    if (!confirm) return;
+
+    setResendingNotifications(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      // Buscar pagamentos aprovados sem notificação enviada
+      const { data: paymentsToNotify } = await supabase
+        .from('triagem_subscription_payments')
+        .select(`
+          *,
+          triagem_subscriptions!inner(
+            *,
+            triagem_tenants!inner(*)
+          )
+        `)
+        .eq('status', 'approved')
+        .not('paid_at', 'is', null)
+        .order('paid_at', { ascending: false })
+        .limit(10);
+
+      if (!paymentsToNotify || paymentsToNotify.length === 0) {
+        alert('Nenhum pagamento pendente de notificação encontrado');
+        return;
+      }
+
+      let sent = 0;
+      for (const payment of paymentsToNotify) {
+        const subscription = payment.triagem_subscriptions;
+        const tenant = subscription.triagem_tenants;
+
+        // Verificar se já foi enviada notificação
+        const { data: existingLog } = await supabase
+          .from('triagem_tenant_notification_log')
+          .select('id')
+          .eq('tenant_id', tenant.id)
+          .eq('event_type', 'subscription_payment_approved')
+          .maybeSingle();
+
+        if (existingLog) continue; // Já foi enviada
+
+        // Enviar notificação
+        try {
+          const expiresAt = new Date(subscription.expires_at);
+          const planName = subscription.plan_name === 'monthly' ? 'Mensal' : 'Anual';
+
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-tenant-notification`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                tenantId: tenant.id,
+                eventType: 'subscription_payment_approved',
+                customData: {
+                  amount: subscription.amount.toFixed(2),
+                  plan_name: planName,
+                  expires_at: expiresAt.toLocaleDateString('pt-BR'),
+                  app_url: window.location.origin,
+                  email: tenant.email
+                }
+              })
+            }
+          );
+          sent++;
+        } catch (err) {
+          console.error(`Erro ao enviar notificação para ${tenant.email}:`, err);
+        }
+      }
+
+      alert(`${sent} notificação(ões) reenviada(s) com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao reenviar notificações:', error);
+      alert('Erro ao reenviar notificações');
+    } finally {
+      setResendingNotifications(false);
     }
   };
 
@@ -290,10 +388,11 @@ export function AdminTenantsView() {
                 </label>
                 <input
                   type="url"
-                  value={evolutionForm.evolution_api_url}
-                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_url: e.target.value }))}
+                  value={evolutionForm.api_url}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, api_url: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="https://sua-evolution-api.com"
+                  required
                 />
               </div>
 
@@ -303,25 +402,58 @@ export function AdminTenantsView() {
                 </label>
                 <input
                   type="password"
-                  value={evolutionForm.evolution_api_key}
-                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_key: e.target.value }))}
+                  value={evolutionForm.api_key}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, api_key: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Sua API Key"
+                  required
                 />
               </div>
 
-              <button
-                onClick={handleSaveEvolutionSettings}
-                disabled={saving}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-              >
-                {saving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                <span>{saving ? 'Salvando...' : 'Salvar Configurações'}</span>
-              </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Nome da Instância
+                </label>
+                <input
+                  type="text"
+                  value={evolutionForm.instance_name}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, instance_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Nome da sua instância"
+                  required
+                />
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  O nome da instância configurada no Evolution API
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveEvolutionSettings}
+                  disabled={saving}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  <span>{saving ? 'Salvando...' : 'Salvar Configurações'}</span>
+                </button>
+
+                <button
+                  onClick={handleResendNotifications}
+                  disabled={resendingNotifications || !globalSettings}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {resendingNotifications ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <span>{resendingNotifications ? 'Enviando...' : 'Reenviar Notificações Pendentes'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
