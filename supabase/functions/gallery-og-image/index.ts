@@ -1,3 +1,5 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -15,7 +17,7 @@ Deno.serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const token = url.searchParams.get('token');
-    const format = url.searchParams.get('format'); // 'json' or 'html'
+    const format = url.searchParams.get('format');
 
     if (!token) {
       return new Response(
@@ -30,14 +32,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get Supabase client
     const { createClient } = await import('npm:@supabase/supabase-js@2');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get gallery info
     const { data: gallery, error } = await supabase
       .from('triagem_galleries')
       .select(`
@@ -47,11 +47,8 @@ Deno.serve(async (req: Request) => {
         preview_image_url,
         og_title,
         og_description,
-        appointment:appointments(
-          client:triagem_clients(
-            name
-          )
-        )
+        tenant_id,
+        client_id
       `)
       .eq('gallery_token', token)
       .maybeSingle();
@@ -69,7 +66,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get first photo if no preview image set
     let imageUrl = gallery.preview_image_url;
 
     if (!imageUrl) {
@@ -83,20 +79,29 @@ Deno.serve(async (req: Request) => {
       imageUrl = photos?.url || '';
     }
 
-    const clientName = gallery.appointment?.client?.name || 'Cliente';
-    const title = gallery.og_title || `Galeria de Fotos - ${clientName}`;
-    const description = gallery.og_description || `Confira as fotos da sua sessão e selecione suas favoritas!`;
+    let clientName = 'Cliente';
+    if (gallery.client_id) {
+      const { data: client } = await supabase
+        .from('triagem_clients')
+        .select('name')
+        .eq('id', gallery.client_id)
+        .maybeSingle();
 
-    // Get app URL from settings or use environment variable
+      clientName = client?.name || 'Cliente';
+    }
+
+    const title = gallery.og_title || `Galeria de Fotos - ${clientName}`;
+    const description = gallery.og_description || `Confira as fotos da sua sess\u00e3o e selecione suas favoritas!`;
+
     const { data: settings } = await supabase
       .from('triagem_settings')
       .select('app_url')
-      .single();
+      .eq('tenant_id', gallery.tenant_id)
+      .maybeSingle();
 
     const appUrl = settings?.app_url || Deno.env.get('APP_URL') || 'https://triagem.online';
     const galleryUrl = `${appUrl}/g/${token}`;
 
-    // If format is 'json' or Accept header is application/json, return JSON
     const acceptHeader = req.headers.get('Accept') || '';
     if (format === 'json' || acceptHeader.includes('application/json')) {
       return new Response(
@@ -117,7 +122,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Otherwise return HTML with meta tags for social media crawlers
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -152,7 +156,7 @@ Deno.serve(async (req: Request) => {
 </head>
 <body>
   <p>Redirecionando para a galeria...</p>
-  <a href="${galleryUrl}">Clique aqui se não for redirecionado automaticamente</a>
+  <a href="${galleryUrl}">Clique aqui se n\u00e3o for redirecionado automaticamente</a>
 </body>
 </html>`;
 
