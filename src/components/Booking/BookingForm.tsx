@@ -6,7 +6,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { useSessionTypes } from '../../hooks/useSessionTypes';
 import { useAppointments } from '../../hooks/useAppointments';
 import { useMercadoPago } from '../../hooks/useMercadoPago';
-import { useWhatsApp } from '../../hooks/useWhatsApp';
+import { useNotifications } from '../../hooks/useNotifications';
 import { calculatePrice, isDateTimeAvailable, formatCurrency } from '../../utils/pricing';
 import { SessionDetailsForm } from './SessionDetailsForm';
 import { supabase } from '../../lib/supabase';
@@ -79,7 +79,7 @@ export function BookingForm() {
   const { getActiveSessionTypes } = useSessionTypes();
   const { appointments, checkAvailability, createAppointment, checkGoogleCalendarAvailability } = useAppointments();
   const { getActiveSettings } = useMercadoPago();
-  const { sendPaymentConfirmation } = useWhatsApp();
+  const { scheduleNotificationSafe } = useNotifications();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState('');
   const [availableSlots, setAvailableSlots] = useState<Array<{
@@ -429,20 +429,30 @@ export function BookingForm() {
               console.error('❌ Erro ao criar evento no Google Calendar:', calendarError);
             }
 
-            // Send payment confirmation message
+            // Agendar notificação de confirmação de pagamento via fila
             try {
               const selectedSessionType = activeSessionTypes.find(st => st.name === formData.sessionType);
-              await sendPaymentConfirmation(
-                formData.clientName,
+              const appointmentDate = new Date(formData.scheduledDate);
+
+              await scheduleNotificationSafe(
+                appointmentId,
+                'payment_confirmation',
                 formData.clientPhone,
-                price,
-                formData.scheduledDate,
-                selectedSessionType?.label || formData.sessionType,
-                settings?.studio_address,
-                settings?.studio_maps_url
+                formData.clientName,
+                new Date().toISOString(), // Enviar imediatamente
+                {
+                  client_name: formData.clientName,
+                  amount: formatCurrency(price),
+                  session_type: selectedSessionType?.label || formData.sessionType,
+                  appointment_date: appointmentDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                  appointment_time: appointmentDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                  studio_address: settings?.studio_address || '',
+                  delivery_days: settings?.delivery_days?.toString() || '7'
+                }
               );
+              console.log('✅ Notificação de confirmação agendada na fila');
             } catch (error) {
-              console.error('Error sending payment confirmation:', error);
+              console.error('❌ Erro ao agendar notificação de confirmação:', error);
             }
 
             // Exibir mensagem de sucesso
