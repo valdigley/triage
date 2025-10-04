@@ -201,20 +201,35 @@ export function BookingForm() {
 
       const slots = [];
 
-      // Verificar cada slot no Google Calendar
+      // Verificar se Google Calendar está configurado
+      const { data: calendarSettings } = await supabase
+        .from('triagem_google_calendar_settings')
+        .select('*')
+        .eq('tenant_id', tenantId || '')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      const hasGoogleCalendar = !!calendarSettings;
+
+      // Processar cada slot
       for (const slotDateTime of daySlots) {
         const slotDate = new Date(slotDateTime);
         const endDate = addHoursInSaoPaulo(slotDate, 2);
 
-        // Verificar disponibilidade no Google Calendar
-        const availability = await checkGoogleCalendarAvailability(
-          slotDate.toISOString(),
-          endDate.toISOString(),
-          tenantId || undefined
-        );
+        let isAvailable = true;
 
-        // Apenas adicionar se estiver disponível no Google Calendar
-        if (availability.available) {
+        // Apenas verificar Google Calendar se estiver configurado
+        if (hasGoogleCalendar) {
+          const availability = await checkGoogleCalendarAvailability(
+            slotDate.toISOString(),
+            endDate.toISOString(),
+            tenantId || undefined
+          );
+          isAvailable = availability.available;
+        }
+
+        // Adicionar slot se disponível
+        if (isAvailable) {
           const calculatedPrice = calculatePrice(
             slotDateTime,
             settings.commercial_hours,
@@ -261,32 +276,44 @@ export function BookingForm() {
 
     setIsSubmitting(true);
     try {
-      // Verificar disponibilidade no Google Calendar ANTES de processar pagamento
-      const selectedDate = new Date(formData.scheduledDate);
-      const endDate = addHoursInSaoPaulo(selectedDate, 2);
+      // Verificar se Google Calendar está configurado
+      const { data: calendarSettings } = await supabase
+        .from('triagem_google_calendar_settings')
+        .select('*')
+        .eq('tenant_id', tenantId || '')
+        .eq('is_active', true)
+        .maybeSingle();
 
-      console.log('🔍 Verificando disponibilidade no Google Calendar...');
-      console.log('📅 Data selecionada (São Paulo):', formData.scheduledDate);
-      console.log('📅 selectedDate:', selectedDate);
-      console.log('📅 endDate:', endDate);
+      const hasGoogleCalendar = !!calendarSettings;
 
-      const availability = await checkGoogleCalendarAvailability(
-        selectedDate.toISOString(),
-        endDate.toISOString(),
-        tenantId || undefined
-      );
+      // Apenas verificar disponibilidade no Google Calendar se estiver configurado
+      if (hasGoogleCalendar) {
+        const selectedDate = new Date(formData.scheduledDate);
+        const endDate = addHoursInSaoPaulo(selectedDate, 2);
 
-      if (!availability.available) {
-        alert(
-          `❌ ${availability.message}\n\n` +
-          `Este horário já está ocupado no calendário Google. ` +
-          `Por favor, escolha outro horário.`
+        console.log('🔍 Verificando disponibilidade no Google Calendar...');
+        console.log('📅 Data selecionada (São Paulo):', formData.scheduledDate);
+
+        const availability = await checkGoogleCalendarAvailability(
+          selectedDate.toISOString(),
+          endDate.toISOString(),
+          tenantId || undefined
         );
-        setIsSubmitting(false);
-        return;
-      }
 
-      console.log('✅ Horário disponível no Google Calendar');
+        if (!availability.available) {
+          alert(
+            `❌ ${availability.message}\n\n` +
+            `Este horário já está ocupado no calendário Google. ` +
+            `Por favor, escolha outro horário.`
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        console.log('✅ Horário disponível no Google Calendar');
+      } else {
+        console.log('ℹ️ Google Calendar não configurado - prosseguindo sem verificação');
+      }
 
       // Get device ID for MercadoPago security
       let deviceId = '';
