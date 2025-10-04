@@ -400,8 +400,8 @@ export function PhotoUpload({ galleryId, onUploadComplete, onUploadProgress, gal
               console.log('✅ Mensagem WhatsApp enviada com sucesso!');
               toast.success(`Notificação enviada para ${clientName}!`);
             } else {
-              console.warn('⚠️ Falha ao enviar mensagem WhatsApp');
-              toast.warning('Falha ao enviar notificação WhatsApp');
+              console.warn('⚠️ Falha ao enviar mensagem WhatsApp - verifique se há instância ativa');
+              toast.warning('WhatsApp não configurado. Configure nas Configurações.');
             }
 
             // Também agendar notificações futuras (lembretes)

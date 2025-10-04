@@ -102,15 +102,16 @@ export function useWhatsApp() {
   };
   const sendMessage = async (phone: string, message: string): Promise<boolean> => {
     const activeInstance = getActiveInstance();
-    
+
     if (!activeInstance) {
+      console.warn('⚠️ Nenhuma instância WhatsApp ativa encontrada');
       return false;
     }
 
     const { evolution_api_url, evolution_api_key } = activeInstance.instance_data;
-    
+
     if (!evolution_api_url || !evolution_api_key) {
-      console.error('Credenciais da Evolution API não encontradas');
+      console.error('❌ Credenciais da Evolution API não encontradas na instância');
       return false;
     }
 
