@@ -3,9 +3,8 @@ import { supabase } from '../lib/supabase';
 
 interface GlobalSettings {
   id: string;
-  evolution_api_url: string;
-  evolution_api_key: string;
-  instance_name: string;
+  evolution_server_url: string;
+  evolution_auth_api_key: string;
   created_at: string;
   updated_at: string;
 }
@@ -33,16 +32,15 @@ export function useGlobalSettings() {
     }
   };
 
-  const saveSettings = async (apiUrl: string, apiKey: string, instanceName: string): Promise<boolean> => {
+  const saveSettings = async (serverUrl: string, authApiKey: string): Promise<boolean> => {
     try {
       if (settings) {
         // Atualizar configuração existente
         const { error } = await supabase
           .from('global_settings')
           .update({
-            evolution_api_url: apiUrl,
-            evolution_api_key: apiKey,
-            instance_name: instanceName,
+            evolution_server_url: serverUrl,
+            evolution_auth_api_key: authApiKey,
             updated_at: new Date().toISOString()
           })
           .eq('id', settings.id);
@@ -53,9 +51,8 @@ export function useGlobalSettings() {
         const { error } = await supabase
           .from('global_settings')
           .insert({
-            evolution_api_url: apiUrl,
-            evolution_api_key: apiKey,
-            instance_name: instanceName
+            evolution_server_url: serverUrl,
+            evolution_auth_api_key: authApiKey
           });
 
         if (error) throw error;

@@ -17,9 +17,8 @@ export function AdminTenantsView() {
 
   const { settings: globalSettings, saveSettings: saveGlobalSettings } = useGlobalSettings();
   const [evolutionForm, setEvolutionForm] = useState({
-    evolution_api_url: '',
-    evolution_api_key: '',
-    instance_name: ''
+    evolution_server_url: '',
+    evolution_auth_api_key: ''
   });
   const [resendingNotifications, setResendingNotifications] = useState(false);
 
@@ -30,15 +29,14 @@ export function AdminTenantsView() {
   useEffect(() => {
     if (globalSettings) {
       setEvolutionForm({
-        evolution_api_url: globalSettings.evolution_api_url || '',
-        evolution_api_key: globalSettings.evolution_api_key || '',
-        instance_name: globalSettings.instance_name || ''
+        evolution_server_url: globalSettings.evolution_server_url || '',
+        evolution_auth_api_key: globalSettings.evolution_auth_api_key || ''
       });
     }
   }, [globalSettings]);
 
   const handleSaveEvolutionSettings = async () => {
-    if (!evolutionForm.evolution_api_url || !evolutionForm.evolution_api_key || !evolutionForm.instance_name) {
+    if (!evolutionForm.evolution_server_url || !evolutionForm.evolution_auth_api_key) {
       alert('Preencha todos os campos');
       return;
     }
@@ -46,9 +44,8 @@ export function AdminTenantsView() {
     setSaving(true);
     try {
       const success = await saveGlobalSettings(
-        evolutionForm.evolution_api_url,
-        evolutionForm.evolution_api_key,
-        evolutionForm.instance_name
+        evolutionForm.evolution_server_url,
+        evolutionForm.evolution_auth_api_key
       );
 
       if (success) {
@@ -64,7 +61,7 @@ export function AdminTenantsView() {
   };
 
   const handleResendNotifications = async () => {
-    if (!globalSettings || !globalSettings.evolution_api_url) {
+    if (!globalSettings || !globalSettings.evolution_server_url) {
       alert('Configure a Evolution API primeiro!');
       return;
     }
@@ -378,52 +375,41 @@ export function AdminTenantsView() {
               Evolution API - Configuração Global
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Estas configurações serão usadas por todos os estúdios para criar suas instâncias WhatsApp.
+              Configure o servidor Evolution API que será usado para gerenciar (criar/apagar) instâncias WhatsApp dos tenants.
             </p>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  URL do Servidor Evolution API
+                  URL do Servidor Evolution
                 </label>
                 <input
                   type="url"
-                  value={evolutionForm.evolution_api_url}
-                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_url: e.target.value }))}
+                  value={evolutionForm.evolution_server_url}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_server_url: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="https://sua-evolution-api.com"
                   required
                 />
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Servidor onde as instâncias dos tenants serão criadas
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  API Key Global
+                  AUTHENTICATION_API_KEY
                 </label>
                 <input
                   type="password"
-                  value={evolutionForm.evolution_api_key}
-                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_api_key: e.target.value }))}
+                  value={evolutionForm.evolution_auth_api_key}
+                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, evolution_auth_api_key: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Sua API Key"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nome da Instância
-                </label>
-                <input
-                  type="text"
-                  value={evolutionForm.instance_name}
-                  onChange={(e) => setEvolutionForm(prev => ({ ...prev, instance_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Nome da sua instância"
+                  placeholder="Chave de autenticação global"
                   required
                 />
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  O nome da instância configurada no Evolution API
+                  Chave que permite criar e apagar instâncias no servidor
                 </p>
               </div>
 

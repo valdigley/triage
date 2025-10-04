@@ -88,29 +88,50 @@ Deno.serve(async (req: Request) => {
       message = message.replace(regex, variables[key]);
     });
 
-    const { data: globalSettings } = await supabaseClient
-      .from('global_settings')
-      .select('*')
+    const { data: tenantSettings } = await supabaseClient
+      .from('triagem_settings')
+      .select('evolution_instance_name, evolution_instance_apikey, whatsapp_connected')
+      .eq('tenant_id', tenantId)
       .maybeSingle();
 
-    if (!globalSettings || !globalSettings.evolution_api_url || !globalSettings.evolution_api_key) {
-      console.error('Global Evolution settings not found or incomplete');
+    if (!tenantSettings || !tenantSettings.evolution_instance_name || !tenantSettings.evolution_instance_apikey) {
+      console.error('Tenant WhatsApp instance not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'Configura\u00e7\u00f5es globais do Evolution n\u00e3o encontradas' }),
+        JSON.stringify({ success: false, error: 'Inst\u00e2ncia WhatsApp do tenant n\u00e3o configurada' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    const instanceName = globalSettings.instance_name || 'triagem';
-    const evolutionUrl = `${globalSettings.evolution_api_url}/message/sendText/${instanceName}`;
+    if (!tenantSettings.whatsapp_connected) {
+      console.error('Tenant WhatsApp not connected');
+      return new Response(
+        JSON.stringify({ success: false, error: 'WhatsApp do tenant n\u00e3o conectado' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
 
-    console.log(`Sending notification to ${phoneNumber}`);
+    const { data: globalSettings } = await supabaseClient
+      .from('global_settings')
+      .select('evolution_server_url')
+      .maybeSingle();
+
+    if (!globalSettings || !globalSettings.evolution_server_url) {
+      console.error('Evolution server URL not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Servidor Evolution n\u00e3o configurado' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const evolutionUrl = `${globalSettings.evolution_server_url}/message/sendText/${tenantSettings.evolution_instance_name}`;
+
+    console.log(`Sending notification to ${phoneNumber} via instance ${tenantSettings.evolution_instance_name}`);
 
     const evolutionResponse = await fetch(evolutionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': globalSettings.evolution_api_key
+        'apikey': tenantSettings.evolution_instance_apikey
       },
       body: JSON.stringify({
         number: phoneNumber,
