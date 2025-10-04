@@ -969,22 +969,6 @@ export function BookingForm() {
               </div>
             </div>
             )}
-
-            {!mpSettings && !settings?.pix_key && (
-              <div className="mt-4 p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-200">
-                  ⚠️ Sistema de pagamento não configurado. Após o agendamento, entre em contato com o estúdio para combinar o pagamento.
-                </p>
-              </div>
-            )}
-
-            {!mpSettings && settings?.pix_key && (
-              <div className="mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
-                  📲 Após o agendamento, você receberá a chave PIX via WhatsApp para efetuar o pagamento.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>
