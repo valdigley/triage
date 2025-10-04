@@ -304,7 +304,8 @@ export function useNotifications() {
       const { data: settings } = await supabase
         .from('triagem_settings')
         .select('delivery_days')
-        .single();
+        .eq('tenant_id', appointment.tenant_id)
+        .maybeSingle();
 
       const clientName = appointment.client?.name || 'Cliente';
       const clientPhone = appointment.client?.phone || '';
