@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
 
     if (!tenantId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'tenantId \u00e9 obrigat\u00f3rio' }),
+        JSON.stringify({ success: false, error: 'tenantId é obrigatório' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
     if (tenantError || !tenant) {
       console.error('Tenant not found:', tenantError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Tenant n\u00e3o encontrado' }),
+        JSON.stringify({ success: false, error: 'Tenant não encontrado' }),
         { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: true,
-          message: 'Inst\u00e2ncia j\u00e1 existe',
+          message: 'Instância já existe',
           instanceName: existingSettings.evolution_instance_name
         }),
         { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
     if (!globalSettings || !globalSettings.evolution_server_url || !globalSettings.evolution_auth_api_key) {
       console.error('Evolution server not configured');
       return new Response(
-        JSON.stringify({ success: false, error: 'Servidor Evolution n\u00e3o configurado' }),
+        JSON.stringify({ success: false, error: 'Servidor Evolution não configurado' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -96,6 +96,8 @@ Deno.serve(async (req: Request) => {
     const createInstanceUrl = `${globalSettings.evolution_server_url}/instance/create`;
 
     console.log(`Creating instance ${instanceName} for studio "${tenant.name}" on Evolution API`);
+    console.log('Evolution API URL:', createInstanceUrl);
+    console.log('Instance name to create:', instanceName);
 
     const createResponse = await fetch(createInstanceUrl, {
       method: 'POST',
@@ -110,10 +112,27 @@ Deno.serve(async (req: Request) => {
       })
     });
 
+    console.log('Evolution API response status:', createResponse.status);
+
     if (!createResponse.ok) {
-      const errorData = await createResponse.json();
-      console.error('Evolution API error:', errorData);
-      throw new Error('Erro ao criar inst\u00e2ncia no Evolution API');
+      const errorText = await createResponse.text();
+      console.error('Evolution API error response:', errorText);
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+      console.error('Evolution API error data:', errorData);
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Erro Evolution API: ${errorData.message || errorText}`,
+          details: errorData
+        }),
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
     }
 
     const instanceData = await createResponse.json();
@@ -132,7 +151,7 @@ Deno.serve(async (req: Request) => {
 
     if (updateError) {
       console.error('Error updating tenant settings:', updateError);
-      throw new Error('Erro ao salvar configura\u00e7\u00f5es da inst\u00e2ncia');
+      throw new Error('Erro ao salvar configurações da instância');
     }
 
     console.log(`Instance ${instanceName} created and configured for tenant ${tenantId}`);
@@ -140,7 +159,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Inst\u00e2ncia criada com sucesso',
+        message: 'Instância criada com sucesso',
         instanceName: instanceName,
         qrcode: instanceData.qrcode?.base64
       }),
