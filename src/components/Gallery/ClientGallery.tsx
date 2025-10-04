@@ -464,9 +464,21 @@ export function ClientGallery() {
       return;
     }
 
+    console.log('🚀 Iniciando submissão de identificação...', {
+      gallery: gallery.id,
+      name: clientData.name,
+      phone: clientData.phone,
+      selectedPhotos: selectedPhotos.length
+    });
+
     setSubmitting(true);
     try {
       const totalAmount = selectedPhotos.length * (gallery.price_per_photo || 0);
+
+      console.log('📤 Enviando requisição para criar pagamento...', {
+        totalAmount,
+        pricePerPhoto: gallery.price_per_photo
+      });
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-public-gallery-payment`,
@@ -488,13 +500,16 @@ export function ClientGallery() {
         }
       );
 
+      console.log('📥 Resposta recebida:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Payment error:', errorData);
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }));
+        console.error('❌ Erro na resposta:', errorData);
         throw new Error(errorData.error || 'Erro ao gerar pagamento');
       }
 
       const payment = await response.json();
+      console.log('💰 Dados do pagamento:', payment);
 
       if (!payment.success) {
         throw new Error(payment.error || 'Erro ao gerar pagamento');
