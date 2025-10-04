@@ -24,9 +24,9 @@ Deno.serve(async (req: Request) => {
 
     if (!galleryId || !appointmentId || !extraPhotos || !totalAmount) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Dados obrigatórios não fornecidos' 
+        JSON.stringify({
+          success: false,
+          error: 'Dados obrigatórios não fornecidos'
         }),
         {
           status: 400,
@@ -38,19 +38,43 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get MercadoPago settings
+    // Get gallery to find tenant_id
+    const { data: gallery, error: galleryError } = await supabase
+      .from('triagem_galleries')
+      .select('tenant_id')
+      .eq('id', galleryId)
+      .maybeSingle();
+
+    if (galleryError || !gallery) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Galeria não encontrada'
+        }),
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
+    // Get MercadoPago settings for THIS tenant
     const { data: mpSettings, error: mpError } = await supabase
       .from('triagem_mercadopago_settings')
       .select('*')
+      .eq('tenant_id', gallery.tenant_id)
       .eq('is_active', true)
-      .limit(1)
       .maybeSingle();
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Configurações do MercadoPago não encontradas' 
+        JSON.stringify({
+          success: false,
+          error: 'MercadoPago não configurado para este estúdios',
+          no_payment_configured: true
         }),
         {
           status: 400,
@@ -148,7 +172,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Update gallery with extra photos info
-    const { error: galleryError } = await supabase
+    const { error: galleryError2 } = await supabase
       .from('triagem_galleries')
       .update({
         extra_photos_payment_id: pixData.id.toString(),
@@ -157,8 +181,8 @@ Deno.serve(async (req: Request) => {
       })
       .eq('id', galleryId);
 
-    if (galleryError) {
-      console.error('Gallery update error:', galleryError);
+    if (galleryError2) {
+      console.error('Gallery update error:', galleryError2);
     }
 
     return new Response(

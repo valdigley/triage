@@ -47,18 +47,43 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Get parent gallery to find tenant_id
+    const { data: parentGallery, error: parentGalleryError } = await supabase
+      .from('triagem_galleries')
+      .select('tenant_id')
+      .eq('id', parentGalleryId)
+      .maybeSingle();
+
+    if (parentGalleryError || !parentGallery) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Galeria não encontrada'
+        }),
+        {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders,
+          },
+        }
+      );
+    }
+
+    // Get MercadoPago settings for THIS tenant
     const { data: mpSettings, error: mpError } = await supabase
       .from('triagem_mercadopago_settings')
       .select('*')
+      .eq('tenant_id', parentGallery.tenant_id)
       .eq('is_active', true)
-      .limit(1)
       .maybeSingle();
 
     if (mpError || !mpSettings || !mpSettings.access_token) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Configurações do MercadoPago não encontradas'
+          error: 'MercadoPago não configurado para este estúdios',
+          no_payment_configured: true
         }),
         {
           status: 400,

@@ -261,8 +261,7 @@ export function ClientGallery() {
 
     try {
       setShowCart(false);
-      setShowPayment(true);
-      
+
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-extra-photos-payment`, {
         method: 'POST',
         headers: {
@@ -281,15 +280,22 @@ export function ClientGallery() {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
+        setShowPayment(true);
         setPaymentData(result);
         setPaymentStatus(result.status);
-        
+
         // Start polling for payment status
         startPaymentPolling(result.payment_id);
       } else {
-        throw new Error(result.error || 'Erro ao criar pagamento');
+        // Se não há configuração de pagamento, apenas mostrar mensagem
+        if (result.no_payment_configured) {
+          alert(`✅ Seleção enviada com sucesso!\n\n📸 Você selecionou ${extraPhotos} foto(s) extra(s).\n💰 Valor: ${formatCurrency(extraCost)}\n\n⚠️ O estúdio ainda não configurou o sistema de pagamento online.\n\nEntre em contato com o estúdio para combinar a forma de pagamento das fotos extras.\n\n✅ Sua seleção foi salva e o estúdio foi notificado!`);
+          setShowCart(false);
+        } else {
+          throw new Error(result.error || 'Erro ao criar pagamento');
+        }
       }
     } catch (error) {
       console.error('Erro ao criar pagamento das fotos extras:', error);
